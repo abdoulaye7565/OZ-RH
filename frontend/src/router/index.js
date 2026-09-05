@@ -3,6 +3,8 @@ import AccueilView from "../views/AccueilView.vue";
 import ConnexionView from "../views/ConnexionView.vue";
 import NouveauSignalementView from "../views/NouveauSignalementView.vue";
 import SignalementsView from "../views/SignalementsView.vue";
+import TableauBordMobileView from "../views/TableauBordMobileView.vue";
+import TableauBordDesktopView from "../views/TableauBordDesktopView.vue";
 import { useAuthStore } from "../stores/auth";
 
 const router = createRouter({
@@ -20,6 +22,20 @@ const router = createRouter({
       path: "/signalements/nouveau",
       name: "nouveau-signalement",
       component: NouveauSignalementView,
+      meta: { necessiteAuth: true },
+    },
+    {
+      path: "/tableau-de-bord",
+      name: "tableau-de-bord",
+      component: TableauBordMobileView,
+      meta: { necessiteAuth: true },
+    },
+    // Préfixe /gestion : amorce de l'interface de gestion desktop (CDC 11.1,
+    // "deux interfaces, deux usages"). Une seule page pour l'instant.
+    {
+      path: "/gestion/tableau-de-bord",
+      name: "gestion-tableau-de-bord",
+      component: TableauBordDesktopView,
       meta: { necessiteAuth: true },
     },
   ],

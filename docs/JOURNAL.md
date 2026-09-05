@@ -15,8 +15,10 @@ un prompt terminé, testé et commité.
 - [x] 1.1 — API des signalements
 - [x] 1.2 — API du plan d'action
 - [x] 1.3 — Interface mobile : saisie d'un signalement
-- [ ] 1.4 — Mode hors connexion et synchronisation
-- [ ] 1.5 — Tableau de bord
+- [ ] 1.4 — Mode hors connexion et synchronisation (stratégie présentée le 2026-09-05,
+      en attente de validation — voir prompt d'appoint dans PROMPTS_DEVELOPPEMENT.md ;
+      traité après le 1.5 à la demande explicite de l'utilisateur)
+- [x] 1.5 — Tableau de bord
 - [ ] 1.6 — Recette du lot 1
 
 ## LOT 2 — Travaux en hauteur
@@ -439,3 +441,85 @@ plus. Sans le test en navigateur réel, ce décalage silencieux serait resté
 invisible : les tests pytest et les vérifications `curl` sur bases isolées
 avaient tous été faits sur des instances fraîches, jamais sur le serveur de
 démo lui-même.
+
+### Détail — Prompt 1.5 (terminé le 2026-09-05)
+
+Sources lues : section 5.4 du CDC (tableau de bord), maquettes desktop
+(`#p-dash`, figure A.24) et mobile (`#s-tdb`, figure A.10).
+
+**Backend** : `GET /api/v1/tableau-de-bord` (filtres `date_debut`, `date_fin`,
+`site_id`), agrégations SQL uniquement (`GROUP BY`/`COUNT`, pas de chargement
+de table en Python). `action_service.calculer_synthese` refactorisé à cette
+occasion : chargeait toutes les lignes en mémoire depuis le prompt 1.2, remplacé
+par deux requêtes agrégées. Nouvelle fonction `action_service.echeances_proches`.
+
+**Requêtes générées pour l'endpoint principal (capturées et vérifiées) :**
+6 `SELECT`, aucune par ligne (pas de N+1) : total de la période (COUNT),
+histogramme mensuel (`GROUP BY EXTRACT(year)/EXTRACT(month)` — traduit en
+`STRFTIME` sur SQLite, en `EXTRACT`/`date_part` sur PostgreSQL sans code
+spécifique à un moteur), liste "à traiter" (une requête, limite 10), répartition
+des actions par statut (`GROUP BY`), comptage des actions en retard (`COUNT`
+avec `WHERE`), liste des échéances proches (une requête, limite 10).
+
+**Frontend** : deux vues distinctes plutôt qu'une seule vue responsive —
+`TableauBordMobileView.vue` et `TableauBordDesktopView.vue` (route
+`/gestion/tableau-de-bord`, amorce du préfixe "interface de gestion" du CDC
+11.1). CSS desktop ajoutée à `style.css` (`.mets`, `.grid2`, `.card .ch/.cb`,
+tableaux, histogramme `.bars`/`.bcol`).
+
+**Écarts et compromis à signaler — importants :**
+
+1. **La plupart des indicateurs du chapitre 5.4 du CDC ne sont pas
+   calculables** : sur les quatre familles prévues (sécurité et santé,
+   prévention, environnement et qualité, échéances), seuls les modules
+   Signalements et Actions existent. EPI (lot 2.1), inspections (lot 2.4),
+   formations/documents/environnement/satisfaction (lot 4), coffre-fort
+   (lot 3.3) sont listés dans `modules_non_disponibles` plutôt que simulés.
+2. **Les 4 tuiles de tête ne sont PAS celles de la maquette.** La maquette
+   affiche accidents avec arrêt / signalements / EPI à vérifier / conformité —
+   3 de ces 4 dépendent de modules absents. Remplacées par : signalements de la
+   période, signalements à traiter, avancement du plan d'action, actions en
+   retard — les 4 seuls indicateurs réellement calculables aujourd'hui. Écart
+   délibéré, dans la continuité du choix fait au prompt 1.3 (bandeau hors
+   connexion reformulé) : ne jamais afficher un chiffre qui n'est pas
+   réellement calculé.
+3. **Le filtre `site_id` ne s'applique pleinement qu'aux signalements.**
+   RISQUE et ACTION n'ont pas de site direct dans le modèle de données (posé
+   au prompt 0.2) ; pour les actions, le filtre ne fonctionne que via la
+   jointure `Action.signalement_id -> Signalement.site_id` — les actions
+   issues d'un risque ou d'une inspection ne sont donc jamais comptées quand ce
+   filtre est actif. Limite structurelle du modèle de données, pas un oubli de
+   ce prompt.
+4. **Deux vues distinctes (mobile/desktop), pas une seule vue responsive.** Les
+   deux maquettes ont des systèmes de classes CSS différents et des contenus
+   différents (le desktop ajoute deux tableaux absents du mobile) : les
+   respecter fidèlement l'une et l'autre semblait plus honnête que de forcer un
+   compromis hybride.
+5. **Barre latérale desktop complète non reprise** : remplacée par un bandeau
+   simple avec un seul lien (Signalements). Sera étoffée quand d'autres pages
+   desktop existeront.
+6. **Export PDF non implémenté** (bouton absent) : prévu au prompt 5.1.
+
+**Bug réel trouvé et corrigé pendant la vérification visuelle en navigateur,
+pas par les tests automatisés** : collision de nom de classe CSS — `.hd` était
+déjà utilisée par l'en-tête plein écran (fond navy) des vues mobiles ; réutilisée
+telle quelle pour l'en-tête d'une tuile métrique desktop, la tuile héritait du
+fond navy et du padding de l'en-tête mobile. Invisible dans le code, visible
+uniquement à l'écran — corrigé en renommant la classe desktop en `.met-hd`.
+Deuxième leçon du même type qu'au prompt 1.3 : les vérifications visuelles en
+navigateur réel trouvent des classes de bugs qu'aucun test automatisé ne peut
+détecter.
+
+**Un deuxième problème d'infrastructure trouvé en vérifiant** : plusieurs
+processus `uvicorn --reload` empilés au fil des prompts précédents se
+disputaient le port 8000, l'un d'eux servant du code obsolète (404 sur
+`/tableau-de-bord` alors que le code source, vérifié par import Python direct,
+était correct). Assaini : tous les processus arrêtés, un seul relancé sans
+`--reload` pour cette session de vérification.
+
+**Vérifié en conditions réelles :** 64 tests pytest passent (56 précédents + 8
+nouveaux). Requêtes SQL de l'endpoint principal capturées et affichées (voir
+ci-dessus). Les deux vues testées dans un vrai navigateur avec connexion réelle
+au backend : 4 tuiles métriques et 2 tableaux présents côté desktop, 4 tuiles
+et 2 cartes côté mobile, zéro erreur console, captures d'écran comparées aux
+maquettes.

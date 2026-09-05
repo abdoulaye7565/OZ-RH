@@ -36,3 +36,9 @@ class Permissions:
     # désigné de cette action précise (vérifié route par route, pas ici) : cette
     # constante ne couvre que la création et les actions globales sur le plan.
     GERER_ACTIONS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Le tableau de bord agrège TOUS les signalements, y compris ceux qu'un
+    # technicien/collaborateur ne peut normalement pas voir individuellement
+    # (visibilité restreinte à ses propres saisies, prompt 1.1) : ouvrir le
+    # tableau de bord à ces deux rôles ferait fuir cette agrégation. Restreint
+    # aux rôles de consultation large déjà identifiés dans le CDC (5.2.1, 5.2.5).
+    CONSULTER_TABLEAU_BORD: tuple[R, ...] = (R.ADMINISTRATEUR, R.REFERENT_SHEQ, R.RESPONSABLE)

@@ -614,3 +614,325 @@ textarea.inp {
   color: var(--mut);
   margin-bottom: 16px;
 }
+
+/* ---------- métriques et barres de progression (mobile, tableau de bord) ---------- */
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+}
+.metrics.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+.met {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 10px 8px;
+  box-shadow: var(--sh);
+}
+.met .v {
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.6px;
+  line-height: 1.1;
+}
+.met .l {
+  font-size: 10.5px;
+  color: var(--mut);
+  margin-top: 3px;
+  line-height: 1.25;
+}
+.met.a .v {
+  color: var(--orange);
+}
+.met.g .v {
+  color: var(--green);
+}
+
+.bar {
+  margin-bottom: 11px;
+}
+.bar .lb {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  margin-bottom: 5px;
+}
+.bar .lb b {
+  font-weight: 600;
+}
+.bar .lb span {
+  color: var(--mut);
+  font-weight: 600;
+}
+.trk {
+  height: 7px;
+  border-radius: 4px;
+  background: #edf0f5;
+  overflow: hidden;
+}
+.fl {
+  height: 100%;
+  border-radius: 4px;
+}
+.fl.g {
+  background: var(--green);
+}
+.fl.o {
+  background: var(--orange);
+}
+.fl.gd {
+  background: var(--gold);
+}
+.fl.n {
+  background: var(--navy2);
+}
+
+/*
+ * ---------- interface de gestion (desktop) ----------
+ * Repris de docs/maquettes/Maquettes_SHEQ_Desktop.html. Classes imbriquées
+ * sous .bureau : la maquette desktop utilise elle aussi ".met"/".card" mais
+ * avec une structure différente de la version mobile (icône+tendance plutôt
+ * que valeur+libellé) — l'espacement sous .bureau évite toute collision.
+ *
+ * La barre latérale de navigation complète de la maquette (regroupée en
+ * Pilotage/Terrain/Système) n'est PAS reprise ici : la plupart de ses liens
+ * n'ont pas encore d'écran. Un bandeau simple lui est substitué, agrandi au
+ * fur et à mesure que d'autres pages desktop existeront (lots 2 à 4).
+ */
+.bureau {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px 24px 48px;
+}
+.bureau-entete {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  margin-bottom: 18px;
+}
+.bureau-entete h1 {
+  font-size: 20px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+  margin: 0;
+  color: var(--navy);
+}
+.bureau-entete .sub {
+  font-size: 12.5px;
+  color: var(--mut);
+}
+
+.bureau .mets {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.bureau .met {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px;
+  box-shadow: var(--sh);
+}
+/* .met-hd, pas .hd : cette dernière classe est déjà prise par l'en-tête plein
+   écran des vues mobiles (fond navy) — même nom, composant totalement
+   différent. Les réutiliser aurait fait hériter le fond navy ici. */
+.bureau .met .met-hd {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  color: var(--mut);
+  font-weight: 600;
+}
+.bureau .met .met-hd .ic {
+  width: 26px;
+  height: 26px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.bureau .met .v {
+  font-size: 27px;
+  font-weight: 750;
+  letter-spacing: -1px;
+  margin-top: 9px;
+  line-height: 1;
+}
+.bureau .met .t {
+  font-size: 11px;
+  margin-top: 5px;
+  font-weight: 600;
+}
+.bureau .up {
+  color: var(--green);
+}
+.bureau .down {
+  color: var(--red);
+}
+.bureau .flat {
+  color: var(--mut);
+}
+
+.grid2 {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.bureau .card {
+  overflow: hidden;
+}
+.card .ch {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line2);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card .ch h3 {
+  font-size: 13.5px;
+  font-weight: 650;
+  letter-spacing: -0.1px;
+  margin: 0;
+}
+.card .ch .r {
+  margin-left: auto;
+  font-size: 11.5px;
+  color: var(--navy2);
+  font-weight: 650;
+  cursor: pointer;
+}
+.card .cb {
+  padding: 14px;
+}
+
+.bureau table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+}
+.bureau thead th {
+  text-align: left;
+  padding: 9px 12px;
+  font-size: 10.5px;
+  font-weight: 700;
+  color: var(--mut);
+  letter-spacing: 0.4px;
+  background: var(--surface2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+.bureau tbody td {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line2);
+  vertical-align: middle;
+}
+.bureau tbody tr:last-child td {
+  border-bottom: 0;
+}
+.bureau tbody tr:hover {
+  background: var(--surface2);
+}
+.bureau td b {
+  font-weight: 650;
+}
+.bureau td .sub {
+  font-size: 11px;
+  color: var(--mut);
+  margin-top: 1px;
+}
+
+.mini {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.m-red {
+  background: var(--red-soft);
+  color: var(--red);
+}
+.m-or {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.m-gr {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.m-bl {
+  background: var(--blue-soft);
+  color: var(--blue);
+}
+.m-gd {
+  background: var(--gold-soft);
+  color: var(--gold);
+}
+.cellrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+  height: 150px;
+  padding: 0 4px;
+}
+.bcol {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.bcol .bar {
+  width: 100%;
+  border-radius: 5px 5px 0 0;
+  background: var(--navy2);
+  position: relative;
+}
+.bcol .bar.gd {
+  background: var(--gold);
+}
+.bcol .lbl {
+  font-size: 10.5px;
+  color: var(--mut);
+  font-weight: 600;
+}
+.bcol .val {
+  font-size: 11px;
+  font-weight: 700;
+}
+.legend {
+  display: flex;
+  gap: 14px;
+  font-size: 11px;
+  color: var(--mut);
+  margin-top: 10px;
+}
+.legend i {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  display: inline-block;
+  margin-right: 5px;
+}
+
+@media (max-width: 860px) {
+  .grid2 {
+    grid-template-columns: 1fr;
+  }
+  .bureau .mets {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
