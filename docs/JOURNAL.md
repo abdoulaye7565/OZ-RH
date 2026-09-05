@@ -14,7 +14,7 @@ un prompt terminé, testé et commité.
 
 - [x] 1.1 — API des signalements
 - [x] 1.2 — API du plan d'action
-- [ ] 1.3 — Interface mobile : saisie d'un signalement
+- [x] 1.3 — Interface mobile : saisie d'un signalement
 - [ ] 1.4 — Mode hors connexion et synchronisation
 - [ ] 1.5 — Tableau de bord
 - [ ] 1.6 — Recette du lot 1
@@ -364,3 +364,76 @@ sans indicateur → 409). Serveur démarré avec `uvicorn` sur une base isolée,
 création d'une action rattachée à un risque réel confirmée par `curl`, refus de
 clôture sans indicateur confirmé en direct (409), synthèse vérifiée après une
 clôture (`taux_avancement_global` et compteurs par statut corrects).
+
+### Détail — Prompt 1.3 (terminé le 2026-09-05)
+
+Source lue : `docs/maquettes/Maquettes_SHEQ_Management_v2.html`, écrans
+`#s-newsig` et `#s-siglist` (figures A.3 et A.4 du CDC).
+
+Implémenté : `NouveauSignalementView.vue`, `SignalementsView.vue`, store Pinia
+`stores/signalements.js`, composants `Icone.vue`/`IconeSprite.vue` (icônes SVG
+au trait reprises de la maquette) et `BandeauReseau.vue`, classes CSS des
+composants de la maquette ajoutées à `style.css` (au-delà des seuls jetons de
+couleur posés au prompt 0.1).
+
+**Écarts et compromis à signaler — plusieurs sont substantiels :**
+
+1. **Écran de connexion ajouté, non demandé par ce prompt.** Aucun prompt du
+   lotissement ne couvre la connexion avant celui-ci ; sans elle, les deux
+   écrans demandés ici sont impossibles à exercer (l'API exige un jeton).
+   Ajout minimal : `ConnexionView.vue`, `stores/auth.js`, garde de route dans
+   `router/index.js`. Cette question mérite d'être posée explicitement : faut-il
+   un prompt dédié à l'authentification frontend avant de continuer le lot 1 ?
+2. **Le formulaire n'affiche que 3 des 5 types de signalement** de l'énumération
+   backend (`situation_dangereuse`, `presque_accident`, `anomalie`), à
+   l'identique de la maquette — qui n'affiche pas `incident` ni `accident`.
+   Respecté à la lettre ("respecte-les : contenu…"), mais cela signifie qu'un
+   accident du travail ne peut pas être déclaré depuis cet écran. À trancher
+   avec le référent SHEQ : la maquette est-elle incomplète, ou ces
+   déclarations passent-elles par un autre circuit non encore maquetté ?
+3. **`site_id` n'est pas un champ du formulaire** (la maquette n'en a pas) :
+   rempli automatiquement avec le site de rattachement du compte connecté. Un
+   technicien intervenant sur le site d'un client différent du sien ne peut
+   donc pas le désigner ici — seul le champ texte libre "Lieu" existe pour ça.
+4. **`date_constat` n'est pas un champ non plus** : fixée à l'instant de
+   l'envoi, faute de sélecteur dans la maquette.
+5. **Bandeau hors connexion du formulaire reformulé, PAS repris mot pour mot.**
+   La maquette affirme que le signalement est "conservé sur l'appareil" et
+   "part automatiquement à la reconnexion" hors ligne — or ce mécanisme
+   (prompt 1.4) n'existe pas encore : le garder tel quel aurait promis à
+   l'utilisateur une capacité que l'application n'a pas. Remplacé par un
+   message qui dit explicitement que le mode hors connexion arrive au prompt
+   suivant et qu'une connexion est nécessaire pour l'instant. Choix délibéré :
+   honnêteté sur l'état réel plutôt que fidélité littérale au texte de la
+   maquette sur ce point précis.
+6. **Barre d'onglets réduite à Accueil/Signaux** : les trois autres destinations
+   de la maquette (SLAM, Parc, Tableau de bord) n'ont pas encore d'écran (lots
+   2, 3, 1.5) — omises plutôt que transformées en boutons qui ne mènent nulle
+   part.
+7. **L'auteur d'un signalement s'affiche "Utilisateur #12"**, pas son nom : l'API
+   (`SignalementSortie`) ne renvoie que `auteur_id`, jamais nom/prénom. Pas
+   corrigible côté frontend sans soit une jointure ajoutée à l'API, soit un
+   appel supplémentaire par ligne (mauvaise pratique, N+1) — à traiter quand ce
+   confort d'affichage sera jugé nécessaire.
+8. **Validation client minimale** (lieu et description non vides) : la
+   validation serveur reste seule autorité, toute erreur 422 qu'elle renvoie
+   est affichée telle quelle, jamais présumée redondante avec la validation
+   client.
+
+**Vérifié en conditions réelles, dans un vrai navigateur (pas seulement à la
+lecture du code) :** parcours complet automatisé — redirection vers /connexion
+si non authentifié, connexion réussie, écran de liste (5 filtres affichés),
+navigation vers le formulaire, refus d'envoi avec champs vides (2 messages
+d'erreur affichés), envoi réussi avec redirection et apparition immédiate de la
+ligne créée dans la liste. Zéro erreur console, zéro requête échouée. Build de
+production (`npm run build`) propre.
+
+**Un vrai bug d'infrastructure trouvé et corrigé pendant cette vérification,
+sans lien avec le code de ce prompt** : le serveur backend de démonstration
+(port 8000) tournait depuis le prompt 0.3 sans jamais avoir été redémarré — il
+répondait donc 404 sur `/signalements` et `/actions`, absents du code chargé en
+mémoire à son démarrage. Redémarré avec `--reload` pour que ça ne se reproduise
+plus. Sans le test en navigateur réel, ce décalage silencieux serait resté
+invisible : les tests pytest et les vérifications `curl` sur bases isolées
+avaient tous été faits sur des instances fraîches, jamais sur le serveur de
+démo lui-même.
