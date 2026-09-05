@@ -30,6 +30,11 @@ class Settings(BaseSettings):
 
     cors_origins: list[str] = ["http://localhost:5173"]
 
+    # Stockage des pièces jointes (photos, sauvegardes) : hors base de données,
+    # système de fichiers local pour le MVP (point 9 du CDC — pas de dépendance
+    # à un stockage objet tant que le volume ne le justifie pas).
+    storage_dir: str = "./storage"
+
 
 @lru_cache
 def get_settings() -> Settings:

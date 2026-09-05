@@ -82,3 +82,18 @@ def technicien(db_session, site, mot_de_passe_clair):
     db_session.add(tech)
     db_session.commit()
     return tech
+
+
+@pytest.fixture()
+def referent_sheq(db_session, site, mot_de_passe_clair):
+    referent = Utilisateur(
+        nom="Diarra",
+        prenom="Oumou",
+        identifiant="o.diarra",
+        mot_de_passe=hacher_mot_de_passe(mot_de_passe_clair),
+        role=RoleUtilisateur.REFERENT_SHEQ,
+        site_id=site.id,
+    )
+    db_session.add(referent)
+    db_session.commit()
+    return referent

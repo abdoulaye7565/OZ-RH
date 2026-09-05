@@ -27,3 +27,7 @@ PERIMETRE_PAR_ROLE: dict[R, str] = {
 
 class Permissions:
     GERER_UTILISATEURS: tuple[R, ...] = (R.ADMINISTRATEUR,)
+    # Section 5.2.1 du CDC, "Acteurs" : "Traitement : référent SHEQ". L'administrateur
+    # est ajouté par application du principe "Tout" de son propre périmètre (point 6
+    # de CLAUDE.md), pas par une mention explicite de la section 5.2.1.
+    TRAITER_SIGNALEMENTS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)

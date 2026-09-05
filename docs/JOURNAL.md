@@ -12,7 +12,7 @@ un prompt terminé, testé et commité.
 
 ## LOT 1 — MVP (signalements, actions, tableau de bord, hors connexion)
 
-- [ ] 1.1 — API des signalements
+- [x] 1.1 — API des signalements
 - [ ] 1.2 — API du plan d'action
 - [ ] 1.3 — Interface mobile : saisie d'un signalement
 - [ ] 1.4 — Mode hors connexion et synchronisation
@@ -251,3 +251,63 @@ volonté — ce qui viderait tout l'intérêt d'avoir deux jetons.
 Limite actuelle, assumée et documentée ci-dessus : sans table de sessions, un
 refresh token ne peut pas être révoqué avant son expiration naturelle. C'est un
 compromis délibéré pour ce prompt, pas un oubli.
+
+### Détail — Prompt 1.1 (terminé le 2026-09-05)
+
+Sources lues : section 5.2.1 du CDC (module Signalements et incidents, entière)
+et point 7 de CLAUDE.md (règles métier critiques).
+
+Implémenté : `POST /signalements` (création, multipart/form-data pour les
+photos), `GET /signalements` (liste avec filtres statut/site/type/période),
+`GET /signalements/{id}`, `PATCH /signalements/{id}/statut` (transitions
+contrôlées), `POST /signalements/{id}/archiver`. Aucune route DELETE.
+
+**Compromis et écarts à signaler :**
+
+1. **Visibilité restreinte par rôle, ajoutée sans être explicitement demandée par
+   le prompt 1.1** : technicien et collaborateur ne voient (liste et lecture)
+   que leurs propres signalements non anonymes, conformément au chapitre 4 du
+   CDC ("lecture de ses propres saisies" pour le technicien) et à la section
+   5.2.1 ("Consultation : responsables et direction"). Sans cette règle, un
+   technicien aurait pu lister les signalements de tout le monde via un simple
+   `GET /signalements`, ce qui aurait été un vrai trou de sécurité au regard du
+   principe du moindre privilège (CLAUDE.md point 6).
+2. **`GET /signalements/{id}` renvoie 404, pas 403**, quand l'appelant n'a pas le
+   droit de voir un signalement précis — pour ne pas confirmer son existence à
+   quelqu'un qui n'y a pas droit (cohérent avec l'esprit de l'anonymat, mais pas
+   une règle explicitement énoncée par le CDC).
+3. **Workflow : `nouveau` → `clôturé` directement est refusé.** Le CDC autorise
+   "clôturer un signalement, avec ou sans action", ce qui pourrait se lire comme
+   une clôture possible dès `nouveau`. Interprété plus strictement : le
+   signalement doit d'abord passer par `en_analyse` (le workflow décrit est
+   "nouveau → en analyse → actions définies → clôturé", séquentiel). À confirmer
+   avec le référent SHEQ si cette lecture est trop stricte pour l'usage réel.
+4. **Notification du référent SHEQ = ligne de log applicatif, pas un
+   enregistrement en base.** Le prompt dit littéralement "simple enregistrement
+   en base" ; aucune entité NOTIFICATION n'existe parmi les 14 (le service de
+   notifications complet est le lot 4.4). Créer une table dédiée maintenant
+   risquerait d'être incompatible avec sa conception définitive au lot 4.4 — à
+   corriger quand ce lot sera traité, pas avant.
+5. **Limites de photos non données par le CDC, choisies par défaut** : 5 Mo par
+   photo, JPEG/PNG/WebP uniquement. Le CDC dit seulement "5 maximum" et "contrôle
+   du type et de la taille" sans chiffrer ces seuils.
+6. **Nouvelle variable de configuration `STORAGE_DIR`** (`app/core/config.py`,
+   `.env.example`) : nécessaire pour le stockage des photos hors base ; absente
+   de CLAUDE.md, ajoutée avec un défaut (`./storage`) déjà anticipé dans
+   `.gitignore` depuis le prompt 0.1.
+7. **Bug trouvé et corrigé pendant la vérification manuelle, pas par les tests
+   automatisés** : les chemins de photos étaient enregistrés avec des
+   antislashs sous Windows (`Path.__str__`), ce qui les aurait rendus invalides
+   une fois l'application déployée sous Linux (Docker, conforme à CLAUDE.md).
+   Corrigé avec `.as_posix()`. Les tests pytest ne l'avaient pas détecté car ils
+   tournent sur la même machine que l'écriture ; seul un test live avec un vrai
+   fichier via `curl` l'a révélé — leçon pour la suite : les tests
+   automatisés ne remplacent pas toujours une vérification en conditions
+   réelles, en particulier pour tout ce qui touche au système de fichiers.
+
+**Vérifié en conditions réelles :** 41 tests pytest passent (24 précédents + 17
+nouveaux, dont le test explicitement demandé sur l'absence de toute trace d'un
+signalement anonyme — y compris `cree_par_id`, lu en SQL brut, pas seulement
+dans la réponse JSON). Serveur démarré avec `uvicorn` sur une base isolée,
+séquence `SIG-2026-001` puis `SIG-2026-002` confirmée par deux créations
+successives via `curl`, upload réel d'un fichier JPEG vérifié sur disque.
