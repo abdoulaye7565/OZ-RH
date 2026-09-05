@@ -107,7 +107,9 @@ def creer_signalement(
     return signalement
 
 
-def changer_statut(db: Session, signalement: Signalement, nouveau_statut: StatutSignalement) -> Signalement:
+def changer_statut(
+    db: Session, signalement: Signalement, nouveau_statut: StatutSignalement, modifie_par_id: int
+) -> Signalement:
     autorises = TRANSITIONS_AUTORISEES[signalement.statut]
     if nouveau_statut not in autorises:
         raise HTTPException(
@@ -118,13 +120,15 @@ def changer_statut(db: Session, signalement: Signalement, nouveau_statut: Statut
             ),
         )
     signalement.statut = nouveau_statut
+    signalement.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(signalement)
     return signalement
 
 
-def archiver(db: Session, signalement: Signalement) -> Signalement:
+def archiver(db: Session, signalement: Signalement, modifie_par_id: int) -> Signalement:
     signalement.archive = True
+    signalement.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(signalement)
     return signalement

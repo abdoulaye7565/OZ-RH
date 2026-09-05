@@ -19,7 +19,8 @@ un prompt terminé, testé et commité.
       en attente de validation — voir prompt d'appoint dans PROMPTS_DEVELOPPEMENT.md ;
       traité après le 1.5 à la demande explicite de l'utilisateur)
 - [x] 1.5 — Tableau de bord
-- [ ] 1.6 — Recette du lot 1
+- [~] 1.6 — Recette du lot 1 (partielle : cas 11/13/14 couverts, cas 1/2/10
+      explicitement `skip` — dépendent du prompt 1.4, non implémenté)
 
 ## LOT 2 — Travaux en hauteur
 
@@ -523,3 +524,94 @@ ci-dessus). Les deux vues testées dans un vrai navigateur avec connexion réell
 au backend : 4 tuiles métriques et 2 tableaux présents côté desktop, 4 tuiles
 et 2 cartes côté mobile, zéro erreur console, captures d'écran comparées aux
 maquettes.
+
+### Détail — Prompt 1.6 (terminé partiellement le 2026-09-05)
+
+Source lue : chapitre 14 du CDC (recette et critères d'acceptation), tableau 8
+entier (14 cas de test).
+
+**Blocage structurel signalé avant d'écrire du code** : les cas 1, 2 et 10 du
+tableau 8 testent tous le mécanisme hors connexion — exactement ce que couvre
+le prompt 1.4, jamais implémenté (stratégie proposée le 2026-09-05, en attente
+de validation). Écrire des tests qui prétendraient vérifier une synchronisation,
+une numérotation différée ou une résolution de conflit inexistantes aurait
+menti sur l'état du projet. Ces trois cas sont donc explicitement marqués
+`pytest.mark.skip` avec le motif exact, dans `tests/test_recette_lot1.py` —
+visibles à chaque exécution de la suite (`3 skipped`), pas seulement
+documentés en prose ici.
+
+**Cas réellement testés** :
+- **Cas 11** (tableau de bord sans ressaisie) : un nouveau signalement et une
+  action clôturée se reflètent immédiatement dans `/tableau-de-bord`, sans
+  action manuelle supplémentaire.
+- **Cas 13** (historique complet) — testé PARTIELLEMENT, limite documentée
+  explicitement dans un test dédié (`test_cas_13_limite_pas_d_historique_complet_des_transitions`) :
+  l'API ne restitue que l'état courant (dernière modification), pas la liste
+  chronologique de toutes les opérations passées. Une vraie restitution
+  "de toutes les opérations avec auteur et horodatage" demanderait une table
+  d'historique dédiée, qui n'existe pour aucune entité (seul JOURNAL_ACCES
+  existe, réservé au coffre-fort). **Bug réel corrigé à cette occasion** :
+  `modifie_par_id` n'était renseigné par AUCUN service (signalements ni
+  actions) depuis sa création au prompt 0.2 — une modification de statut ne
+  traçait donc jamais qui l'avait faite, uniquement quand (`modifie_le`,
+  auto-géré par la base). Corrigé dans `signalement_service.py` et
+  `action_service.py` ; `cree_le`/`cree_par_id`/`modifie_le`/`modifie_par_id`
+  également ajoutés à `SignalementSortie` et `ActionSortie`, absents de ces
+  schémas depuis leur création (prompts 1.1/1.2) alors que les colonnes
+  existaient déjà en base.
+- **Cas 14** (refus de toute suppression) : confirmé sur signalements, actions
+  et utilisateurs (404, pas 405, pour ce dernier : aucune route par
+  identifiant n'existe du tout) ; l'archivage reste la seule voie.
+
+**Vérifié en conditions réelles :** 74 tests pytest passent, 3 skippés avec
+motif (13 nouveaux : 10 réussis + 3 skip). Correction de `modifie_par_id`
+vérifiée en direct sur le serveur de démo (`null` avant tout changement de
+statut, renseigné avec l'identifiant de l'agent après).
+
+---
+
+## Bilan du lot 1 (MVP)
+
+**Terminé et testé** :
+- Authentification JWT (access + refresh), matrice des droits, journalisation
+  des connexions (0.3)
+- API Signalements complète : création avec photos, workflow, anonymat
+  garanti jusqu'en base brute, visibilité restreinte par rôle (1.1)
+- API Actions complète : origine unique (risque/signalement/inspection),
+  avancement, clôture bloquée sans indicateur, synthèse agrégée en SQL (1.2)
+- Interface mobile Signalements : saisie et liste, fidèles aux maquettes,
+  validation client sans remplacer la validation serveur (1.3)
+- Tableau de bord (mobile et desktop) : agrégations SQL sans N+1, filtres
+  période/site, honnête sur les indicateurs non calculables (1.5)
+- Traçabilité auteur+horodatage sur création ET modification, corrigée pour
+  couvrir réellement les deux (1.6)
+
+**Ce qui reste — le plus important d'abord** :
+1. **Le mode hors connexion lui-même (prompt 1.4) n'existe pas.** C'est le
+   risque numéro un du projet selon le chapitre 15 du CDC (coté 4×4, le plus
+   élevé avec la faille coffre-fort), et c'est la pièce manquante qui bloque
+   la moitié des cas de recette du lot 1. Une stratégie complète a été
+   présentée (file d'attente IndexedDB queue-first même en ligne, idempotence
+   par UUID client, résolution de conflit à deux choix, `vite-plugin-pwa`)
+   mais reste sans validation. **Le lot 1 ne peut pas être considéré terminé
+   sans ce prompt.**
+2. Écran de connexion actuel minimal (ajouté par nécessité au 1.3), sans
+   gestion de session robuste (pas de rafraîchissement automatique du jeton
+   côté frontend, pas de déconnexion).
+3. Export PDF (cas de recette 12, prompt 5.1) — non demandé avant le lot 5,
+   mentionné ici pour mémoire.
+4. Historique complet des opérations (cas 13, partie non couverte) — nécessite
+   une décision explicite : ajouter une table de journal des transitions, ou
+   accepter que seul l'état courant soit restitué.
+
+**Compromis assumés à relire avant la revue du lot** (détail complet dans les
+sections ci-dessus, prompt par prompt) :
+- 5 types de signalement affichés sur les 6 possibles côté formulaire (fidélité
+  à la maquette, confirmée par l'utilisateur le 2026-09-05)
+- `site_id` du signalement auto-rempli depuis le compte connecté, pas de
+  sélecteur dans la maquette
+- Le filtre site du tableau de bord ne s'applique pleinement qu'aux
+  signalements (RISQUE et ACTION n'ont pas de site direct dans le modèle)
+- Notification du référent SHEQ = log applicatif, pas un enregistrement
+  persistant (aucune entité NOTIFICATION avant le lot 4.4)
+- Pas de révocation serveur du refresh token (aucune table de session)

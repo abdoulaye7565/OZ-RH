@@ -52,6 +52,11 @@ class ActionSortie(BaseModel):
     archive: bool
     # Calculé (chapitre 7.3.2 du CDC), jamais stocké : voir action_service.est_en_retard.
     en_retard: bool
+    # Traçabilité (règle 3, CLAUDE.md ; cas de recette 13, CDC chapitre 14).
+    cree_le: datetime
+    cree_par_id: int | None
+    modifie_le: datetime
+    modifie_par_id: int | None
 
 
 class SyntheseActions(BaseModel):

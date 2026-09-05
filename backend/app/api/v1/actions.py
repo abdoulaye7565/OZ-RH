@@ -87,7 +87,7 @@ def mettre_a_jour(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action introuvable")
     if not _peut_gerer(action, utilisateur):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
-    return mettre_a_jour_avancement(db, action, payload.avancement, payload.indicateur)
+    return mettre_a_jour_avancement(db, action, payload.avancement, payload.indicateur, modifie_par_id=utilisateur.id)
 
 
 @router.patch("/{action_id}/statut", response_model=ActionSortie)
@@ -102,4 +102,4 @@ def mettre_a_jour_statut(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action introuvable")
     if not _peut_gerer(action, utilisateur):
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Accès refusé")
-    return changer_statut(db, action, payload.statut)
+    return changer_statut(db, action, payload.statut, modifie_par_id=utilisateur.id)

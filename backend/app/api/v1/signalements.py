@@ -116,7 +116,7 @@ def mettre_a_jour_statut(
     signalement = db.get(Signalement, signalement_id)
     if signalement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
-    return changer_statut(db, signalement, payload.statut)
+    return changer_statut(db, signalement, payload.statut, modifie_par_id=utilisateur.id)
 
 
 @router.post("/{signalement_id}/archiver", response_model=SignalementSortie)
@@ -128,4 +128,4 @@ def archiver_route(
     signalement = db.get(Signalement, signalement_id)
     if signalement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
-    return archiver(db, signalement)
+    return archiver(db, signalement, modifie_par_id=utilisateur.id)

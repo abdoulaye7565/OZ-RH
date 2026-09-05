@@ -30,6 +30,14 @@ class SignalementSortie(BaseModel):
     risque_id: int | None
     statut: StatutSignalement
     archive: bool
+    # Traçabilité (règle 3, CLAUDE.md ; cas de recette 13, CDC chapitre 14) :
+    # horodatage et auteur de la création et de la dernière modification.
+    # cree_par_id reste vide si le signalement est anonyme (jamais l'inverse
+    # pour modifie_par_id : qui le TRAITE ensuite n'a pas à rester anonyme).
+    cree_le: datetime
+    cree_par_id: int | None
+    modifie_le: datetime
+    modifie_par_id: int | None
 
 
 class StatutMiseAJour(BaseModel):

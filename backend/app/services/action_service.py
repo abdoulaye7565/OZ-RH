@@ -38,18 +38,21 @@ def creer_action(db: Session, donnees: ActionCreation, cree_par_id: int) -> Acti
     return action
 
 
-def mettre_a_jour_avancement(db: Session, action: Action, avancement: int, indicateur: str | None) -> Action:
+def mettre_a_jour_avancement(
+    db: Session, action: Action, avancement: int, indicateur: str | None, modifie_par_id: int
+) -> Action:
     if not 0 <= avancement <= 100:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="L'avancement doit être compris entre 0 et 100")
     action.avancement = avancement
     if indicateur is not None:
         action.indicateur = indicateur
+    action.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(action)
     return action
 
 
-def changer_statut(db: Session, action: Action, nouveau_statut: StatutAction) -> Action:
+def changer_statut(db: Session, action: Action, nouveau_statut: StatutAction, modifie_par_id: int) -> Action:
     autorises = TRANSITIONS_AUTORISEES[action.statut]
     if nouveau_statut not in autorises:
         raise HTTPException(
@@ -65,6 +68,7 @@ def changer_statut(db: Session, action: Action, nouveau_statut: StatutAction) ->
             detail="Impossible de clôturer une action sans indicateur de réalisation renseigné",
         )
     action.statut = nouveau_statut
+    action.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(action)
     return action
