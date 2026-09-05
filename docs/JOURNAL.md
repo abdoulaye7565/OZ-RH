@@ -391,6 +391,8 @@ couleur posés au prompt 0.1).
    accident du travail ne peut pas être déclaré depuis cet écran. À trancher
    avec le référent SHEQ : la maquette est-elle incomplète, ou ces
    déclarations passent-elles par un autre circuit non encore maquetté ?
+   **Tranché le 2026-09-05 : on garde 3 types**, fidèle à la maquette ; incident
+   et accident seront traités plus tard si un circuit dédié s'avère nécessaire.
 3. **`site_id` n'est pas un champ du formulaire** (la maquette n'en a pas) :
    rempli automatiquement avec le site de rattachement du compte connecté. Un
    technicien intervenant sur le site d'un client différent du sien ne peut
