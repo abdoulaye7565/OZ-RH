@@ -13,7 +13,7 @@ un prompt terminé, testé et commité.
 ## LOT 1 — MVP (signalements, actions, tableau de bord, hors connexion)
 
 - [x] 1.1 — API des signalements
-- [ ] 1.2 — API du plan d'action
+- [x] 1.2 — API du plan d'action
 - [ ] 1.3 — Interface mobile : saisie d'un signalement
 - [ ] 1.4 — Mode hors connexion et synchronisation
 - [ ] 1.5 — Tableau de bord
@@ -311,3 +311,56 @@ signalement anonyme — y compris `cree_par_id`, lu en SQL brut, pas seulement
 dans la réponse JSON). Serveur démarré avec `uvicorn` sur une base isolée,
 séquence `SIG-2026-001` puis `SIG-2026-002` confirmée par deux créations
 successives via `curl`, upload réel d'un fichier JPEG vérifié sur disque.
+
+### Détail — Prompt 1.2 (terminé le 2026-09-05)
+
+Source lue : section 5.2.5 du CDC (module Risques et plan d'action, partie
+actions).
+
+Implémenté : `POST /actions`, `GET /actions` (filtres statut/responsable_id/
+en_retard), `GET /actions/{id}`, `PATCH /actions/{id}/avancement`,
+`PATCH /actions/{id}/statut`, `GET /actions/synthese`.
+
+**Compromis et écarts à signaler :**
+
+1. **`audit_id` absent** : le prompt demande de rattacher une action "à un
+   risque, un signalement, une inspection **ou un audit**", mais AUDIT ne fait
+   pas partie des 14 entités (module Audits prévu au lot 4.2). Seules les trois
+   origines déjà modélisées sont acceptées ; `audit_id` s'ajoutera par migration
+   quand le module Audits existera — déjà anticipé dans le commentaire du
+   modèle `Action` depuis le prompt 0.2.
+2. **Exactement une origine exigée à la création** (ni zéro, ni deux) : validé
+   par un `model_validator` Pydantic, renvoie 422. Le CDC ne le dit pas
+   explicitement mais une action sans origine ni traçable à deux origines à la
+   fois n'aurait pas de sens dans le registre.
+3. **« En retard » est une propriété calculée** (`Action.en_retard`, jamais
+   stockée) : `statut != clôturée ET échéance dépassée`. Choix déjà annoncé dans
+   `docs/JOURNAL.md` au prompt 0.2. Testé explicitement : une action clôturée
+   n'est plus jamais "en retard" même après son échéance.
+4. **`taux_avancement_global` = clôturées / total**, PAS la moyenne des
+   avancements individuels — formule exacte du chapitre 7.3.2 du CDC ("Avancement
+   du plan d'action : nombre d'actions clôturées rapporté au nombre total
+   d'actions"), retrouvée lors du prompt 0.2 et réappliquée ici sans
+   réinterprétation.
+5. **Autorisation à deux niveaux, non demandée explicitement mais nécessaire** :
+   création et pilotage global réservés à référent SHEQ/administrateur (section
+   5.2.5, "Rédaction et mise à jour : référent SHEQ"), MAIS le responsable
+   désigné d'une action précise peut mettre à jour son propre avancement et la
+   clôturer — c'est lui qui l'exécute sur le terrain. Sans cette exception, un
+   technicien responsable d'une action n'aurait eu aucun moyen de rendre compte
+   de son avancement.
+6. **OUVERTE → CLOTURÉE directement autorisé** (pas besoin de transiter par
+   EN_COURS), contrairement au workflow plus strict des signalements — une
+   action rapide n'a pas besoin d'un état intermédiaire. Assumé, non stipulé
+   explicitement par le CDC.
+7. **Consultation ouverte à tout le personnel authentifié**, sans restriction de
+   visibilité par rôle — contrairement aux signalements où technicien/
+   collaborateur ne voient que leurs propres saisies. Cohérent avec la section
+   5.2.5 ("Consultation : ensemble du personnel").
+
+**Vérifié en conditions réelles :** 56 tests pytest passent (41 précédents + 15
+nouveaux), dont le cas de refus explicitement demandé par le prompt (clôture
+sans indicateur → 409). Serveur démarré avec `uvicorn` sur une base isolée,
+création d'une action rattachée à un risque réel confirmée par `curl`, refus de
+clôture sans indicateur confirmé en direct (409), synthèse vérifiée après une
+clôture (`taux_avancement_global` et compteurs par statut corrects).

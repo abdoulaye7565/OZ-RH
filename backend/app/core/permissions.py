@@ -31,3 +31,8 @@ class Permissions:
     # est ajouté par application du principe "Tout" de son propre périmètre (point 6
     # de CLAUDE.md), pas par une mention explicite de la section 5.2.1.
     TRAITER_SIGNALEMENTS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.2.5 du CDC, "Acteurs" : "Rédaction et mise à jour : référent SHEQ".
+    # La mise à jour de l'avancement d'une action reste ouverte au responsable
+    # désigné de cette action précise (vérifié route par route, pas ici) : cette
+    # constante ne couvre que la création et les actions globales sur le plan.
+    GERER_ACTIONS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)

@@ -34,3 +34,9 @@ class Action(BaseModel):
     )
     # Obligatoire à la clôture uniquement (règle de service, prompt 1.2) : nullable ici.
     indicateur: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    @property
+    def en_retard(self) -> bool:
+        """Calculé (chapitre 7.3.2 du CDC) : jamais stocké, pour ne jamais devenir
+        obsolète par rapport à la date du jour ou à un changement de statut."""
+        return self.statut != StatutAction.CLOTUREE and self.echeance < date.today()

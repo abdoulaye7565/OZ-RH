@@ -2,6 +2,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.v1.actions import router as actions_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.signalements import router as signalements_router
 from app.core.config import settings
@@ -21,6 +22,7 @@ app.add_middleware(
 
 app.include_router(auth_router, prefix="/api/v1")
 app.include_router(signalements_router, prefix="/api/v1")
+app.include_router(actions_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])
