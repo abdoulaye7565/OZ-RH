@@ -1,0 +1,32 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+*.db
+*.sqlite3
+.pytest_cache/
+.coverage
+htmlcov/
+
+# --- Environnement ---
+.env
+.env.*
+!.env.example
+
+# --- Node / Vue / Vite ---
+node_modules/
+dist/
+dist-ssr/
+*.local
+
+# --- Éditeurs / OS ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# --- Fichiers stockés hors base (uploads) ---
+backend/storage/

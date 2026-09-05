@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHEQ Management — Maquettes desktop</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6F8;--surface:#FFF;--surface2:#FAFBFC;--ink:#0F172A;--ink2:#334155;--mut:#64748B;
+  --line:#E2E6EC;--line2:#EEF1F5;--navy:#16305B;--navy2:#25467E;--navy-soft:#EDF1F8;
+  --gold:#B8901B;--gold-soft:#FBF3DC;--red:#B42318;--red-soft:#FEF0EF;--orange:#B54708;--orange-soft:#FEF3EA;
+  --green:#067647;--green-soft:#ECF7F1;--blue:#175CD3;--blue-soft:#EFF4FF;
+  --r:8px;--sh:0 1px 2px rgba(16,24,40,.05);--sh-md:0 4px 14px -6px rgba(16,24,40,.14);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#E9ECF1;font-family:Inter,system-ui,sans-serif;font-size:13.5px;color:var(--ink);-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+svg.i{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+svg.i.sm{width:14px;height:14px}svg.i.lg{width:20px;height:20px}svg.i.xl{width:26px;height:26px}
+
+.pbar{position:sticky;top:0;z-index:60;background:#0B1524;padding:9px 14px;display:flex;gap:6px;align-items:center;overflow-x:auto}
+.pbar .brand{display:flex;align-items:center;gap:6px;color:#F0C63E;font-size:11px;font-weight:700;white-space:nowrap;padding-right:6px}
+.pbar button{background:#182740;border:1px solid #253552;color:#B9C6DC;font:600 12px Inter,sans-serif;padding:7px 11px;border-radius:7px;cursor:pointer;white-space:nowrap}
+.pbar button.on{background:#F0C63E;border-color:#F0C63E;color:#231A00}
+
+.stage{padding:16px;display:flex;justify-content:center}
+.app{width:100%;max-width:1240px;background:var(--bg);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 20px 50px -26px rgba(15,23,42,.45);display:grid;grid-template-columns:216px 1fr;min-height:760px}
+
+/* ---- sidebar ---- */
+.side{background:#12294F;color:#C6D2E6;display:flex;flex-direction:column;padding:14px 10px}
+.side .top{display:flex;align-items:center;gap:9px;padding:0 6px 14px;border-bottom:1px solid rgba(255,255,255,.10);margin-bottom:12px}
+.side .mk{width:32px;height:32px;border-radius:8px;background:linear-gradient(140deg,#F0C63E,#B8901B);color:#12294F;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.side .top b{color:#fff;font-size:13.5px;display:block;line-height:1.2}
+.side .top span{font-size:10.5px;color:#8FA3C4}
+.navsec{font-size:9.5px;font-weight:700;color:#7C90B4;letter-spacing:.7px;padding:10px 8px 5px}
+.nv{display:flex;align-items:center;gap:9px;padding:8px 9px;border-radius:7px;color:#C6D2E6;font-size:12.5px;font-weight:550;cursor:pointer;border:0;background:none;width:100%;text-align:left;font-family:inherit}
+.nv:hover{background:rgba(255,255,255,.07);color:#fff}
+.nv.on{background:#25467E;color:#fff;font-weight:650}
+.nv .cnt{margin-left:auto;font-size:10px;font-weight:700;background:rgba(255,255,255,.14);padding:2px 6px;border-radius:9px}
+.nv .cnt.hot{background:#B42318;color:#fff}
+.side .user{margin-top:auto;padding-top:12px;border-top:1px solid rgba(255,255,255,.10);display:flex;align-items:center;gap:9px}
+.av{width:31px;height:31px;border-radius:50%;background:#25467E;color:#fff;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700}
+.side .user b{color:#fff;font-size:12px;display:block}.side .user span{font-size:10.5px;color:#8FA3C4}
+
+/* ---- main ---- */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.top{background:var(--surface);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;align-items:center;gap:14px}
+.top h1{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.top .crumb{font-size:11.5px;color:var(--mut)}
+.top .sp{margin-left:auto;display:flex;gap:8px;align-items:center}
+.srch{position:relative}
+.srch input{width:230px;height:34px;border:1px solid var(--line);border-radius:7px;padding:0 10px 0 32px;font:400 12.5px Inter,sans-serif;background:var(--surface2)}
+.srch svg{position:absolute;left:10px;top:9px;color:var(--mut)}
+.ib{width:34px;height:34px;border:1px solid var(--line);border-radius:7px;background:var(--surface);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink2);position:relative}
+.ib .d{position:absolute;top:6px;right:6px;width:7px;height:7px;border-radius:50%;background:var(--red);border:1.5px solid #fff}
+.view{flex:1;overflow-y:auto;padding:18px 20px}
+.page{display:none}.page.on{display:block}
+
+/* ---- métriques ---- */
+.mets{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.met{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;box-shadow:var(--sh)}
+.met .hd{display:flex;align-items:center;gap:8px;font-size:11.5px;color:var(--mut);font-weight:600}
+.met .hd .ic{width:26px;height:26px;border-radius:7px;display:flex;align-items:center;justify-content:center}
+.met .v{font-size:27px;font-weight:750;letter-spacing:-1px;margin-top:9px;line-height:1}
+.met .t{font-size:11px;margin-top:5px;font-weight:600}
+.up{color:var(--green)}.down{color:var(--red)}.flat{color:var(--mut)}
+
+/* ---- cartes ---- */
+.grid2{display:grid;grid-template-columns:1.35fr 1fr;gap:14px;margin-bottom:14px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;box-shadow:var(--sh);overflow:hidden}
+.card .ch{padding:12px 14px;border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:8px}
+.card .ch h3{font-size:13.5px;font-weight:650;letter-spacing:-.1px}
+.card .ch .r{margin-left:auto;font-size:11.5px;color:var(--navy2);font-weight:650;cursor:pointer}
+.card .cb{padding:14px}
+
+/* ---- table ---- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{text-align:left;padding:9px 12px;font-size:10.5px;font-weight:700;color:var(--mut);letter-spacing:.4px;background:var(--surface2);border-bottom:1px solid var(--line);white-space:nowrap}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--line2);vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:var(--surface2)}
+td b{font-weight:650}
+td .sub{font-size:11px;color:var(--mut);margin-top:1px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:5px;white-space:nowrap}
+.t-red{background:var(--red-soft);color:var(--red)}.t-or{background:var(--orange-soft);color:var(--orange)}
+.t-gr{background:var(--green-soft);color:var(--green)}.t-bl{background:var(--blue-soft);color:var(--blue)}
+.t-gd{background:var(--gold-soft);color:var(--gold)}.t-gy{background:#F1F3F7;color:var(--mut)}
+.dotc{width:7px;height:7px;border-radius:50%;display:inline-block;margin-right:6px}
+.mini{width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center}
+.m-red{background:var(--red-soft);color:var(--red)}.m-or{background:var(--orange-soft);color:var(--orange)}
+.m-gr{background:var(--green-soft);color:var(--green)}.m-bl{background:var(--blue-soft);color:var(--blue)}
+.m-gd{background:var(--gold-soft);color:var(--gold)}.m-nv{background:var(--navy-soft);color:var(--navy2)}
+.m-gy{background:#F1F3F7;color:var(--mut)}
+.cellrow{display:flex;align-items:center;gap:10px}
+
+/* ---- boutons ---- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 14px;border:0;border-radius:7px;font:650 12.5px Inter,sans-serif;cursor:pointer;font-family:inherit}
+.btn.pri{background:var(--navy);color:#fff}.btn.gh{background:var(--surface);border:1px solid var(--line);color:var(--ink2)}
+.btn.gold{background:var(--gold);color:#fff}.btn.sm{height:30px;padding:0 10px;font-size:11.5px}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.filters{display:flex;gap:7px;margin-bottom:12px;align-items:center;flex-wrap:wrap}
+.seg{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:6px 11px;font:600 12px Inter,sans-serif;color:var(--ink2);cursor:pointer;font-family:inherit}
+.seg.on{background:var(--navy);border-color:var(--navy);color:#fff}
+
+/* ---- graphes ---- */
+.bars{display:flex;align-items:flex-end;gap:10px;height:150px;padding:0 4px}
+.bcol{flex:1;display:flex;flex-direction:column;align-items:center;gap:6px}
+.bcol .bar{width:100%;border-radius:5px 5px 0 0;background:var(--navy2);position:relative;transition:none}
+.bcol .bar.gd{background:var(--gold)}
+.bcol .lbl{font-size:10.5px;color:var(--mut);font-weight:600}
+.bcol .val{font-size:11px;font-weight:700}
+.trk{height:7px;border-radius:4px;background:#EDF0F5;overflow:hidden}
+.fl{height:100%;border-radius:4px}.fl.g{background:var(--green)}.fl.o{background:var(--orange)}.fl.gd{background:var(--gold)}.fl.n{background:var(--navy2)}
+.legend{display:flex;gap:14px;font-size:11px;color:var(--mut);margin-top:10px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block;margin-right:5px}
+
+/* matrice desktop */
+.mtx{display:grid;grid-template-columns:26px repeat(5,1fr);gap:4px}
+.ax{font-size:10px;color:var(--mut);display:flex;align-items:center;justify-content:center}
+.mc{aspect-ratio:1.7;border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:11.5px;font-weight:700;color:#43301F;position:relative;cursor:pointer}
+.mc .pt{position:absolute;top:3px;right:4px;width:14px;height:14px;border-radius:50%;background:var(--navy);color:#fff;font-size:8.5px;display:flex;align-items:center;justify-content:center;font-weight:700}
+
+/* split détail */
+.split{display:grid;grid-template-columns:1fr 330px;gap:14px}
+.detail .kv{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--line2);font-size:12.5px}
+.detail .kv:last-child{border-bottom:0}
+.detail .kv span{color:var(--mut)}.detail .kv b{font-weight:650;text-align:right}
+.timeline{position:relative;padding-left:18px}
+.timeline::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:1.5px;background:var(--line)}
+.tl{position:relative;padding-bottom:14px}
+.tl::before{content:"";position:absolute;left:-16px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--navy2);border:2px solid #fff;box-shadow:0 0 0 1.5px var(--line)}
+.tl b{font-size:12.5px;font-weight:650;display:block}
+.tl span{font-size:11px;color:var(--mut)}
+.banner{display:flex;gap:9px;padding:11px 13px;border-radius:8px;font-size:12.5px;margin-bottom:14px;align-items:flex-start;line-height:1.45}
+.banner.warn{background:var(--orange-soft);color:var(--orange)}
+.banner.err{background:var(--red-soft);color:var(--red)}
+.banner.info{background:var(--blue-soft);color:var(--blue)}
+.banner .act{margin-left:auto;font-weight:700;text-decoration:underline;cursor:pointer;white-space:nowrap}
+.pagin{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-top:1px solid var(--line2);font-size:11.5px;color:var(--mut)}
+.pagin .pg{display:flex;gap:4px}
+.pagin .pg button{width:28px;height:28px;border:1px solid var(--line);background:#fff;border-radius:6px;font:600 11.5px Inter,sans-serif;cursor:pointer;color:var(--ink2)}
+.pagin .pg button.on{background:var(--navy);border-color:var(--navy);color:#fff}
+@media(max-width:1100px){.app{grid-template-columns:1fr}.side{display:none}.mets{grid-template-columns:repeat(2,1fr)}.grid2,.split{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<svg style="display:none">
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+<symbol id="i-climb" viewBox="0 0 24 24"><path d="M12 3v18M7 7l5-4 5 4M7 13l5-4 5 4M7 19l5-4 5 4"/></symbol>
+<symbol id="i-vest" viewBox="0 0 24 24"><path d="M8 3 4 5v16h16V5l-4-2-4 4Z"/><path d="M12 7v14M4 12h4M16 12h4"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2.8A.8.8 0 0 1 9.8 2h4.4a.8.8 0 0 1 .8.8V4"/><path d="M9 11h6M9 15h4"/></symbol>
+<symbol id="i-antenna" viewBox="0 0 24 24"><path d="M12 12v9M5 12a7 7 0 0 1 14 0M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.6"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-cap" viewBox="0 0 24 24"><path d="m12 4 10 5-10 5L2 9Z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5M9 13h6M9 17h4"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-3 7-3 7h18s-3-1-3-7"/><path d="M10.5 21a2 2 0 0 0 3 0"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<symbol id="i-door" viewBox="0 0 24 24"><path d="M4 21h16M6 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17"/></symbol>
+<symbol id="i-recycle" viewBox="0 0 24 24"><path d="m7 19-3-5 3-2M4.5 14h6.5l3-5M17 19l3-5-4.5.5M20 14l-3.2-5.5-5.3.5M9 4.5 6 9.5l5 .5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.4-5.8-3-5.8 3 1.1-6.4L2.6 9.8l6.5-.9Z"/></symbol>
+<symbol id="i-dl" viewBox="0 0 24 24"><path d="M12 3v12M7 11l5 5 5-5M4 20h16"/></symbol>
+<symbol id="i-filter" viewBox="0 0 24 24"><path d="M3 5h18l-7 8v6l-4 2v-8Z"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5Z"/></symbol>
+<symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 5.2a3.5 3.5 0 0 1 0 5.6M18 14.4a6.5 6.5 0 0 1 3.5 5.6"/></symbol>
+<symbol id="i-cog" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 8.9 19a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 8.3a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1Z"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.2-8.2M17 6l2.5 2.5M14.5 8.5 17 11"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><path d="M12 20h.01"/></symbol>
+<symbol id="i-calendar" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5.5 5h13l2.5 7v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7Z"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-mail" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3.5 7 8.5 6 8.5-6"/></symbol>
+</svg>
+
+<div class="pbar">
+  <span class="brand"><svg class="i sm"><use href="#i-shield"/></svg>SHEQ · DESKTOP</span>
+  <button data-p="dash" class="on">Tableau de bord</button>
+  <button data-p="sig">Signalements</button>
+  <button data-p="detail">Détail signalement</button>
+  <button data-p="risk">Risques</button>
+  <button data-p="act">Plan d'action</button>
+  <button data-p="parc">Parc</button>
+  <button data-p="epi">EPI</button>
+  <button data-p="docs">Documents</button>
+  <button data-p="hauteur">SLAM & permis</button>
+  <button data-p="insp">Inspections</button>
+  <button data-p="vault">Coffre-fort</button>
+  <button data-p="form">Formations</button>
+  <button data-p="audit">Audit</button>
+  <button data-p="revue">Revue direction</button>
+  <button data-p="visit">Visiteurs</button>
+  <button data-p="dechets">Déchets</button>
+  <button data-p="satis">Satisfaction</button>
+  <button data-p="users">Utilisateurs</button>
+  <button data-p="param">Paramètres</button>
+</div>
+
+<div class="stage"><div class="app">
+
+<!-- ================= SIDEBAR ================= -->
+<aside class="side">
+  <div class="top"><div class="mk">H</div><div><b>SHEQ Management</b><span>Hirondelles IT Lab</span></div></div>
+  <div class="navsec">PILOTAGE</div>
+  <button class="nv on" data-n="dash" onclick="nav('dash')"><svg class="i"><use href="#i-home"/></svg>Tableau de bord</button>
+  <button class="nv" data-n="risk" onclick="nav('risk')"><svg class="i"><use href="#i-target"/></svg>Risques<span class="cnt">18</span></button>
+  <button class="nv" data-n="act" onclick="nav('act')"><svg class="i"><use href="#i-check"/></svg>Plan d'action<span class="cnt hot">2</span></button>
+  <div class="navsec">TERRAIN</div>
+  <button class="nv" data-n="sig" onclick="nav('sig')"><svg class="i"><use href="#i-alert"/></svg>Signalements<span class="cnt hot">2</span></button>
+  <button class="nv" data-n="hauteur" onclick="nav('hauteur')"><svg class="i"><use href="#i-climb"/></svg>SLAM & permis<span class="cnt">1</span></button>
+  <button class="nv" data-n="epi" onclick="nav('epi')"><svg class="i"><use href="#i-vest"/></svg>EPI<span class="cnt hot">2</span></button>
+  <button class="nv" data-n="insp" onclick="nav('insp')"><svg class="i"><use href="#i-clip"/></svg>Inspections</button>
+  <button class="nv" data-n="parc" onclick="nav('parc')"><svg class="i"><use href="#i-antenna"/></svg>Parc & configs</button>
+  <button class="nv" data-n="vault" onclick="nav('vault')"><svg class="i"><use href="#i-lock"/></svg>Coffre-fort</button>
+  <div class="navsec">SYSTÈME</div>
+  <button class="nv" data-n="form" onclick="nav('form')"><svg class="i"><use href="#i-cap"/></svg>Formations</button>
+  <button class="nv" data-n="audit" onclick="nav('audit')"><svg class="i"><use href="#i-list"/></svg>Audits & revues</button>
+  <button class="nv" data-n="docs" onclick="nav('docs')"><svg class="i"><use href="#i-doc"/></svg>Documents<span class="cnt">36</span></button>
+  <button class="nv" data-n="visit" onclick="nav('visit')"><svg class="i"><use href="#i-door"/></svg>Visiteurs<span class="cnt">2</span></button>
+  <button class="nv" data-n="dechets" onclick="nav('dechets')"><svg class="i"><use href="#i-recycle"/></svg>Déchets</button>
+  <button class="nv" data-n="satis" onclick="nav('satis')"><svg class="i"><use href="#i-star"/></svg>Satisfaction</button>
+  <div class="navsec">ADMINISTRATION</div>
+  <button class="nv" data-n="users" onclick="nav('users')"><svg class="i"><use href="#i-users"/></svg>Utilisateurs</button>
+  <button class="nv" data-n="param" onclick="nav('param')"><svg class="i"><use href="#i-cog"/></svg>Paramètres</button>
+  <div class="user"><div class="av">OD</div><div><b>Oumou Diarra</b><span>Référente SHEQ</span></div></div>
+</aside>
+
+<div class="main">
+<header class="top">
+  <div><h1 id="ttl">Tableau de bord</h1><div class="crumb" id="crm">Vue d'ensemble · septembre 2026</div></div>
+  <div class="sp">
+    <div class="srch"><svg class="i sm"><use href="#i-search"/></svg><input placeholder="Rechercher partout…"></div>
+    <button class="ib" aria-label="Notifications"><svg class="i"><use href="#i-bell"/></svg><span class="d"></span></button>
+    <button class="btn pri"><svg class="i sm"><use href="#i-dl"/></svg>Exporter</button>
+  </div>
+</header>
+
+<div class="view">
+
+<!-- ================= DASHBOARD ================= -->
+<div class="page on" id="p-dash">
+  <div class="mets">
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-shield"/></svg></span>Accidents avec arrêt</div><div class="v">0</div><div class="t up">247 jours sans accident</div></div>
+    <div class="met"><div class="hd"><span class="ic m-or"><svg class="i sm"><use href="#i-alert"/></svg></span>Signalements du mois</div><div class="v">6</div><div class="t up">+20 % vs août — bon signe</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gd"><svg class="i sm"><use href="#i-check"/></svg></span>Plan d'action</div><div class="v">44 %</div><div class="t down">2 actions en retard</div></div>
+    <div class="met"><div class="hd"><span class="ic m-bl"><svg class="i sm"><use href="#i-clip"/></svg></span>Conformité inspections</div><div class="v">96 %</div><div class="t flat">12 inspections ce trimestre</div></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-chart"/></svg><h3>Signalements et incidents par mois</h3><span class="r">12 derniers mois</span></div>
+      <div class="cb">
+        <div class="bars">
+          <div class="bcol"><span class="val">2</span><div class="bar" style="height:33px"></div><span class="lbl">Avr</span></div>
+          <div class="bcol"><span class="val">3</span><div class="bar" style="height:50px"></div><span class="lbl">Mai</span></div>
+          <div class="bcol"><span class="val">3</span><div class="bar" style="height:50px"></div><span class="lbl">Juin</span></div>
+          <div class="bcol"><span class="val">4</span><div class="bar" style="height:67px"></div><span class="lbl">Juil</span></div>
+          <div class="bcol"><span class="val">5</span><div class="bar" style="height:84px"></div><span class="lbl">Août</span></div>
+          <div class="bcol"><span class="val">6</span><div class="bar gd" style="height:100px"></div><span class="lbl">Sept</span></div>
+        </div>
+        <div class="legend"><span><i style="background:var(--navy2)"></i>Signalements remontés</span><span><i style="background:var(--gold)"></i>Mois en cours</span></div>
+        <p style="font-size:11.5px;color:var(--mut);margin-top:8px">La progression traduit une culture de prévention qui s'installe, pas une dégradation.</p>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-check"/></svg><h3>Avancement du plan d'action</h3></div>
+      <div class="cb">
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Réalisées</b><span style="color:var(--mut)">7 / 16</span></div><div class="trk"><div class="fl g" style="width:44%"></div></div></div>
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>En cours</b><span style="color:var(--mut)">5 / 16</span></div><div class="trk"><div class="fl gd" style="width:31%"></div></div></div>
+        <div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>En retard</b><span style="color:var(--red);font-weight:650">2 / 16</span></div><div class="trk"><div class="fl o" style="width:13%"></div></div></div>
+        <div class="banner err" style="margin:0"><svg class="i sm" style="margin-top:1px"><use href="#i-clock"/></svg><div>« Vérification des installations électriques » accuse 35 jours de retard.</div><span class="act" onclick="nav('act')">Traiter</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--red)"><use href="#i-alert"/></svg><h3>Signalements à traiter</h3><span class="r" onclick="nav('sig')">Tout voir</span></div>
+      <table>
+        <thead><tr><th>Référence</th><th>Objet</th><th>Auteur</th><th>Reçu</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr onclick="nav('detail')" style="cursor:pointer"><td><b>SIG-2026-018</b></td><td>Multiprise surchargée — open space<div class="sub">Risque électrique / incendie</div></td><td>A. Koné</td><td>09:12</td><td><span class="tag t-red">Nouveau</span></td></tr>
+          <tr><td><b>SIG-2026-017</b></td><td>Tôle fragile en toiture — KATI<div class="sub">1 photo jointe</div></td><td>Anonyme</td><td>Hier</td><td><span class="tag t-red">Nouveau</span></td></tr>
+          <tr><td><b>SIG-2026-016</b></td><td>Câble au sol dans le couloir</td><td>M. Sissoko</td><td>01/09</td><td><span class="tag t-gd">En analyse</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--orange)"><use href="#i-vest"/></svg><h3>Échéances proches</h3></div>
+      <table>
+        <tbody>
+          <tr><td><div class="cellrow"><span class="mini m-red"><svg class="i sm"><use href="#i-vest"/></svg></span><div><b>Harnais H-003</b><div class="sub">Vérification dépassée · bloque les permis</div></div></div></td><td style="text-align:right"><span class="tag t-red">−7 j</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-or"><svg class="i sm"><use href="#i-vest"/></svg></span><div><b>Longe L-002</b><div class="sub">Vérification périodique</div></div></div></td><td style="text-align:right"><span class="tag t-or">J−5</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-bl"><svg class="i sm"><use href="#i-cap"/></svg></span><div><b>Sensibilisation signalements</b><div class="sub">Séance du 09/09 · 11 inscrits</div></div></div></td><td style="text-align:right"><span class="tag t-bl">J−5</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-gd"><svg class="i sm"><use href="#i-doc"/></svg></span><div><b>PRO-SHEQ-002 v02</b><div class="sub">En attente d'approbation</div></div></div></td><td style="text-align:right"><span class="tag t-gd">3 j</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SIGNALEMENTS ================= -->
+<div class="page" id="p-sig">
+  <div class="filters">
+    <button class="seg on">Tous · 6</button><button class="seg">Nouveaux · 2</button><button class="seg">En analyse · 1</button><button class="seg">Clôturés · 3</button>
+    <span style="flex:1"></span>
+    <button class="btn gh sm"><svg class="i sm"><use href="#i-filter"/></svg>Filtres</button>
+    <button class="btn gh sm"><svg class="i sm"><use href="#i-dl"/></svg>Exporter</button>
+    <button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Nouveau</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th style="width:110px">Référence</th><th>Objet</th><th>Type</th><th>Lieu</th><th>Auteur</th><th>Date</th><th>Action liée</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr onclick="nav('detail')" style="cursor:pointer"><td><b>SIG-2026-018</b></td><td>Multiprise surchargée — open space</td><td>Situation dangereuse</td><td>Siège</td><td>A. Koné</td><td>04/09 09:12</td><td><span class="tag t-gy">—</span></td><td><span class="tag t-red">Nouveau</span></td></tr>
+        <tr><td><b>SIG-2026-017</b></td><td>Tôle fragile en toiture</td><td>Presque-accident</td><td>Client KATI</td><td>Anonyme</td><td>03/09</td><td><span class="tag t-gy">—</span></td><td><span class="tag t-red">Nouveau</span></td></tr>
+        <tr><td><b>SIG-2026-016</b></td><td>Câble au sol dans le couloir</td><td>Situation dangereuse</td><td>Siège</td><td>M. Sissoko</td><td>01/09</td><td><span class="tag t-bl">ACT-041</span></td><td><span class="tag t-gd">En analyse</span></td></tr>
+        <tr><td><b>SIG-2026-015</b></td><td>Extincteur non signalé — accueil</td><td>Anomalie</td><td>Siège</td><td>O. Diarra</td><td>28/08</td><td><span class="tag t-bl">ACT-034</span></td><td><span class="tag t-gr">Clôturé</span></td></tr>
+        <tr><td><b>SIG-2026-014</b></td><td>Éblouissement écran — bureau 2</td><td>Situation dangereuse</td><td>Siège</td><td>A. Koné</td><td>22/08</td><td><span class="tag t-bl">ACT-031</span></td><td><span class="tag t-gr">Clôturé</span></td></tr>
+        <tr><td><b>SIG-2026-013</b></td><td>Onduleur en alarme sonore</td><td>Anomalie</td><td>Baie A</td><td>M. Sissoko</td><td>18/08</td><td><span class="tag t-bl">ACT-029</span></td><td><span class="tag t-gr">Clôturé</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>6 signalements · page 1 sur 1</span><div class="pg"><button class="on">1</button></div></div>
+  </div>
+</div>
+
+<!-- ================= DÉTAIL SIGNALEMENT ================= -->
+<div class="page" id="p-detail">
+  <div class="banner warn"><svg class="i sm" style="margin-top:1px"><use href="#i-clock"/></svg><div><b>En attente d'analyse depuis 6 heures.</b> Délai cible : 7 jours (PRO-SHEQ-001).</div><span class="act">Prendre en charge</span></div>
+  <div class="split">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="ch"><span class="mini m-red"><svg class="i sm"><use href="#i-alert"/></svg></span><h3>SIG-2026-018 · Multiprise surchargée — open space</h3><span class="tag t-red" style="margin-left:auto">Nouveau</span></div>
+        <div class="cb">
+          <p style="font-size:13px;line-height:1.6;margin-bottom:14px">Quatre appareils sont branchés en cascade sur une multiprise non protégée, sous le bureau du poste 3. La multiprise chauffe au toucher et le câble passe sous le pied de la table.</p>
+          <div style="display:flex;gap:10px">
+            <div style="width:130px;height:96px;border-radius:8px;background:linear-gradient(135deg,#DDE3EC,#EEF1F5);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--mut);font-size:11px">Photo jointe</div>
+            <div style="flex:1">
+              <div class="detail">
+                <div class="kv"><span>Type</span><b>Situation dangereuse</b></div>
+                <div class="kv"><span>Lieu</span><b>Siège · open space</b></div>
+                <div class="kv"><span>Auteur</span><b>A. Koné</b></div>
+                <div class="kv"><span>Reçu</span><b>04/09/2026 à 09:12</b></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-list"/></svg><h3>Analyse des causes</h3></div>
+        <div class="cb">
+          <div class="banner info" style="margin-bottom:12px"><svg class="i sm" style="margin-top:1px"><use href="#i-target"/></svg><div>Risque lié : <b>Incendie équipements électriques</b> (C = 10) — le rapprochement est proposé automatiquement.</div></div>
+          <table style="border:1px solid var(--line);border-radius:8px;overflow:hidden">
+            <thead><tr><th>Famille (5M)</th><th>Cause identifiée</th></tr></thead>
+            <tbody>
+              <tr><td><b>Matériel</b></td><td>Multiprise sans protection, non conforme</td></tr>
+              <tr><td><b>Méthode</b></td><td>Aucune règle sur les branchements en cascade</td></tr>
+              <tr><td><b>Milieu</b></td><td>Nombre de prises murales insuffisant au poste 3</td></tr>
+            </tbody>
+          </table>
+          <div style="display:flex;gap:8px;margin-top:14px"><button class="btn pri"><svg class="i sm"><use href="#i-plus"/></svg>Créer l'action corrective</button><button class="btn gh">Clôturer sans action</button></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-clock"/></svg><h3>Historique</h3></div>
+        <div class="cb"><div class="timeline">
+          <div class="tl"><b>Signalement créé</b><span>04/09 09:12 · A. Koné · mobile, hors connexion</span></div>
+          <div class="tl"><b>Synchronisé</b><span>04/09 09:31 · retour du réseau</span></div>
+          <div class="tl"><b>Notification au référent</b><span>04/09 09:31 · O. Diarra</span></div>
+          <div class="tl" style="padding-bottom:0"><b>En attente d'analyse</b><span>Délai cible : 11/09</span></div>
+        </div></div>
+      </div>
+      <div class="card">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-shield"/></svg><h3>Traçabilité</h3></div>
+        <div class="cb detail" style="font-size:12px">
+          <div class="kv"><span>Créé par</span><b>a.kone</b></div>
+          <div class="kv"><span>Appareil</span><b>Android · hors connexion</b></div>
+          <div class="kv"><span>Modifications</span><b>Aucune</b></div>
+          <div class="kv"><span>Enregistrement</span><b>ENR-SHEQ-2026-118</b></div>
+          <button class="btn gh sm" style="width:100%;margin-top:10px"><svg class="i sm"><use href="#i-doc"/></svg>Exporter en PDF</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= RISQUES ================= -->
+<div class="page" id="p-risk">
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-target"/></svg><h3>Matrice de criticité</h3><span class="r">18 risques positionnés</span></div>
+      <div class="cb"><div class="mtx" id="mtx"></div>
+        <div style="display:flex;justify-content:space-between;font-size:10.5px;color:var(--mut);margin-top:8px"><span>Probabilité ↑ · Gravité →</span><span>Survolez une case pour filtrer</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-chart"/></svg><h3>Répartition par niveau</h3></div>
+      <div class="cb">
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Critique (C ≥ 15)</b><span style="color:var(--mut)">0</span></div><div class="trk"><div class="fl o" style="width:0%"></div></div></div>
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Élevé (8–14)</b><span style="color:var(--mut)">9</span></div><div class="trk"><div class="fl o" style="width:50%"></div></div></div>
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Modéré (4–7)</b><span style="color:var(--mut)">7</span></div><div class="trk"><div class="fl gd" style="width:39%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Faible (&lt; 4)</b><span style="color:var(--mut)">2</span></div><div class="trk"><div class="fl g" style="width:11%"></div></div></div>
+        <div class="banner info" style="margin:14px 0 0"><svg class="i sm" style="margin-top:1px"><use href="#i-sync"/></svg><div>Dernière revue du registre : 04/09/2026. Prochaine revue annuelle : mai 2027.</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><h3>Registre des risques</h3><span class="r">Ajouter un risque</span></div>
+    <table>
+      <thead><tr><th>N°</th><th>Danger</th><th>Catégorie</th><th style="width:44px">P</th><th style="width:44px">G</th><th style="width:52px">C</th><th>Niveau</th><th>Mesures de maîtrise</th><th>Actions</th></tr></thead>
+      <tbody>
+        <tr><td>15</td><td><b>Perte ou vol de données</b></td><td>Sécurité information</td><td>3</td><td>4</td><td><b>12</b></td><td><span class="tag t-or">Élevé</span></td><td>Sauvegardes 3-2-1, contrôle d'accès</td><td><span class="tag t-bl">2 liées</span></td></tr>
+        <tr><td>5</td><td><b>Incendie équipements électriques</b></td><td>Incendie</td><td>2</td><td>5</td><td><b>10</b></td><td><span class="tag t-or">Élevé</span></td><td>Extincteurs CO2, plan d'évacuation</td><td><span class="tag t-bl">2 liées</span></td></tr>
+        <tr><td>19</td><td><b>Chute de hauteur</b></td><td>Travaux en hauteur</td><td>2</td><td>5</td><td><b>10</b></td><td><span class="tag t-or">Élevé</span></td><td>Permis, SLAM, EPI antichute, surveillant</td><td><span class="tag t-bl">3 liées</span></td></tr>
+        <tr><td>8</td><td><b>Charge de travail et délais</b></td><td>Psychosocial</td><td>3</td><td>3</td><td><b>9</b></td><td><span class="tag t-or">Élevé</span></td><td>Planification, revue de charge</td><td><span class="tag t-bl">1 liée</span></td></tr>
+        <tr><td>1</td><td><b>TMS travail sur écran</b></td><td>Ergonomie</td><td>3</td><td>2</td><td><b>6</b></td><td><span class="tag t-gd">Modéré</span></td><td>Aménagement des postes, pauses</td><td><span class="tag t-bl">1 liée</span></td></tr>
+        <tr><td>6</td><td><b>Chute de plain-pied (câbles)</b></td><td>Circulation</td><td>3</td><td>2</td><td><b>6</b></td><td><span class="tag t-gd">Modéré</span></td><td>Goulottes, 5S</td><td><span class="tag t-gr">Soldée</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>6 sur 18 risques affichés</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button></div></div>
+  </div>
+</div>
+
+<!-- ================= PLAN D'ACTION ================= -->
+<div class="page" id="p-act">
+  <div class="filters">
+    <button class="seg on">Toutes · 16</button><button class="seg">En retard · 2</button><button class="seg">En cours · 5</button><button class="seg">Réalisées · 7</button>
+    <span style="flex:1"></span><button class="btn gh sm"><svg class="i sm"><use href="#i-dl"/></svg>Exporter</button><button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Nouvelle action</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Réf.</th><th>Action</th><th>Origine</th><th>Responsable</th><th>Échéance</th><th style="width:130px">Avancement</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>ACT-018</b></td><td>Vérification des installations électriques<div class="sub">Électricien qualifié + remplacement multiprises</div></td><td><span class="tag t-gy">Risque n°3</span></td><td><div class="cellrow"><span class="av" style="width:24px;height:24px;font-size:9.5px;background:var(--navy2)">AT</span>Direction</div></td><td><b style="color:var(--red)">31/07</b><div class="sub">35 j de retard</div></td><td><div class="trk"><div class="fl o" style="width:20%"></div></div><div class="sub">20 %</div></td><td><span class="tag t-red">En retard</span></td></tr>
+        <tr><td><b>ACT-022</b></td><td>Exercice d'évacuation semestriel<div class="sub">Avec chronométrage et retour d'expérience</div></td><td><span class="tag t-gy">Risque n°5</span></td><td><div class="cellrow"><span class="av" style="width:24px;height:24px;font-size:9.5px;background:var(--navy2)">OD</span>Réf. SHEQ</div></td><td><b style="color:var(--red)">31/08</b><div class="sub">4 j de retard</div></td><td><div class="trk"><div class="fl o" style="width:10%"></div></div><div class="sub">10 %</div></td><td><span class="tag t-red">En retard</span></td></tr>
+        <tr><td><b>ACT-035</b></td><td>Sensibilisation cybersécurité</td><td><span class="tag t-gy">Risque n°15</span></td><td><div class="cellrow"><span class="av" style="width:24px;height:24px;font-size:9.5px;background:var(--navy2)">MS</span>Resp. IT</div></td><td><b>30/09</b><div class="sub">J−26</div></td><td><div class="trk"><div class="fl gd" style="width:60%"></div></div><div class="sub">60 %</div></td><td><span class="tag t-gd">En cours</span></td></tr>
+        <tr><td><b>ACT-036</b></td><td>Aménagement ergonomique des postes</td><td><span class="tag t-gy">Risque n°1</span></td><td><div class="cellrow"><span class="av" style="width:24px;height:24px;font-size:9.5px;background:var(--navy2)">OD</span>Réf. SHEQ</div></td><td><b>30/09</b><div class="sub">J−26</div></td><td><div class="trk"><div class="fl gd" style="width:70%"></div></div><div class="sub">70 %</div></td><td><span class="tag t-gd">En cours</span></td></tr>
+        <tr><td><b>ACT-041</b></td><td>Pose de goulottes — câbles au sol</td><td><span class="tag t-bl">SIG-2026-016</span></td><td><div class="cellrow"><span class="av" style="width:24px;height:24px;font-size:9.5px;background:var(--navy2)">AK</span>A. Koné</div></td><td><b>28/08</b><div class="sub">Réalisée</div></td><td><div class="trk"><div class="fl g" style="width:100%"></div></div><div class="sub">100 %</div></td><td><span class="tag t-gr">Réalisée</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>5 sur 16 actions affichées</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button><button>4</button></div></div>
+  </div>
+</div>
+
+<!-- ================= PARC ================= -->
+<div class="page" id="p-parc">
+  <div class="filters">
+    <button class="seg on">Tous · 128</button><button class="seg">MikroTik · 64</button><button class="seg">Grandstream · 22</button><button class="seg">Ubiquiti · 31</button><button class="seg">Ruijie · 11</button>
+    <span style="flex:1"></span><button class="btn gh sm"><svg class="i sm"><use href="#i-lock"/></svg>Coffre-fort</button><button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Nouvelle fiche</button>
+  </div>
+  <div class="banner warn"><svg class="i sm" style="margin-top:1px"><use href="#i-file"/></svg><div><b>3 équipements sans sauvegarde de configuration.</b> La restauration serait impossible en cas de panne.</div><span class="act">Filtrer</span></div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Identity</th><th>Modèle</th><th>Site</th><th>Emplacement</th><th>Liaison</th><th>Dernière config</th><th>Sauvegarde</th><th>Inspection</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>FAS-AP-01</b><div class="sub">SN4C7A21</div></td><td>MikroTik LHG 5</td><td>FASO-NET</td><td>Pylône 24 m</td><td><span class="tag t-gr">−58 dBm · 96 %</span></td><td>03/09<div class="sub">A. Koné</div></td><td><span class="tag t-gr">.rsc + .backup</span></td><td>06/26</td><td><span class="tag t-gr">En service</span></td></tr>
+        <tr><td><b>BKO-PBX-01</b><div class="sub">SN9K12F8</div></td><td>Grandstream UCM6302</td><td>Siège</td><td>Baie A</td><td><span class="tag t-gy">24 extensions</span></td><td>28/08<div class="sub">M. Sissoko</div></td><td><span class="tag t-gr">Backup UCM</span></td><td>07/26</td><td><span class="tag t-gr">En service</span></td></tr>
+        <tr><td><b>KAT-ST-02</b><div class="sub">SN77B3D1</div></td><td>Ubiquiti LiteBeam 5AC</td><td>KATI</td><td>Toiture</td><td><span class="tag t-or">−71 dBm · 78 %</span></td><td>04/09<div class="sub">A. Koné</div></td><td><span class="tag t-or">Manquante</span></td><td>—</td><td><span class="tag t-or">À surveiller</span></td></tr>
+        <tr><td><b>BKO-SW-03</b><div class="sub">SN2211AC</div></td><td>Ruijie RG-ES228GS</td><td>Siège</td><td>Baie B</td><td><span class="tag t-gy">VLAN 10/20</span></td><td>19/08<div class="sub">M. Sissoko</div></td><td><span class="tag t-gr">Cloud sync</span></td><td>07/26</td><td><span class="tag t-gr">En service</span></td></tr>
+        <tr><td><b>SEG-AP-04</b><div class="sub">SN5D0E92</div></td><td>MikroTik hAP ac²</td><td>Ségou</td><td>Local technique</td><td><span class="tag t-gr">−52 dBm · 98 %</span></td><td>12/08<div class="sub">A. Koné</div></td><td><span class="tag t-gr">.rsc + .backup</span></td><td>05/26</td><td><span class="tag t-gr">En service</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>5 sur 128 équipements</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button><button>…</button><button>26</button></div></div>
+  </div>
+</div>
+
+<!-- ================= EPI ================= -->
+<div class="page" id="p-epi">
+  <div class="mets" style="grid-template-columns:repeat(3,1fr)">
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-vest"/></svg></span>EPI en service</div><div class="v">7</div><div class="t flat">sur 9 enregistrés</div></div>
+    <div class="met"><div class="hd"><span class="ic m-or"><svg class="i sm"><use href="#i-clock"/></svg></span>Vérifications dues</div><div class="v">2</div><div class="t down">dont 1 dépassée</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gy"><svg class="i sm"><use href="#i-shield"/></svg></span>Réformés en 2026</div><div class="v">1</div><div class="t flat">après arrêt de chute</div></div>
+  </div>
+  <div class="banner err"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div><b>Le harnais H-003 bloque actuellement la délivrance des permis</b> pour M. Sissoko — contrôle croisé automatique.</div><span class="act">Réaffecter</span></div>
+  <div class="card">
+    <table>
+      <thead><tr><th>N°</th><th>Type</th><th>Modèle</th><th>Affecté à</th><th>Mise en service</th><th>Dernière vérif.</th><th>Prochaine</th><th>Fin de vie</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>H-003</b></td><td>Harnais complet</td><td>[Marque] · [Modèle]</td><td>M. Sissoko</td><td>03/2026</td><td>08/2025</td><td><b style="color:var(--red)">28/08/2026</b></td><td>2035</td><td><span class="tag t-red">À vérifier</span></td></tr>
+        <tr><td><b>L-002</b></td><td>Longe double + absorbeur</td><td>[Marque] · [Modèle]</td><td>A. Koné</td><td>03/2026</td><td>09/2025</td><td><b style="color:var(--orange)">09/09/2026</b></td><td>2031</td><td><span class="tag t-or">J−5</span></td></tr>
+        <tr><td><b>H-001</b></td><td>Harnais complet</td><td>[Marque] · [Modèle]</td><td>A. Koné</td><td>03/2026</td><td>03/2026</td><td>03/2027</td><td>2035</td><td><span class="tag t-gr">En service</span></td></tr>
+        <tr><td><b>C-004</b></td><td>Casque à jugulaire</td><td>[Marque] · [Modèle]</td><td>O. Diarra</td><td>03/2026</td><td>03/2026</td><td>03/2027</td><td>2031</td><td><span class="tag t-gr">En service</span></td></tr>
+        <tr style="opacity:.65"><td><b>H-002</b></td><td>Harnais complet</td><td>[Marque] · [Modèle]</td><td>—</td><td>01/2024</td><td>—</td><td>—</td><td>Réformé</td><td><span class="tag t-gy">Réformé 12/07</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>5 sur 9 EPI · vérification annuelle par personne compétente</span><div class="pg"><button class="on">1</button><button>2</button></div></div>
+  </div>
+</div>
+
+<!-- ================= DOCUMENTS ================= -->
+<div class="page" id="p-docs">
+  <div class="filters">
+    <button class="seg on">Tous · 36</button><button class="seg">En vigueur · 33</button><button class="seg">En approbation · 1</button><button class="seg">Archives · 2</button>
+    <span style="flex:1"></span><button class="btn gh sm"><svg class="i sm"><use href="#i-dl"/></svg>Liste maîtresse</button><button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Nouveau document</button>
+  </div>
+  <div class="card">
+    <table>
+      <thead><tr><th>Référence</th><th>Intitulé</th><th>Niveau</th><th>Version</th><th>Rédacteur</th><th>Approbateur</th><th>Prochaine revue</th><th>Diffusion</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>POL-SHEQ-001</b></td><td>Politique SHEQ</td><td>1 · Politique</td><td>01</td><td>A. Koné, O. Diarra</td><td>A. Traoré</td><td>05/2027</td><td><div class="trk" style="width:64px"><div class="fl g" style="width:82%"></div></div><div class="sub">9/11 lue</div></td><td><span class="tag t-gr">En vigueur</span></td></tr>
+        <tr><td><b>CDC-SHEQ-001</b></td><td>Cahier des charges application</td><td>2 · Pilotage</td><td>03</td><td>A. Koné, O. Diarra</td><td>A. Traoré</td><td>05/2027</td><td><span class="tag t-gy">Restreinte</span></td><td><span class="tag t-gr">En vigueur</span></td></tr>
+        <tr><td><b>PRO-SHEQ-002</b></td><td>Travaux en hauteur</td><td>3 · Procédure</td><td>02</td><td>A. Koné</td><td>A. Traoré</td><td>—</td><td><span class="tag t-gy">Non diffusée</span></td><td><span class="tag t-gd">En approbation</span></td></tr>
+        <tr><td><b>FOR-SHEQ-004</b></td><td>Fiche SLAM travaux en hauteur</td><td>4 · Formulaire</td><td>01</td><td>A. Koné, O. Diarra</td><td>A. Traoré</td><td>05/2027</td><td><span class="tag t-bl">Module SLAM</span></td><td><span class="tag t-gr">En vigueur</span></td></tr>
+        <tr><td><b>FOR-SHEQ-006</b></td><td>Fiche de configuration MikroTik</td><td>4 · Formulaire</td><td>03</td><td>A. Koné</td><td>A. Traoré</td><td>05/2027</td><td><span class="tag t-red">Confidentiel</span></td><td><span class="tag t-gr">En vigueur</span></td></tr>
+        <tr style="opacity:.65"><td><b>FOR-SHEQ-006</b></td><td>Fiche de configuration générique</td><td>4 · Formulaire</td><td>01</td><td>A. Koné</td><td>—</td><td>—</td><td><span class="tag t-gy">Retirée</span></td><td><span class="tag t-gy">Archive</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>6 sur 36 documents · liste maîtresse LM-SHEQ-001</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button><button>4</button><button>5</button><button>6</button></div></div>
+  </div>
+</div>
+
+<!-- ================= SLAM & PERMIS ================= -->
+<div class="page" id="p-hauteur">
+  <div class="mets" style="grid-template-columns:repeat(4,1fr)">
+    <div class="met"><div class="hd"><span class="ic m-bl"><svg class="i sm"><use href="#i-climb"/></svg></span>Permis actifs</div><div class="v">1</div><div class="t flat">FASO-NET · jusqu'à 12:00</div></div>
+    <div class="met"><div class="hd"><span class="ic m-or"><svg class="i sm"><use href="#i-clock"/></svg></span>En attente de validation</div><div class="v">1</div><div class="t down">bloqué par un EPI</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-check"/></svg></span>SLAM ce mois</div><div class="v">34</div><div class="t up">100 % avant montée</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gd"><svg class="i sm"><use href="#i-alert"/></svg></span>NO GO déclarés</div><div class="v">3</div><div class="t up">3 interventions évitées</div></div>
+  </div>
+  <div class="grid2">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-clip"/></svg><h3>Permis de travail en hauteur</h3><span class="r">Historique complet</span></div>
+      <table>
+        <thead><tr><th>N°</th><th>Site</th><th>Intervenants</th><th>Créneau</th><th>Contrôles</th><th>Statut</th></tr></thead>
+        <tbody>
+          <tr><td><b>2026-042</b></td><td>KATI · toiture<div class="sub">Pose LiteBeam 5AC</div></td><td>A. Koné, M. Sissoko</td><td>08:00–12:00</td><td><span class="tag t-red">3/4 · EPI H-003</span></td><td><span class="tag t-or">À valider</span></td></tr>
+          <tr><td><b>2026-041</b></td><td>FASO-NET · pylône 24 m<div class="sub">Alignement liaison</div></td><td>A. Koné</td><td>08:00–12:00</td><td><span class="tag t-gr">4/4</span></td><td><span class="tag t-bl">En cours</span></td></tr>
+          <tr><td><b>2026-040</b></td><td>Ségou · toiture</td><td>M. Sissoko</td><td>03/09 · 09:00–11:30</td><td><span class="tag t-gr">4/4</span></td><td><span class="tag t-gr">Clôturé</span></td></tr>
+          <tr><td><b>2026-039</b></td><td>Siège · mât</td><td>A. Koné</td><td>02/09 · 14:00–16:00</td><td><span class="tag t-gr">4/4</span></td><td><span class="tag t-gr">Clôturé</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--gold)"><use href="#i-climb"/></svg><h3>Décisions SLAM récentes</h3></div>
+      <table>
+        <tbody>
+          <tr><td><div class="cellrow"><span class="mini m-gr"><svg class="i sm"><use href="#i-check"/></svg></span><div><b>GO — A. Koné</b><div class="sub">04/09 07:52 · pylône FASO-NET</div></div></div></td><td style="text-align:right"><span class="tag t-gr">GO</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-red"><svg class="i sm"><use href="#i-x"/></svg></span><div><b>NO GO — M. Sissoko</b><div class="sub">01/09 · vent supérieur au seuil · reporté</div></div></div></td><td style="text-align:right"><span class="tag t-red">NO GO</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-gr"><svg class="i sm"><use href="#i-check"/></svg></span><div><b>GO — M. Sissoko</b><div class="sub">03/09 08:40 · toiture Ségou</div></div></div></td><td style="text-align:right"><span class="tag t-gr">GO</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-red"><svg class="i sm"><use href="#i-x"/></svg></span><div><b>NO GO — A. Koné</b><div class="sub">26/08 · ancrage douteux · signalé</div></div></div></td><td style="text-align:right"><span class="tag t-red">NO GO</span></td></tr>
+        </tbody>
+      </table>
+      <div class="cb" style="padding-top:0"><div class="banner info" style="margin:0"><svg class="i sm" style="margin-top:1px"><use href="#i-shield"/></svg><div>Un NO GO n'est jamais une faute : chacun est analysé et alimente le registre des risques.</div></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= INSPECTIONS ================= -->
+<div class="page" id="p-insp">
+  <div class="filters">
+    <button class="seg on">Toutes · 12</button><button class="seg">Locaux</button><button class="seg">Incendie</button><button class="seg">Électricité</button><button class="seg">Installations</button><button class="seg">Équipements</button>
+    <span style="flex:1"></span><button class="btn gh sm"><svg class="i sm"><use href="#i-calendar"/></svg>Planifier</button><button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Nouvelle inspection</button>
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-chart"/></svg><h3>Conformité par type d'inspection</h3></div>
+      <div class="cb">
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Locaux et postes de travail</b><span style="color:var(--mut)">100 %</span></div><div class="trk"><div class="fl g" style="width:100%"></div></div></div>
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Incendie et extincteurs</b><span style="color:var(--mut)">93 %</span></div><div class="trk"><div class="fl g" style="width:93%"></div></div></div>
+        <div style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Installations électriques</b><span style="color:var(--orange)">78 %</span></div><div class="trk"><div class="fl o" style="width:78%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px"><b>Installations en hauteur</b><span style="color:var(--mut)">96 %</span></div><div class="trk"><div class="fl g" style="width:96%"></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--orange)"><use href="#i-calendar"/></svg><h3>Inspections à planifier</h3></div>
+      <table><tbody>
+        <tr><td><div class="cellrow"><span class="mini m-or"><svg class="i sm"><use href="#i-clip"/></svg></span><div><b>Installations électriques — Siège</b><div class="sub">Trimestrielle · dernière le 12/06</div></div></div></td><td style="text-align:right"><span class="tag t-or">En retard</span></td></tr>
+        <tr><td><div class="cellrow"><span class="mini m-bl"><svg class="i sm"><use href="#i-clip"/></svg></span><div><b>Équipements — Baie A</b><div class="sub">Trimestrielle</div></div></div></td><td style="text-align:right"><span class="tag t-bl">J−12</span></td></tr>
+        <tr><td><div class="cellrow"><span class="mini m-bl"><svg class="i sm"><use href="#i-antenna"/></svg></span><div><b>Installation pylône — FASO-NET</b><div class="sub">Semestrielle</div></div></div></td><td style="text-align:right"><span class="tag t-bl">J−24</span></td></tr>
+      </tbody></table>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><h3>Inspections réalisées</h3></div>
+    <table>
+      <thead><tr><th>Réf.</th><th>Type</th><th>Site / Objet</th><th>Inspecteur</th><th>Date</th><th style="width:120px">Conformité</th><th>Écarts</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>INSP-054</b></td><td>Incendie & extincteurs</td><td>Siège</td><td>A. Koné</td><td>04/09</td><td><div class="trk"><div class="fl g" style="width:93%"></div></div><div class="sub">93 % · 14/15</div></td><td><span class="tag t-or">1 écart</span></td><td><span class="tag t-gd">Hors ligne</span></td></tr>
+        <tr><td><b>INSP-053</b></td><td>Installation en hauteur</td><td>KATI · toiture</td><td>M. Sissoko</td><td>02/09</td><td><div class="trk"><div class="fl g" style="width:96%"></div></div><div class="sub">96 % · 24/25</div></td><td><span class="tag t-or">1 écart</span></td><td><span class="tag t-gr">Clôturée</span></td></tr>
+        <tr><td><b>INSP-052</b></td><td>Locaux et postes</td><td>Siège</td><td>O. Diarra</td><td>28/08</td><td><div class="trk"><div class="fl g" style="width:100%"></div></div><div class="sub">100 % · 15/15</div></td><td><span class="tag t-gr">Aucun</span></td><td><span class="tag t-gr">Clôturée</span></td></tr>
+        <tr><td><b>INSP-051</b></td><td>Électricité</td><td>Siège · baie B</td><td>M. Sissoko</td><td>19/08</td><td><div class="trk"><div class="fl o" style="width:78%"></div></div><div class="sub">78 % · 10/13</div></td><td><span class="tag t-red">3 écarts</span></td><td><span class="tag t-gd">Actions en cours</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>4 sur 12 inspections · les écarts créent automatiquement des actions</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button></div></div>
+  </div>
+</div>
+
+<!-- ================= COFFRE-FORT ================= -->
+<div class="page" id="p-vault">
+  <div class="banner err"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div><b>Zone à accès restreint.</b> Toute consultation est enregistrée au journal d'audit avec votre identité et l'horodatage. Les secrets sont chiffrés au repos et ne figurent jamais dans les sauvegardes en clair.</div></div>
+  <div class="split">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-key"/></svg><h3>Secrets enregistrés</h3><span class="r">Générer un mot de passe fort</span></div>
+      <table>
+        <thead><tr><th>Équipement / Service</th><th>Type</th><th>Identifiant</th><th>Secret</th><th>Modifié</th><th>Rôle requis</th></tr></thead>
+        <tbody>
+          <tr><td><div class="cellrow"><span class="mini m-nv"><svg class="i sm"><use href="#i-antenna"/></svg></span><div><b>FAS-AP-01</b><div class="sub">MikroTik LHG 5</div></div></div></td><td>Admin RouterOS</td><td>ak-adm</td><td><div class="cellrow"><code style="background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:11.5px;letter-spacing:1.5px" id="d1">••••••••</code><button class="btn gh sm" onclick="rv('d1','K7#mR2vX9!qL')"><svg class="i sm"><use href="#i-eye"/></svg></button></div></td><td>03/09</td><td><span class="tag t-gy">Technicien+</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-nv"><svg class="i sm"><use href="#i-antenna"/></svg></span><div><b>BKO-PBX-01</b><div class="sub">Grandstream UCM</div></div></div></td><td>Admin web</td><td>admin-hit</td><td><div class="cellrow"><code style="background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:11.5px;letter-spacing:1.5px" id="d2">••••••••</code><button class="btn gh sm" onclick="rv('d2','Uc!84#Tz@wPm')"><svg class="i sm"><use href="#i-eye"/></svg></button></div></td><td>28/08</td><td><span class="tag t-or">Responsable+</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-nv"><svg class="i sm"><use href="#i-wifi"/></svg></span><div><b>Wi-Fi HIT-LAB</b><div class="sub">Siège · WPA3</div></div></div></td><td>Clé réseau</td><td>—</td><td><div class="cellrow"><code style="background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:11.5px;letter-spacing:1.5px" id="d3">••••••••</code><button class="btn gh sm" onclick="rv('d3','Hir0nd3ll&s26')"><svg class="i sm"><use href="#i-eye"/></svg></button></div></td><td>01/09</td><td><span class="tag t-gy">Technicien+</span></td></tr>
+          <tr><td><div class="cellrow"><span class="mini m-nv"><svg class="i sm"><use href="#i-antenna"/></svg></span><div><b>Ruijie Cloud</b><div class="sub">Projet HIT-LAB</div></div></div></td><td>Compte cloud</td><td>hitlab@…</td><td><div class="cellrow"><code style="background:var(--surface2);border:1px solid var(--line);border-radius:5px;padding:3px 8px;font-size:11.5px;letter-spacing:1.5px">••••••••</code><button class="btn gh sm"><svg class="i sm"><use href="#i-eye"/></svg></button></div></td><td>15/08</td><td><span class="tag t-red">Direction</span></td></tr>
+        </tbody>
+      </table>
+      <div class="pagin"><span>4 sur 96 secrets · 2FA recommandée sur les comptes cloud</span><div class="pg"><button class="on">1</button><button>2</button></div></div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-clock"/></svg><h3>Journal des accès</h3></div>
+      <div class="cb"><div class="timeline" id="vtl">
+        <div class="tl"><b>O. Diarra — FAS-AP-01</b><span>04/09 11:02 · consultation</span></div>
+        <div class="tl"><b>M. Sissoko — Wi-Fi HIT-LAB</b><span>03/09 16:40 · consultation</span></div>
+        <div class="tl"><b>A. Traoré — Ruijie Cloud</b><span>02/09 09:15 · modification</span></div>
+        <div class="tl" style="padding-bottom:0"><b>A. Koné — BKO-PBX-01</b><span>28/08 14:22 · création</span></div>
+      </div>
+      <div class="banner warn" style="margin:12px 0 0"><svg class="i sm" style="margin-top:1px"><use href="#i-alert"/></svg><div>Le journal est conservé et ne peut être ni modifié ni supprimé, y compris par un administrateur.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= FORMATIONS ================= -->
+<div class="page" id="p-form">
+  <div class="mets" style="grid-template-columns:repeat(4,1fr)">
+    <div class="met"><div class="hd"><span class="ic m-bl"><svg class="i sm"><use href="#i-cap"/></svg></span>Séances réalisées</div><div class="v">8</div><div class="t flat">sur 12 planifiées en 2026</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-users"/></svg></span>Personnel sensibilisé</div><div class="v">91 %</div><div class="t up">10 sur 11 collaborateurs</div></div>
+    <div class="met"><div class="hd"><span class="ic m-or"><svg class="i sm"><use href="#i-alert"/></svg></span>Habilitations à renouveler</div><div class="v">3</div><div class="t down">dans les 6 mois</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gd"><svg class="i sm"><use href="#i-check"/></svg></span>Réussite aux quiz</div><div class="v">8,4</div><div class="t up">moyenne sur 10</div></div>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-users"/></svg><h3>Matrice de compétences</h3><span class="r">F = formé · R = recyclage requis · — = à former</span></div>
+    <table>
+      <thead><tr><th>Collaborateur</th><th>Fonction</th><th>Hauteur</th><th>Vérif. EPI</th><th>Sauvetage</th><th>Électrique</th><th>Secourisme</th><th>Incendie</th><th>Cyber</th></tr></thead>
+      <tbody>
+        <tr><td><div class="cellrow"><span class="av" style="width:26px;height:26px;font-size:10px;background:var(--navy2)">AK</span><b>A. Koné</b></div></td><td>Technicien</td><td><span class="tag t-gr">F 03/26</span></td><td><span class="tag t-gr">F 03/26</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-or">R</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:26px;height:26px;font-size:10px;background:var(--navy2)">MS</span><b>M. Sissoko</b></div></td><td>Technicien</td><td><span class="tag t-gr">F 03/26</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gr">F 02/26</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:26px;height:26px;font-size:10px;background:var(--navy2)">OD</span><b>O. Diarra</b></div></td><td>Référente SHEQ</td><td><span class="tag t-gr">F 03/26</span></td><td><span class="tag t-gr">F 03/26</span></td><td><span class="tag t-or">R</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:26px;height:26px;font-size:10px;background:var(--navy2)">AT</span><b>A. Traoré</b></div></td><td>Direction</td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-gy">—</span></td><td><span class="tag t-or">R</span></td><td><span class="tag t-gr">F 01/26</span></td><td><span class="tag t-gr">F</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="card">
+    <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-calendar"/></svg><h3>Planning annuel des sensibilisations</h3><span class="r">Exporter les présences</span></div>
+    <table>
+      <thead><tr><th>Mois</th><th>Thème</th><th>Public</th><th>Animateur</th><th>Participants</th><th>Score quiz</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td>Juillet</td><td>Sécurité routière et déplacements</td><td>Tout le personnel</td><td>O. Diarra</td><td>10 / 11</td><td><b>8,1</b> / 10</td><td><span class="tag t-gr">Réalisée</span></td></tr>
+        <tr><td>Août</td><td>Gestes et postures</td><td>Équipes terrain</td><td>O. Diarra</td><td>4 / 4</td><td><b>8,8</b> / 10</td><td><span class="tag t-gr">Réalisée</span></td></tr>
+        <tr><td><b>Septembre</b></td><td>Signalement des situations dangereuses</td><td>Tout le personnel</td><td>O. Diarra</td><td>11 inscrits</td><td>—</td><td><span class="tag t-bl">J−5</span></td></tr>
+        <tr><td>Octobre</td><td>Sauvetage en hauteur (+ exercice annuel)</td><td>Équipes terrain</td><td>Prestataire</td><td>—</td><td>—</td><td><span class="tag t-gy">Planifiée</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>4 sur 12 séances · présences via FOR-SHEQ-014</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button></div></div>
+  </div>
+</div>
+
+<!-- ================= AUDIT ================= -->
+<div class="page" id="p-audit">
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-chart"/></svg><h3>Maturité du système</h3><span class="r">Comparatif</span></div>
+      <div class="cb">
+        <div style="display:flex;align-items:flex-end;gap:22px;padding:6px 0 14px">
+          <div style="text-align:center;flex:1"><div style="font-size:32px;font-weight:750;letter-spacing:-1.4px;color:var(--mut)">41 %</div><div style="font-size:11.5px;color:var(--mut);margin-top:3px">Diagnostic initial<br>mars 2026</div></div>
+          <div style="font-size:22px;color:var(--green);padding-bottom:26px">→</div>
+          <div style="text-align:center;flex:1"><div style="font-size:32px;font-weight:750;letter-spacing:-1.4px;color:var(--green)">77 %</div><div style="font-size:11.5px;color:var(--mut);margin-top:3px">Audit actuel<br>septembre 2026</div></div>
+        </div>
+        <div class="trk" style="height:9px"><div class="fl g" style="width:77%"></div></div>
+        <div class="banner info" style="margin:14px 0 0"><svg class="i sm" style="margin-top:1px"><use href="#i-target"/></svg><div><b>+36 points en six mois.</b> Seuil « système mature » : 80 %. Trois écarts restants concernent les formations réglementaires.</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-list"/></svg><h3>Score par chapitre ISO 45001</h3></div>
+      <div class="cb">
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Contexte et leadership</b><span style="color:var(--mut)">6/6</span></div><div class="trk"><div class="fl g" style="width:100%"></div></div></div>
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Planification</b><span style="color:var(--mut)">6/6</span></div><div class="trk"><div class="fl g" style="width:100%"></div></div></div>
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Support</b><span style="color:var(--orange)">5/8</span></div><div class="trk"><div class="fl o" style="width:63%"></div></div></div>
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Réalisation des activités</b><span style="color:var(--mut)">8/10</span></div><div class="trk"><div class="fl gd" style="width:80%"></div></div></div>
+        <div style="margin-bottom:11px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Évaluation des performances</b><span style="color:var(--mut)">7/8</span></div><div class="trk"><div class="fl g" style="width:88%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Amélioration</b><span style="color:var(--mut)">2/6</span></div><div class="trk"><div class="fl o" style="width:33%"></div></div></div>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><h3>Écarts constatés</h3><span class="r">Générer le rapport d'audit</span></div>
+    <table>
+      <thead><tr><th>Exigence</th><th>Chapitre</th><th>Cotation</th><th>Constat</th><th>Action corrective</th><th>Échéance</th></tr></thead>
+      <tbody>
+        <tr><td><b>Compétences et habilitations suivies</b></td><td>Support</td><td><span class="tag t-or">1 · partiel</span></td><td>3 habilitations non renouvelées ; aucun secouriste côté terrain</td><td><span class="tag t-bl">ACT-047</span></td><td>12/2026</td></tr>
+        <tr><td><b>Plan de sauvetage exercé</b></td><td>Réalisation</td><td><span class="tag t-or">1 · partiel</span></td><td>Plan rédigé mais exercice annuel non encore réalisé</td><td><span class="tag t-bl">ACT-048</span></td><td>10/2026</td></tr>
+        <tr><td><b>Retours d'expérience partagés</b></td><td>Amélioration</td><td><span class="tag t-red">0 · absent</span></td><td>Analyses réalisées mais non diffusées aux équipes</td><td><span class="tag t-bl">ACT-049</span></td><td>11/2026</td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>3 écarts sur 22 exigences auditées · auditeur : O. Diarra · 04/09/2026</span><div class="pg"><button class="on">1</button></div></div>
+  </div>
+</div>
+
+<!-- ================= REVUE DE DIRECTION ================= -->
+<div class="page" id="p-revue">
+  <div class="banner info"><svg class="i sm" style="margin-top:1px"><use href="#i-sync"/></svg><div><b>Rapport assemblé automatiquement</b> à partir des données du trimestre. Complétez les décisions, puis exportez le compte rendu (FOR-SHEQ-016).</div><span class="act">Exporter en PDF</span></div>
+  <div class="split">
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-chart"/></svg><h3>Revue de direction du 4e trimestre 2026</h3><span class="tag t-gd" style="margin-left:auto">Brouillon</span></div>
+        <div class="cb">
+          <div class="mets" style="grid-template-columns:repeat(4,1fr);margin-bottom:16px">
+            <div class="met" style="box-shadow:none"><div class="hd">Accidents</div><div class="v" style="font-size:22px">0</div></div>
+            <div class="met" style="box-shadow:none"><div class="hd">Signalements</div><div class="v" style="font-size:22px">14</div></div>
+            <div class="met" style="box-shadow:none"><div class="hd">Actions soldées</div><div class="v" style="font-size:22px">7</div></div>
+            <div class="met" style="box-shadow:none"><div class="hd">Maturité</div><div class="v" style="font-size:22px;color:var(--green)">77 %</div></div>
+          </div>
+          <div class="detail">
+            <div class="kv"><span>Suivi des décisions précédentes</span><b>4 sur 5 réalisées</b></div>
+            <div class="kv"><span>Événements marquants</span><b>Aucun accident · 3 NO GO analysés</b></div>
+            <div class="kv"><span>Registre des risques</span><b>2 risques réévalués à la baisse</b></div>
+            <div class="kv"><span>Formations</span><b>8 séances · 91 % du personnel</b></div>
+            <div class="kv"><span>Ressources demandées</span><b>Budget EPI et formation secourisme</b></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-check"/></svg><h3>Décisions de la revue</h3><span class="r">Ajouter une décision</span></div>
+        <table>
+          <thead><tr><th>Décision</th><th>Responsable</th><th>Échéance</th><th>Statut</th></tr></thead>
+          <tbody>
+            <tr><td><b>Former deux secouristes du travail</b><div class="sub">Écart d'audit · chapitre Support</div></td><td>Direction</td><td>12/2026</td><td><span class="tag t-gd">Décidée</span></td></tr>
+            <tr><td><b>Réaliser l'exercice de sauvetage en hauteur</b></td><td>Réf. SHEQ</td><td>10/2026</td><td><span class="tag t-gd">Décidée</span></td></tr>
+            <tr><td><b>Budget EPI 2027 : remplacement de 2 harnais</b></td><td>Direction</td><td>01/2027</td><td><span class="tag t-bl">À arbitrer</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div>
+      <div class="card" style="margin-bottom:14px">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-users"/></svg><h3>Participants</h3></div>
+        <div class="cb">
+          <div class="cellrow" style="margin-bottom:9px"><span class="av" style="background:var(--navy2)">AT</span><div><b style="font-size:12.5px">A. Traoré</b><div class="sub">Direction</div></div></div>
+          <div class="cellrow" style="margin-bottom:9px"><span class="av" style="background:var(--navy2)">OD</span><div><b style="font-size:12.5px">O. Diarra</b><div class="sub">Référente SHEQ</div></div></div>
+          <div class="cellrow" style="margin-bottom:9px"><span class="av" style="background:var(--navy2)">AK</span><div><b style="font-size:12.5px">A. Koné</b><div class="sub">Représentant du personnel</div></div></div>
+          <button class="btn gh sm" style="width:100%;margin-top:4px"><svg class="i sm"><use href="#i-plus"/></svg>Ajouter un participant</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-doc"/></svg><h3>Revues précédentes</h3></div>
+        <div class="cb"><div class="timeline">
+          <div class="tl"><b>3e trimestre 2026</b><span>06/2026 · 5 décisions</span></div>
+          <div class="tl"><b>2e trimestre 2026</b><span>03/2026 · diagnostic initial 41 %</span></div>
+          <div class="tl" style="padding-bottom:0"><b>Lancement du système</b><span>03/2026 · politique signée</span></div>
+        </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ================= VISITEURS ================= -->
+<div class="page" id="p-visit">
+  <div class="mets" style="grid-template-columns:repeat(3,1fr)">
+    <div class="met"><div class="hd"><span class="ic m-bl"><svg class="i sm"><use href="#i-door"/></svg></span>Présents actuellement</div><div class="v">2</div><div class="t flat">arrivés ce matin</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-shield"/></svg></span>Consignes lues</div><div class="v">100 %</div><div class="t up">sur 34 visites du mois</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gy"><svg class="i sm"><use href="#i-users"/></svg></span>Visites ce mois</div><div class="v">34</div><div class="t flat">dont 12 sous-traitants</div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-door"/></svg><h3>Registre des visiteurs</h3><span class="r">Exporter le mois</span></div>
+    <table>
+      <thead><tr><th>Visiteur</th><th>Société</th><th>Motif</th><th>Personne visitée</th><th>Arrivée</th><th>Départ</th><th>Consignes</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><b>M. Camara</b></td><td>ElectroPlus</td><td>Fourniture matériel</td><td>A. Traoré</td><td>09:40</td><td>—</td><td><span class="tag t-gr">Lues</span></td><td><span class="tag t-bl">Sur site</span></td></tr>
+        <tr><td><b>Mme Keita</b></td><td>FASO-NET</td><td>Réunion projet</td><td>O. Diarra</td><td>10:15</td><td>—</td><td><span class="tag t-gr">Lues</span></td><td><span class="tag t-bl">Sur site</span></td></tr>
+        <tr><td><b>M. Diallo</b></td><td>Sous-traitant élec.</td><td>Intervention baie B</td><td>M. Sissoko</td><td>03/09 08:00</td><td>03/09 12:30</td><td><span class="tag t-gr">Lues</span></td><td><span class="tag t-gy">Parti</span></td></tr>
+        <tr><td><b>Mme Touré</b></td><td>Cabinet comptable</td><td>Audit financier</td><td>A. Traoré</td><td>02/09 14:00</td><td>02/09 17:00</td><td><span class="tag t-gr">Lues</span></td><td><span class="tag t-gy">Parti</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>4 sur 34 visites · évacuation : les personnes « sur site » apparaissent sur la liste d'appel</span><div class="pg"><button class="on">1</button><button>2</button><button>3</button></div></div>
+  </div>
+</div>
+
+<!-- ================= DÉCHETS ================= -->
+<div class="page" id="p-dechets">
+  <div class="mets" style="grid-template-columns:repeat(4,1fr)">
+    <div class="met"><div class="hd"><span class="ic m-gd"><svg class="i sm"><use href="#i-inbox"/></svg></span>DEEE en stock</div><div class="v">14 kg</div><div class="t down">enlèvement à planifier</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-recycle"/></svg></span>Enlèvements 2026</div><div class="v">3</div><div class="t flat">filières agréées</div></div>
+    <div class="met"><div class="hd"><span class="ic m-gr"><svg class="i sm"><use href="#i-doc"/></svg></span>Justificatifs archivés</div><div class="v">100 %</div><div class="t up">traçabilité complète</div></div>
+    <div class="met"><div class="hd"><span class="ic m-bl"><svg class="i sm"><use href="#i-shield"/></svg></span>Incidents environnement</div><div class="v">0</div><div class="t up">depuis le lancement</div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><svg class="i" style="color:var(--green)"><use href="#i-recycle"/></svg><h3>Registre de gestion des déchets</h3><span class="r">Nouvel enregistrement</span></div>
+    <table>
+      <thead><tr><th>Date</th><th>Type</th><th>Description</th><th>Quantité</th><th>Origine</th><th>Filière / repreneur</th><th>Enlèvement</th><th>Justificatif</th></tr></thead>
+      <tbody>
+        <tr><td>04/09</td><td><span class="tag t-gd">DEEE</span></td><td>2 routeurs HS, câbles, 1 onduleur</td><td>14 kg</td><td>Siège</td><td>—</td><td><span class="tag t-or">À planifier</span></td><td><span class="tag t-gy">—</span></td></tr>
+        <tr><td>15/07</td><td><span class="tag t-gd">DEEE</span></td><td>Équipements réseau hors service</td><td>8 kg</td><td>Siège</td><td>[Repreneur agréé]</td><td>15/07</td><td><span class="tag t-gr">BR-2214</span></td></tr>
+        <tr><td>15/07</td><td><span class="tag t-or">Batteries</span></td><td>Batteries d'onduleurs</td><td>4 unités</td><td>Siège</td><td>[Repreneur agréé]</td><td>15/07</td><td><span class="tag t-gr">BR-2214</span></td></tr>
+        <tr><td>28/05</td><td><span class="tag t-bl">Cartouches</span></td><td>Toners et cartouches d'encre</td><td>12 unités</td><td>Siège</td><td>Filière recyclage</td><td>28/05</td><td><span class="tag t-gr">Reçu 118</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>4 enregistrements · DEEE et batteries : filières agréées obligatoires</span><div class="pg"><button class="on">1</button><button>2</button></div></div>
+  </div>
+</div>
+
+<!-- ================= SATISFACTION ================= -->
+<div class="page" id="p-satis">
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--gold)"><use href="#i-star"/></svg><h3>Satisfaction moyenne</h3><span class="r">18 réponses</span></div>
+      <div class="cb">
+        <div style="display:flex;align-items:baseline;gap:10px;margin-bottom:14px"><span style="font-size:38px;font-weight:750;letter-spacing:-1.6px">4,6</span><span style="color:var(--mut);font-size:13px">/ 5 · taux de réponse 72 %</span></div>
+        <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Qualité de l'installation</b><span style="color:var(--mut)">4,8</span></div><div class="trk"><div class="fl g" style="width:96%"></div></div></div>
+        <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Respect des délais</b><span style="color:var(--mut)">4,3</span></div><div class="trk"><div class="fl gd" style="width:86%"></div></div></div>
+        <div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Propreté et sécurité du chantier</b><span style="color:var(--mut)">4,5</span></div><div class="trk"><div class="fl g" style="width:90%"></div></div></div>
+        <div><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><b>Professionnalisme</b><span style="color:var(--mut)">4,9</span></div><div class="trk"><div class="fl g" style="width:98%"></div></div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--orange)"><use href="#i-alert"/></svg><h3>Retours nécessitant une action</h3></div>
+      <div class="cb">
+        <div class="banner err" style="margin-bottom:12px"><svg class="i sm" style="margin-top:1px"><use href="#i-alert"/></svg><div><b>1 note à 2 étoiles</b> sur « Respect des délais » — une analyse est requise (PRO-SHEQ-001).</div><span class="act">Traiter</span></div>
+        <table><tbody>
+          <tr><td><div><b>Client SEGOU-TEL</b><div class="sub">« Installation reportée deux fois sans prévenir »</div></div></td><td style="text-align:right"><span class="tag t-red">2 / 5</span></td></tr>
+          <tr><td><div><b>Client KATI</b><div class="sub">« Travail soigné, équipe ponctuelle »</div></div></td><td style="text-align:right"><span class="tag t-gr">5 / 5</span></td></tr>
+          <tr><td><div><b>Client FASO-NET</b><div class="sub">« Bonne liaison, explications claires »</div></div></td><td style="text-align:right"><span class="tag t-gr">5 / 5</span></td></tr>
+        </tbody></table>
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><h3>Enquêtes envoyées</h3><span class="r">Relancer les non-répondants</span></div>
+    <table>
+      <thead><tr><th>Client</th><th>Intervention</th><th>Envoyée</th><th>Canal</th><th>Réponse</th><th>Note</th><th>Suite donnée</th></tr></thead>
+      <tbody>
+        <tr><td><b>KATI</b></td><td>Pose LiteBeam 5AC</td><td>04/09</td><td>SMS</td><td>04/09</td><td><span class="tag t-gr">5 / 5</span></td><td><span class="tag t-gy">—</span></td></tr>
+        <tr><td><b>SEGOU-TEL</b></td><td>Installation liaison</td><td>28/08</td><td>SMS</td><td>29/08</td><td><span class="tag t-red">2 / 5</span></td><td><span class="tag t-bl">ACT-046</span></td></tr>
+        <tr><td><b>FASO-NET</b></td><td>Maintenance PtP</td><td>22/08</td><td>QR code</td><td>22/08</td><td><span class="tag t-gr">5 / 5</span></td><td><span class="tag t-gy">—</span></td></tr>
+        <tr><td><b>BKO-SANTÉ</b></td><td>Téléphonie IP</td><td>19/08</td><td>SMS</td><td>—</td><td><span class="tag t-gy">Sans réponse</span></td><td><span class="tag t-or">Relance</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>4 sur 25 enquêtes · toute note ≤ 2 déclenche une analyse</span><div class="pg"><button class="on">1</button><button>2</button></div></div>
+  </div>
+</div>
+
+<!-- ================= UTILISATEURS ================= -->
+<div class="page" id="p-users">
+  <div class="filters">
+    <button class="seg on">Actifs · 11</button><button class="seg">Par rôle</button><button class="seg">Désactivés · 1</button>
+    <span style="flex:1"></span><button class="btn gh sm"><svg class="i sm"><use href="#i-list"/></svg>Matrice des droits</button><button class="btn pri sm"><svg class="i sm"><use href="#i-plus"/></svg>Inviter un utilisateur</button>
+  </div>
+  <div class="card" style="margin-bottom:14px">
+    <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-users"/></svg><h3>Utilisateurs</h3></div>
+    <table>
+      <thead><tr><th>Nom</th><th>Identifiant</th><th>Rôle</th><th>Site</th><th>Dernière connexion</th><th>Appareil</th><th>Statut</th></tr></thead>
+      <tbody>
+        <tr><td><div class="cellrow"><span class="av" style="width:28px;height:28px;font-size:10.5px;background:var(--navy2)">AT</span><b>Alassane Traoré</b></div></td><td>a.traore</td><td><span class="tag t-red">Administrateur</span></td><td>Siège</td><td>Aujourd'hui 08:12</td><td>Web</td><td><span class="tag t-gr">Actif</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:28px;height:28px;font-size:10.5px;background:var(--navy2)">OD</span><b>Oumou Diarra</b></div></td><td>o.diarra</td><td><span class="tag t-or">Référent SHEQ</span></td><td>Siège</td><td>Aujourd'hui 07:55</td><td>Web · mobile</td><td><span class="tag t-gr">Actif</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:28px;height:28px;font-size:10.5px;background:var(--navy2)">AK</span><b>Abdoulaye Koné</b></div></td><td>a.kone</td><td><span class="tag t-bl">Technicien</span></td><td>Terrain</td><td>Aujourd'hui 09:31</td><td>Mobile</td><td><span class="tag t-gr">Actif</span></td></tr>
+        <tr><td><div class="cellrow"><span class="av" style="width:28px;height:28px;font-size:10.5px;background:var(--navy2)">MS</span><b>Moussa Sissoko</b></div></td><td>m.sissoko</td><td><span class="tag t-bl">Technicien</span></td><td>Terrain</td><td>Hier 17:40</td><td>Mobile</td><td><span class="tag t-gr">Actif</span></td></tr>
+        <tr style="opacity:.65"><td><div class="cellrow"><span class="av" style="width:28px;height:28px;font-size:10.5px;background:var(--mut)">SD</span><b>S. Dembélé</b></div></td><td>s.dembele</td><td><span class="tag t-gy">Collaborateur</span></td><td>Siège</td><td>12/06</td><td>—</td><td><span class="tag t-gy">Désactivé</span></td></tr>
+      </tbody>
+    </table>
+    <div class="pagin"><span>5 sur 12 comptes</span><div class="pg"><button class="on">1</button><button>2</button></div></div>
+  </div>
+  <div class="card">
+    <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-lock"/></svg><h3>Matrice des droits par rôle</h3></div>
+    <table>
+      <thead><tr><th>Module</th><th>Technicien</th><th>Responsable</th><th>Référent SHEQ</th><th>Administrateur</th></tr></thead>
+      <tbody>
+        <tr><td><b>Signalements</b></td><td><span class="tag t-bl">Créer</span></td><td><span class="tag t-bl">Créer · lire</span></td><td><span class="tag t-gr">Tout</span></td><td><span class="tag t-gr">Tout</span></td></tr>
+        <tr><td><b>Permis de hauteur</b></td><td><span class="tag t-bl">Demander</span></td><td><span class="tag t-gr">Valider</span></td><td><span class="tag t-bl">Lire</span></td><td><span class="tag t-gr">Tout</span></td></tr>
+        <tr><td><b>Registre des risques</b></td><td><span class="tag t-gy">Lire</span></td><td><span class="tag t-gy">Lire</span></td><td><span class="tag t-gr">Tout</span></td><td><span class="tag t-gr">Tout</span></td></tr>
+        <tr><td><b>Coffre-fort</b></td><td><span class="tag t-or">Lire (limité)</span></td><td><span class="tag t-bl">Lire · créer</span></td><td><span class="tag t-gy">Aucun</span></td><td><span class="tag t-gr">Tout</span></td></tr>
+        <tr><td><b>Documents</b></td><td><span class="tag t-gy">Lire</span></td><td><span class="tag t-gy">Lire</span></td><td><span class="tag t-bl">Rédiger</span></td><td><span class="tag t-gr">Approuver</span></td></tr>
+        <tr><td><b>Utilisateurs</b></td><td><span class="tag t-gy">Aucun</span></td><td><span class="tag t-gy">Aucun</span></td><td><span class="tag t-gy">Aucun</span></td><td><span class="tag t-gr">Tout</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ================= PARAMÈTRES ================= -->
+<div class="page" id="p-param">
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-cog"/></svg><h3>Référentiels</h3><span class="r">Modifier</span></div>
+      <div class="cb detail">
+        <div class="kv"><span>Sites et clients</span><b>12 enregistrés</b></div>
+        <div class="kv"><span>Types d'équipements</span><b>9 catégories · 4 marques</b></div>
+        <div class="kv"><span>Catégories de risques</span><b>10 familles</b></div>
+        <div class="kv"><span>Types de déchets</span><b>8 filières</b></div>
+        <div class="kv"><span>Modèles de checklists</span><b>5 (locaux, incendie, électricité, installations, équipements)</b></div>
+        <div class="kv"><span>Thèmes de sensibilisation</span><b>12 (planning annuel)</b></div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-target"/></svg><h3>Seuils et objectifs</h3><span class="r">Modifier</span></div>
+      <div class="cb detail">
+        <div class="kv"><span>Criticité : seuil « élevé »</span><b>C ≥ 8</b></div>
+        <div class="kv"><span>Criticité : seuil « critique »</span><b>C ≥ 15</b></div>
+        <div class="kv"><span>Signal liaison acceptable</span><b>−50 à −65 dBm</b></div>
+        <div class="kv"><span>CCQ minimal</span><b>90 %</b></div>
+        <div class="kv"><span>Conformité d'inspection cible</span><b>≥ 90 %</b></div>
+        <div class="kv"><span>Délai d'analyse d'un signalement</span><b>7 jours</b></div>
+        <div class="kv"><span>Vérification périodique des EPI</span><b>12 mois</b></div>
+      </div>
+    </div>
+  </div>
+  <div class="grid2" style="grid-template-columns:1fr 1fr">
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-mail"/></svg><h3>Notifications</h3></div>
+      <table>
+        <thead><tr><th>Événement</th><th>Destinataires</th><th>Canal</th><th>Délai</th></tr></thead>
+        <tbody>
+          <tr><td>Nouveau signalement</td><td>Référent SHEQ</td><td>App · e-mail</td><td>Immédiat</td></tr>
+          <tr><td>Action arrivant à échéance</td><td>Responsable de l'action</td><td>App · e-mail</td><td>J−7, J, retard</td></tr>
+          <tr><td>Vérification EPI due</td><td>Référent SHEQ · porteur</td><td>App</td><td>J−30, J−7</td></tr>
+          <tr><td>Permis en attente de validation</td><td>Responsable</td><td>App</td><td>Immédiat</td></tr>
+          <tr><td>Note client ≤ 2</td><td>Référent SHEQ · direction</td><td>E-mail</td><td>Immédiat</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="ch"><svg class="i" style="color:var(--navy2)"><use href="#i-shield"/></svg><h3>Sécurité et sauvegarde</h3></div>
+      <div class="cb detail">
+        <div class="kv"><span>Sauvegarde de la base</span><b>Quotidienne · 03:00</b></div>
+        <div class="kv"><span>Dernière sauvegarde</span><b style="color:var(--green)">Aujourd'hui 03:00 · vérifiée</b></div>
+        <div class="kv"><span>Dernier test de restauration</span><b>01/09/2026 · réussi</b></div>
+        <div class="kv"><span>Rétention du journal d'audit</span><b>Illimitée (non modifiable)</b></div>
+        <div class="kv"><span>Chiffrement du coffre-fort</span><b>Actif · clé hors base</b></div>
+        <div class="kv"><span>Durée de session</span><b>8 heures · verrouillage 15 min</b></div>
+        <button class="btn gh sm" style="width:100%;margin-top:12px"><svg class="i sm"><use href="#i-dl"/></svg>Exporter toutes les données (CSV / XLSX)</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div></div></div></div>
+
+<script>
+const T={dash:['Tableau de bord',"Vue d'ensemble · septembre 2026"],sig:['Signalements','Terrain · 6 ce mois'],
+detail:['SIG-2026-018','Signalements › Détail'],risk:['Registre des risques','Pilotage · 18 risques'],
+act:["Plan d'action",'Pilotage · 16 actions'],parc:['Parc & configurations','Terrain · 128 équipements'],
+epi:['EPI antichute','Terrain · 9 équipements'],docs:['Documents','Système · liste maîtresse'],
+hauteur:['SLAM & permis de hauteur','Terrain · 1 permis actif'],insp:['Inspections','Terrain · 12 ce trimestre'],
+vault:["Coffre-fort d'identifiants",'Terrain · accès restreint et tracé'],form:['Formations & compétences','Système · 91 % du personnel'],
+audit:['Audit interne','Système · maturité 77 %'],revue:['Revue de direction','Système · 4e trimestre 2026'],
+visit:['Visiteurs','Système · 2 présents'],dechets:['Déchets & environnement','Système · registre DEEE'],
+satis:['Satisfaction client','Système · 4,6 / 5'],users:['Utilisateurs & rôles','Administration · 12 comptes'],
+param:['Paramètres','Administration · référentiels et seuils']};
+function nav(p){
+  document.querySelectorAll('.page').forEach(x=>x.classList.remove('on'));
+  document.getElementById('p-'+p).classList.add('on');
+  document.querySelectorAll('.pbar button').forEach(b=>b.classList.toggle('on',b.dataset.p===p));
+  document.querySelectorAll('.nv').forEach(n=>n.classList.toggle('on',n.dataset.n===p));
+  if(T[p]){document.getElementById('ttl').textContent=T[p][0];document.getElementById('crm').textContent=T[p][1];}
+  document.querySelector('.view').scrollTop=0;
+}
+document.querySelectorAll('.pbar button').forEach(b=>b.addEventListener('click',()=>nav(b.dataset.p)));
+document.querySelectorAll('.filters').forEach(g=>g.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',()=>{
+  g.querySelectorAll('.seg').forEach(x=>x.classList.remove('on'));s.classList.add('on');})));
+
+/* coffre-fort : affichage temporisé + trace au journal */
+function rv(id,s){
+  const e=document.getElementById(id);if(!e)return;
+  e.textContent=s;e.style.letterSpacing='0';
+  const tl=document.getElementById('vtl');
+  if(tl){const d=document.createElement('div');d.className='tl';
+    d.innerHTML='<b>O. Diarra — consultation</b><span>'+new Date().toLocaleString('fr-FR',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})+' · masquage dans 15 s</span>';
+    tl.prepend(d);}
+  setTimeout(()=>{e.textContent='••••••••';e.style.letterSpacing='1.5px';},15000);
+}
+
+/* matrice */
+(function(){const g=document.getElementById('mtx');if(!g)return;
+ const col=v=>v>=15?'#F2B8B2':v>=8?'#F8CFA8':v>=4?'#F6EAB8':'#CFE7D6';
+ const pts={'3-4':2,'2-5':2,'3-3':1,'3-2':3,'2-2':1,'2-3':2,'4-2':2,'1-3':1,'2-4':2,'1-2':2};
+ for(let p=5;p>=1;p--){const a=document.createElement('div');a.className='ax';a.textContent=p;g.appendChild(a);
+  for(let gr=1;gr<=5;gr++){const v=p*gr;const d=document.createElement('div');d.className='mc';
+   d.style.background=col(v);d.textContent=v;
+   const n=pts[p+'-'+gr];if(n){d.innerHTML=v+'<span class="pt">'+n+'</span>';d.title=n+' risque(s) à cette position';}
+   g.appendChild(d);} }
+ const e=document.createElement('div');e.className='ax';g.appendChild(e);
+ [1,2,3,4,5].forEach(n=>{const a=document.createElement('div');a.className='ax';a.textContent=n;g.appendChild(a);});
+})();
+</script>
+</body>
+</html>

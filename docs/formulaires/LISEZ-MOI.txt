@@ -1,0 +1,8 @@
+Ce dossier accueillera les gabarits de fiches de configuration (FOR-SHEQ-006 à 009)
+au moment du lot 3 (prompt 3.2).
+
+Ces fichiers sont classés CONFIDENTIEL dans le SMI documentaire (accès restreint,
+identifiants) et ne doivent donc PAS être copiés tels quels dans ce dépôt Git.
+Au moment du prompt 3.2, se référer directement aux fichiers sources dans
+04-Formulaires_vierges/CONFIDENTIEL/ du SMI pour connaître les champs à reproduire,
+sans jamais versionner leur contenu ni les identifiants qu'ils pourraient contenir.

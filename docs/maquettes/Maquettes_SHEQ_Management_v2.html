@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SHEQ Management — Maquettes mobiles v2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400..800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#F5F6F8; --surface:#FFFFFF; --surface2:#FAFBFC;
+  --ink:#0F172A; --ink2:#334155; --mut:#64748B; --line:#E2E6EC; --line2:#EEF1F5;
+  --navy:#16305B; --navy2:#25467E; --navy-soft:#EDF1F8;
+  --gold:#B8901B; --gold-soft:#FBF3DC;
+  --red:#B42318; --red-soft:#FEF0EF; --orange:#B54708; --orange-soft:#FEF3EA;
+  --green:#067647; --green-soft:#ECF7F1; --blue:#175CD3; --blue-soft:#EFF4FF;
+  --r:8px; --r-lg:12px;
+  --sh:0 1px 2px rgba(16,24,40,.05);
+  --sh-md:0 4px 12px -4px rgba(16,24,40,.10);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);font-family:Inter,system-ui,-apple-system,sans-serif;color:var(--ink);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased;font-variant-numeric:tabular-nums}
+svg.i{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:0 0 auto}
+svg.i.sm{width:15px;height:15px} svg.i.lg{width:22px;height:22px} svg.i.xl{width:26px;height:26px}
+
+/* ---------- barre prototype ---------- */
+.pbar{position:sticky;top:0;z-index:60;background:#0B1524;padding:9px 12px;display:flex;gap:6px;align-items:center;overflow-x:auto;scrollbar-width:none}
+.pbar::-webkit-scrollbar{display:none}
+.pbar .brand{display:flex;align-items:center;gap:6px;color:#F0C63E;font-size:11px;font-weight:700;letter-spacing:.3px;white-space:nowrap;padding-right:6px}
+.pbar button{flex:0 0 auto;background:#182740;border:1px solid #253552;color:#B9C6DC;font:600 12px Inter,sans-serif;padding:7px 11px;border-radius:7px;cursor:pointer}
+.pbar button.on{background:#F0C63E;border-color:#F0C63E;color:#231A00}
+.pbar button:focus-visible{outline:2px solid #F0C63E;outline-offset:2px}
+
+/* ---------- device ---------- */
+.stage{display:flex;justify-content:center;padding:16px 10px 44px}
+.phone{width:100%;max-width:400px;background:var(--surface);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 24px 60px -30px rgba(15,23,42,.5);display:flex;flex-direction:column;height:min(820px,86vh)}
+
+/* ---------- bandeau réseau ---------- */
+.net{display:flex;align-items:center;gap:7px;padding:6px 14px;font-size:11.5px;font-weight:600;border-bottom:1px solid var(--line2)}
+.net.online{background:var(--green-soft);color:var(--green)}
+.net.offline{background:var(--orange-soft);color:var(--orange)}
+.net .sp{margin-left:auto;font-weight:500;opacity:.85}
+
+/* ---------- header ---------- */
+.hd{background:var(--navy);color:#fff;padding:12px 14px;display:flex;align-items:center;gap:10px;flex:0 0 auto}
+.hd .mk{width:32px;height:32px;border-radius:8px;background:linear-gradient(140deg,#F0C63E,#B8901B);color:var(--navy);display:flex;align-items:center;justify-content:center;font-weight:800;font-size:14px}
+.hd h1{font-size:15px;font-weight:700;letter-spacing:-.2px;line-height:1.2}
+.hd .sub{font-size:11px;color:#A9B8D4;margin-top:1px}
+.hd .act{margin-left:auto;display:flex;gap:4px}
+.hd .ib{width:34px;height:34px;border-radius:8px;border:0;background:rgba(255,255,255,.10);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative}
+.hd .ib .dot{position:absolute;top:7px;right:7px;width:7px;height:7px;border-radius:50%;background:#F0C63E;border:1.5px solid var(--navy)}
+.back{width:30px;height:30px;border-radius:7px;border:0;background:rgba(255,255,255,.10);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer}
+
+/* ---------- corps ---------- */
+.screen{display:none;flex:1;flex-direction:column;overflow:hidden}
+.screen.on{display:flex}
+.body{flex:1;overflow-y:auto;background:var(--bg)}
+.pad{padding:14px}
+.sec{font-size:11px;font-weight:700;color:var(--mut);letter-spacing:.5px;margin:2px 0 8px;display:flex;align-items:center;gap:6px}
+.sec .n{margin-left:auto;font-weight:600;color:var(--ink2)}
+
+/* ---------- cartes / listes ---------- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh)}
+.row{display:flex;gap:10px;padding:12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);margin-bottom:8px;box-shadow:var(--sh);align-items:flex-start}
+.row .lead{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.lead.red{background:var(--red-soft);color:var(--red)} .lead.or{background:var(--orange-soft);color:var(--orange)}
+.lead.gr{background:var(--green-soft);color:var(--green)} .lead.bl{background:var(--blue-soft);color:var(--blue)}
+.lead.gd{background:var(--gold-soft);color:var(--gold)} .lead.nv{background:var(--navy-soft);color:var(--navy2)}
+.lead.gy{background:#F1F3F7;color:var(--mut)}
+.row .tx{flex:1;min-width:0}
+.row b{font-size:13.5px;font-weight:650;display:block;letter-spacing:-.1px}
+.row .meta{font-size:11.5px;color:var(--mut);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px 10px}
+.tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;padding:3px 7px;border-radius:5px;white-space:nowrap;letter-spacing:.1px}
+.t-red{background:var(--red-soft);color:var(--red)} .t-or{background:var(--orange-soft);color:var(--orange)}
+.t-gr{background:var(--green-soft);color:var(--green)} .t-bl{background:var(--blue-soft);color:var(--blue)}
+.t-gd{background:var(--gold-soft);color:var(--gold)} .t-gy{background:#F1F3F7;color:var(--mut)}
+.chev{color:#C3CBD8;align-self:center}
+
+/* ---------- métriques ---------- */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.metrics.four{grid-template-columns:repeat(4,1fr)}
+.met{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 8px;box-shadow:var(--sh)}
+.met .v{font-size:20px;font-weight:750;letter-spacing:-.6px;line-height:1.1}
+.met .l{font-size:10.5px;color:var(--mut);margin-top:3px;line-height:1.25}
+.met.a .v{color:var(--orange)} .met.d .v{color:var(--red)} .met.g .v{color:var(--green)}
+
+/* ---------- actions rapides ---------- */
+.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.qa{display:flex;gap:9px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:11px 10px;cursor:pointer;text-align:left;box-shadow:var(--sh);font-family:inherit}
+.qa .ic{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.qa b{font-size:12.5px;font-weight:650;display:block;color:var(--ink)}
+.qa span{font-size:10.5px;color:var(--mut)}
+.qa:focus-visible{outline:2px solid var(--navy2);outline-offset:1px}
+
+/* ---------- boutons ---------- */
+.btn{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:46px;border:0;border-radius:var(--r);font:650 14.5px Inter,sans-serif;cursor:pointer;font-family:inherit}
+.btn.pri{background:var(--navy);color:#fff}
+.btn.gold{background:var(--gold);color:#fff}
+.btn.gh{background:var(--surface);border:1px solid var(--line);color:var(--ink2)}
+.btn.go{background:var(--green);color:#fff}
+.btn.no{background:var(--red);color:#fff}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+.btn:focus-visible{outline:2px solid var(--navy2);outline-offset:2px}
+.btn + .btn{margin-top:8px}
+.btnrow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+/* ---------- champs ---------- */
+label.f{display:block;font-size:12px;font-weight:650;margin:13px 0 5px;color:var(--ink2)}
+.inp{width:100%;min-height:44px;border:1px solid var(--line);border-radius:var(--r);padding:11px 12px;font:400 14px Inter,sans-serif;background:var(--surface);color:var(--ink)}
+.inp::placeholder{color:#9AA5B5}
+.inp:focus{outline:0;border-color:var(--navy2);box-shadow:0 0 0 3px rgba(37,70,126,.12)}
+.inp[readonly]{background:var(--surface2);color:var(--mut)}
+textarea.inp{min-height:84px;resize:vertical}
+.segs{display:flex;flex-wrap:wrap;gap:6px}
+.seg{border:1px solid var(--line);background:var(--surface);border-radius:7px;padding:8px 11px;font:600 12.5px Inter,sans-serif;color:var(--ink2);cursor:pointer;font-family:inherit}
+.seg.on{background:var(--navy);border-color:var(--navy);color:#fff}
+.drop{border:1.5px dashed var(--line);border-radius:var(--r);min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;color:var(--mut);font-size:12.5px;background:var(--surface2);cursor:pointer}
+.switch{display:flex;align-items:center;gap:10px;padding:11px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-top:12px}
+.switch .tx{flex:1}.switch b{font-size:13px;font-weight:650}.switch span{font-size:11.5px;color:var(--mut)}
+.tg{width:40px;height:23px;border-radius:12px;background:#DCE1E9;border:0;position:relative;cursor:pointer;flex:0 0 auto}
+.tg::after{content:"";position:absolute;top:2.5px;left:2.5px;width:18px;height:18px;border-radius:50%;background:#fff;box-shadow:var(--sh)}
+.tg.on{background:var(--navy)} .tg.on::after{left:19.5px}
+
+/* ---------- checklist ---------- */
+.cl{list-style:none}
+.cl li{display:flex;gap:10px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:11px;margin-bottom:7px;font-size:13.5px;cursor:pointer;box-shadow:var(--sh)}
+.cl li .cb{width:21px;height:21px;border:1.5px solid #CBD3DF;border-radius:6px;display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}
+.cl li.ok{border-color:#BFE3CF;background:var(--green-soft)}
+.cl li.ok .cb{background:var(--green);border-color:var(--green)}
+.cl li.ko .cb{background:var(--red);border-color:var(--red)}
+.cl li .tx{flex:1}
+
+/* ---------- SLAM ---------- */
+.slam{background:linear-gradient(160deg,var(--navy) 0%,#0E2447 100%);color:#fff;padding:13px 14px;flex:0 0 auto}
+.slam .top{display:flex;align-items:center;gap:11px}
+.slam .lt{width:42px;height:42px;border-radius:10px;background:rgba(240,198,62,.16);border:1px solid rgba(240,198,62,.5);color:#F0C63E;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:800}
+.slam h2{font-size:16px;font-weight:700}
+.slam .s{font-size:11.5px;color:#A9B8D4}
+.slam .prog{display:flex;gap:4px;margin-top:11px}
+.slam .st{flex:1;height:4px;border-radius:2px;background:rgba(255,255,255,.18)}
+.slam .st.on{background:#F0C63E}
+.slam .cnt{margin-left:auto;font-size:11px;color:#A9B8D4;font-weight:600}
+.verdict{margin-top:10px;border-radius:var(--r);padding:12px;font-size:13px;font-weight:600;display:none;gap:9px;align-items:flex-start}
+.verdict.show{display:flex}
+.verdict.g{background:var(--green-soft);color:var(--green)}
+.verdict.n{background:var(--red-soft);color:var(--red)}
+
+/* ---------- barres ---------- */
+.bar{margin-bottom:11px}
+.bar .lb{display:flex;justify-content:space-between;font-size:12px;margin-bottom:5px}
+.bar .lb b{font-weight:600} .bar .lb span{color:var(--mut);font-weight:600}
+.trk{height:7px;border-radius:4px;background:#EDF0F5;overflow:hidden}
+.fl{height:100%;border-radius:4px}
+.fl.g{background:var(--green)} .fl.o{background:var(--orange)} .fl.gd{background:var(--gold)} .fl.n{background:var(--navy2)}
+
+/* ---------- matrice ---------- */
+.mtx{display:grid;grid-template-columns:14px repeat(5,1fr);gap:3px;align-items:center}
+.mtx .ax{font-size:9px;color:var(--mut);text-align:center}
+.mc{aspect-ratio:1.5;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;color:#3F2A1E;position:relative}
+.mc.here{outline:2px solid var(--navy);outline-offset:1px;z-index:1}
+.mc .pt{position:absolute;top:2px;right:3px;width:5px;height:5px;border-radius:50%;background:var(--navy)}
+
+/* ---------- C/NC/SO + score ---------- */
+.tri{display:flex;gap:4px;flex:0 0 auto}
+.tri button{width:36px;height:32px;border:1px solid var(--line);background:var(--surface);border-radius:6px;font:700 11.5px Inter,sans-serif;color:var(--mut);cursor:pointer;font-family:inherit}
+.tri .c.on{background:var(--green);border-color:var(--green);color:#fff}
+.tri .n.on{background:var(--red);border-color:var(--red);color:#fff}
+.tri .s.on{background:var(--mut);border-color:var(--mut);color:#fff}
+.statbar{display:flex;justify-content:space-between;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:11px;box-shadow:var(--sh);font-size:12.5px;font-weight:600}
+.statbar .v{font-size:17px;font-weight:750;letter-spacing:-.3px}
+
+/* ---------- coffre ---------- */
+.vault{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px;margin-bottom:8px;box-shadow:var(--sh)}
+.secret{display:flex;gap:7px;margin-top:9px}
+.secret code{flex:1;background:var(--surface2);border:1px solid var(--line);border-radius:6px;padding:9px 10px;font:600 13px ui-monospace,SFMono-Regular,monospace;letter-spacing:1.5px;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.eye{width:40px;border:1px solid var(--line);border-radius:6px;background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;color:var(--ink2)}
+
+/* ---------- étoiles ---------- */
+.stars{display:flex;gap:5px;margin:5px 0}
+.star{background:none;border:0;cursor:pointer;color:#DCE1E9;padding:1px;line-height:0}
+.star svg{width:27px;height:27px;stroke-width:1.5}
+.star.on{color:var(--gold)} .star.on svg{fill:var(--gold)}
+
+/* ---------- états ---------- */
+.empty{text-align:center;padding:40px 24px}
+.empty .ic{width:52px;height:52px;border-radius:14px;background:var(--navy-soft);color:var(--navy2);display:flex;align-items:center;justify-content:center;margin:0 auto 12px}
+.empty b{font-size:15px;font-weight:650;display:block;margin-bottom:4px}
+.empty p{font-size:13px;color:var(--mut);margin-bottom:16px}
+.skel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-lg);padding:12px;margin-bottom:8px;display:flex;gap:10px}
+.sk{background:linear-gradient(90deg,#EDF0F5 25%,#F6F8FA 37%,#EDF0F5 63%);background-size:400% 100%;animation:sh 1.3s ease infinite;border-radius:5px}
+@keyframes sh{0%{background-position:100% 0}100%{background-position:0 0}}
+.banner{display:flex;gap:9px;padding:11px 12px;border-radius:var(--r);font-size:12.5px;margin-bottom:11px;align-items:flex-start;line-height:1.4}
+.banner.warn{background:var(--orange-soft);color:var(--orange)}
+.banner.err{background:var(--red-soft);color:var(--red)}
+.banner.info{background:var(--blue-soft);color:var(--blue)}
+.banner b{font-weight:700}
+.banner .act{margin-left:auto;font-weight:700;text-decoration:underline;cursor:pointer;white-space:nowrap}
+
+/* ---------- toast ---------- */
+.toast{position:absolute;left:12px;right:12px;bottom:74px;background:#0F172A;color:#fff;border-radius:10px;padding:12px 13px;display:flex;gap:9px;align-items:center;font-size:13px;font-weight:550;box-shadow:0 12px 30px -8px rgba(15,23,42,.6);opacity:0;transform:translateY(8px);pointer-events:none;transition:opacity .2s,transform .2s;z-index:20}
+.toast.on{opacity:1;transform:translateY(0)}
+.toast .ok{color:#4ADE80}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- tabbar ---------- */
+.wrap{position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden}
+.fab{position:absolute;right:14px;bottom:16px;width:52px;height:52px;border-radius:16px;background:var(--navy);color:#fff;border:0;display:flex;align-items:center;justify-content:center;box-shadow:0 10px 24px -8px rgba(22,48,91,.7);cursor:pointer;z-index:15}
+.tabs{display:flex;background:var(--surface);border-top:1px solid var(--line);flex:0 0 auto;padding-bottom:2px}
+.tb{flex:1;padding:8px 2px 9px;border:0;background:none;cursor:pointer;color:#94A3B8;font:600 10px Inter,sans-serif;display:flex;flex-direction:column;align-items:center;gap:3px;font-family:inherit}
+.tb.on{color:var(--navy)}
+.tb:focus-visible{outline:2px solid var(--navy2);outline-offset:-3px}
+
+/* ---------- login ---------- */
+.login{flex:1;display:flex;flex-direction:column;justify-content:center;padding:26px 24px;background:var(--surface)}
+.login .mk{width:56px;height:56px;border-radius:15px;background:var(--navy);color:#F0C63E;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:23px;margin-bottom:18px}
+.login h2{font-size:22px;font-weight:750;letter-spacing:-.5px}
+.login .sb{font-size:13.5px;color:var(--mut);margin-bottom:6px}
+.modgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+</style>
+</head>
+<body>
+
+<!-- ============ SPRITE SVG ============ -->
+<svg style="display:none" aria-hidden="true">
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+<symbol id="i-climb" viewBox="0 0 24 24"><path d="M12 3v18M7 7l5-4 5 4M7 13l5-4 5 4M7 19l5-4 5 4"/></symbol>
+<symbol id="i-antenna" viewBox="0 0 24 24"><path d="M12 12v9M5 12a7 7 0 0 1 14 0M2 12a10 10 0 0 1 20 0"/><circle cx="12" cy="12" r="1.6"/></symbol>
+<symbol id="i-chart" viewBox="0 0 24 24"><path d="M3 3v18h18"/><path d="M7 15v3M12 10v8M17 6v12"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+<symbol id="i-back" viewBox="0 0 24 24"><path d="m14 6-6 6 6 6"/></symbol>
+<symbol id="i-chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></symbol>
+<symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+<symbol id="i-cam" viewBox="0 0 24 24"><path d="M3 8a2 2 0 0 1 2-2h2l1.5-2h7L17 6h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><circle cx="12" cy="13" r="3.5"/></symbol>
+<symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></symbol>
+<symbol id="i-eye" viewBox="0 0 24 24"><path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></symbol>
+<symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 2 4 5v6c0 5 3.4 9.4 8 11 4.6-1.6 8-6 8-11V5Z"/></symbol>
+<symbol id="i-target" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1.4"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></symbol>
+<symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7Z"/><path d="M14 2v5h5M9 13h6M9 17h4"/></symbol>
+<symbol id="i-cap" viewBox="0 0 24 24"><path d="m12 4 10 5-10 5L2 9Z"/><path d="M6 11v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></symbol>
+<symbol id="i-door" viewBox="0 0 24 24"><path d="M4 21h16M6 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17"/><path d="M13.5 12h.01"/></symbol>
+<symbol id="i-recycle" viewBox="0 0 24 24"><path d="m7 19-3-5 3-2M4.5 14h6.5l3-5M17 19l3-5-4.5.5M20 14l-3.2-5.5-5.3.5M9 4.5 6 9.5l5 .5"/></symbol>
+<symbol id="i-star" viewBox="0 0 24 24"><path d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.4-5.8-3-5.8 3 1.1-6.4L2.6 9.8l6.5-.9Z"/></symbol>
+<symbol id="i-wifi" viewBox="0 0 24 24"><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M2 9a15 15 0 0 1 20 0"/><path d="M12 20h.01"/></symbol>
+<symbol id="i-wifioff" viewBox="0 0 24 24"><path d="M2 3l19 19M8.5 16a5 5 0 0 1 6.3-.7M5 12.5a10 10 0 0 1 4-2.4M2 9a15 15 0 0 1 5.5-3.4M15 9.5a10 10 0 0 1 4 3M13.5 5.8A15 15 0 0 1 22 9M12 20h.01"/></symbol>
+<symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 8a6 6 0 1 0-12 0c0 6-3 7-3 7h18s-3-1-3-7"/><path d="M10.5 21a2 2 0 0 0 3 0"/></symbol>
+<symbol id="i-vest" viewBox="0 0 24 24"><path d="M8 3 4 5v16h16V5l-4-2-4 4Z"/><path d="M12 7v14M4 12h4M16 12h4"/></symbol>
+<symbol id="i-clip" viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="18" rx="2"/><path d="M9 4V2.8A.8.8 0 0 1 9.8 2h4.4a.8.8 0 0 1 .8.8V4"/><path d="M9 11h6M9 15h4"/></symbol>
+<symbol id="i-file" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+<symbol id="i-sync" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M3 21v-5h5"/></symbol>
+<symbol id="i-key" viewBox="0 0 24 24"><circle cx="8" cy="15" r="4"/><path d="m10.8 12.2 8.2-8.2M17 6l2.5 2.5M14.5 8.5 17 11"/></symbol>
+<symbol id="i-inbox" viewBox="0 0 24 24"><path d="M3 12h5l2 3h4l2-3h5"/><path d="M5.5 5h13l2.5 7v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7Z"/></symbol>
+</svg>
+
+<div class="pbar" role="tablist">
+  <span class="brand"><svg class="i sm"><use href="#i-shield"/></svg>SHEQ · v2</span>
+  <button data-s="login" class="on">Connexion</button><button data-s="home">Accueil</button>
+  <button data-s="newsig">Signalement</button><button data-s="siglist">Signalements</button>
+  <button data-s="slam">SLAM</button><button data-s="permis">Permis</button>
+  <button data-s="parc">Parc</button><button data-s="config">Config MikroTik</button>
+  <button data-s="vault">Coffre-fort</button><button data-s="tdb">Tableau</button>
+  <button data-s="menu">Modules</button><button data-s="risques">Risques</button>
+  <button data-s="actions">Actions</button><button data-s="insp">Inspection</button>
+  <button data-s="epi">EPI</button><button data-s="form">Formations</button>
+  <button data-s="audit">Audit</button><button data-s="docs">Documents</button>
+  <button data-s="visit">Visiteurs</button><button data-s="dechets">Déchets</button>
+  <button data-s="satis">Satisfaction</button><button data-s="states">États système</button>
+</div>
+
+<div class="stage"><div class="phone">
+
+<!-- ===== CONNEXION ===== -->
+<section class="screen on" id="s-login">
+  <div class="login">
+    <div class="mk">H</div>
+    <h2>SHEQ Management</h2>
+    <p class="sb">Hirondelles IT Lab</p>
+    <label class="f" for="u">Identifiant</label>
+    <input class="inp" id="u" value="a.kone" autocomplete="username">
+    <label class="f" for="p">Mot de passe</label>
+    <input class="inp" id="p" type="password" value="••••••••••" autocomplete="current-password">
+    <div style="height:18px"></div>
+    <button class="btn pri" onclick="go('home')">Se connecter</button>
+    <div class="banner info" style="margin-top:16px"><svg class="i sm" style="margin-top:1px"><use href="#i-wifioff"/></svg><div>Vos saisies fonctionnent <b>sans réseau</b> et se synchronisent automatiquement au retour de la connexion.</div></div>
+  </div>
+</section>
+
+<!-- ===== ACCUEIL ===== -->
+<section class="screen" id="s-home">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Synchronisé il y a 2 min</span></div>
+  <header class="hd"><div class="mk">H</div>
+    <div><h1>Bonjour, Abdoulaye</h1><div class="sub">Technicien · Bamako</div></div>
+    <div class="act"><button class="ib" aria-label="Notifications"><svg class="i"><use href="#i-bell"/></svg><span class="dot"></span></button></div>
+  </header>
+  <div class="wrap"><div class="body"><div class="pad">
+    <div class="metrics">
+      <div class="met d"><div class="v">2</div><div class="l">actions en retard</div></div>
+      <div class="met"><div class="v">1</div><div class="l">permis actif</div></div>
+      <div class="met a"><div class="v">1</div><div class="l">EPI à vérifier</div></div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="sec">ACTIONS RAPIDES</div>
+    <div class="quick">
+      <button class="qa" onclick="go('newsig')"><span class="ic" style="background:var(--red-soft);color:var(--red)"><svg class="i"><use href="#i-alert"/></svg></span><span><b>Signaler</b><span>Danger, presque-accident</span></span></button>
+      <button class="qa" onclick="go('slam')"><span class="ic" style="background:var(--gold-soft);color:var(--gold)"><svg class="i"><use href="#i-climb"/></svg></span><span><b>SLAM</b><span>Avant chaque montée</span></span></button>
+      <button class="qa" onclick="go('config')"><span class="ic" style="background:var(--navy-soft);color:var(--navy2)"><svg class="i"><use href="#i-antenna"/></svg></span><span><b>Configuration</b><span>Fiche équipement</span></span></button>
+      <button class="qa" onclick="go('insp')"><span class="ic" style="background:var(--green-soft);color:var(--green)"><svg class="i"><use href="#i-clip"/></svg></span><span><b>Inspection</b><span>Checklist terrain</span></span></button>
+    </div>
+    <div style="height:16px"></div>
+    <div class="sec">AUJOURD'HUI <span class="n">2</span></div>
+    <div class="row"><span class="lead bl"><svg class="i"><use href="#i-climb"/></svg></span>
+      <div class="tx"><b>Alignement liaison — FASO-NET</b><div class="meta"><span>Permis 2026-041</span><span>Pylône 24 m</span><span>08:00–12:00</span></div></div>
+      <span class="tag t-bl">EN COURS</span></div>
+    <div class="row"><span class="lead or"><svg class="i"><use href="#i-vest"/></svg></span>
+      <div class="tx"><b>Vérifier le harnais H-003</b><div class="meta"><span>Vérification périodique</span><span>Échéance dans 5 jours</span></div></div>
+      <svg class="i chev"><use href="#i-chev"/></svg></div>
+    <button class="btn gh" style="margin-top:6px" onclick="go('menu')"><svg class="i sm"><use href="#i-grid"/></svg>Tous les modules</button>
+    <div style="height:60px"></div>
+  </div></div>
+  <button class="fab" onclick="go('newsig')" aria-label="Nouveau signalement"><svg class="i lg"><use href="#i-plus"/></svg></button>
+  </div>
+  <nav class="tabs">
+    <button class="tb on"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+    <button class="tb" onclick="go('siglist')"><svg class="i"><use href="#i-alert"/></svg>Signaux</button>
+    <button class="tb" onclick="go('slam')"><svg class="i"><use href="#i-climb"/></svg>SLAM</button>
+    <button class="tb" onclick="go('parc')"><svg class="i"><use href="#i-antenna"/></svg>Parc</button>
+    <button class="tb" onclick="go('tdb')"><svg class="i"><use href="#i-chart"/></svg>Tableau</button>
+  </nav>
+</section>
+
+<!-- ===== NOUVEAU SIGNALEMENT ===== -->
+<section class="screen" id="s-newsig">
+  <div class="net offline"><svg class="i sm"><use href="#i-wifioff"/></svg>Hors connexion<span class="sp">3 éléments en attente</span></div>
+  <header class="hd"><button class="back" onclick="go('home')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Nouveau signalement</h1><div class="sub">Deux minutes suffisent</div></div></header>
+  <div class="body"><div class="pad">
+    <label class="f">Type</label>
+    <div class="segs"><button class="seg on">Situation dangereuse</button><button class="seg">Presque-accident</button><button class="seg">Anomalie matérielle</button></div>
+    <label class="f" for="n1">Lieu</label>
+    <input class="inp" id="n1" placeholder="Local technique, pylône, site client…">
+    <label class="f" for="n2">Description</label>
+    <textarea class="inp" id="n2" placeholder="Que s'est-il passé ? Où ? Comment ?"></textarea>
+    <label class="f">Photo</label>
+    <div class="drop"><svg class="i lg"><use href="#i-cam"/></svg>Prendre une photo</div>
+    <div class="switch"><div class="tx"><b>Envoyer anonymement</b><span>Votre nom ne sera pas enregistré</span></div><button class="tg" onclick="this.classList.toggle('on')" aria-label="Anonyme"></button></div>
+    <div style="height:14px"></div>
+    <button class="btn gold" onclick="toast('Signalement enregistré · SIG-2026-019',1);setTimeout(()=>go('siglist'),1400)"><svg class="i sm"><use href="#i-check"/></svg>Envoyer le signalement</button>
+    <div class="banner warn" style="margin-top:12px"><svg class="i sm" style="margin-top:1px"><use href="#i-wifioff"/></svg><div>Sans réseau, le signalement est <b>conservé sur l'appareil</b> et part automatiquement à la reconnexion.</div></div>
+  </div></div>
+  <div class="toast" id="tst"><svg class="i sm ok"><use href="#i-check"/></svg><span id="tsttx"></span></div>
+</section>
+
+<!-- ===== LISTE SIGNALEMENTS ===== -->
+<section class="screen" id="s-siglist">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Synchronisé à l'instant</span></div>
+  <header class="hd"><div class="mk">H</div><div><h1>Signalements</h1><div class="sub">6 ce mois · 2 en attente d'analyse</div></div>
+    <div class="act"><button class="ib" aria-label="Rechercher"><svg class="i"><use href="#i-search"/></svg></button></div></header>
+  <div class="wrap"><div class="body"><div class="pad">
+    <div class="segs" style="margin-bottom:12px"><button class="seg on">Tous · 6</button><button class="seg">Nouveaux · 2</button><button class="seg">En analyse · 1</button><button class="seg">Clôturés · 3</button></div>
+    <div class="row"><span class="lead red"><svg class="i"><use href="#i-alert"/></svg></span>
+      <div class="tx"><b>Multiprise surchargée — open space</b><div class="meta"><span>SIG-2026-018</span><span>Aujourd'hui 09:12</span><span>A. Koné</span></div></div><span class="tag t-red">NOUVEAU</span></div>
+    <div class="row"><span class="lead red"><svg class="i"><use href="#i-alert"/></svg></span>
+      <div class="tx"><b>Tôle fragile en toiture — site KATI</b><div class="meta"><span>SIG-2026-017</span><span>Hier</span><span>Anonyme</span><span>1 photo</span></div></div><span class="tag t-red">NOUVEAU</span></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-search"/></svg></span>
+      <div class="tx"><b>Câble au sol dans le couloir</b><div class="meta"><span>SIG-2026-016</span><span>01/09</span><span>Analyse : O. Diarra</span></div></div><span class="tag t-gd">EN ANALYSE</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="tx"><b>Extincteur non signalé — accueil</b><div class="meta"><span>SIG-2026-015</span><span>Action ACT-034 réalisée</span></div></div><span class="tag t-gr">CLÔTURÉ</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="tx"><b>Éblouissement écran — bureau 2</b><div class="meta"><span>SIG-2026-014</span><span>Store installé</span></div></div><span class="tag t-gr">CLÔTURÉ</span></div>
+    <div style="height:56px"></div>
+  </div></div>
+  <button class="fab" onclick="go('newsig')" aria-label="Nouveau signalement"><svg class="i lg"><use href="#i-plus"/></svg></button></div>
+  <nav class="tabs">
+    <button class="tb" onclick="go('home')"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+    <button class="tb on"><svg class="i"><use href="#i-alert"/></svg>Signaux</button>
+    <button class="tb" onclick="go('slam')"><svg class="i"><use href="#i-climb"/></svg>SLAM</button>
+    <button class="tb" onclick="go('parc')"><svg class="i"><use href="#i-antenna"/></svg>Parc</button>
+    <button class="tb" onclick="go('tdb')"><svg class="i"><use href="#i-chart"/></svg>Tableau</button>
+  </nav>
+</section>
+
+<!-- ===== SLAM ===== -->
+<section class="screen" id="s-slam">
+  <div class="net offline"><svg class="i sm"><use href="#i-wifioff"/></svg>Hors connexion<span class="sp">Saisie disponible</span></div>
+  <div class="slam">
+    <div class="top"><div class="lt" id="sl-l">S</div>
+      <div><h2 id="sl-t">S'arrêter</h2><div class="s" id="sl-s">Avant de monter, prenez une minute</div></div>
+      <div class="cnt" id="sl-c">1/4</div></div>
+    <div class="prog"><div class="st on" id="p0"></div><div class="st" id="p1"></div><div class="st" id="p2"></div><div class="st" id="p3"></div></div>
+  </div>
+  <div class="body"><div class="pad">
+    <div class="banner info"><svg class="i sm" style="margin-top:1px"><use href="#i-climb"/></svg><div><b>Pylône 24 m — FASO-NET</b><br>Permis 2026-041 · surveillant : O. Diarra</div></div>
+    <ul class="cl" id="sl-list"></ul>
+    <button class="btn pri" id="sl-next" onclick="slNext()">Étape suivante<svg class="i sm"><use href="#i-chev"/></svg></button>
+    <div class="btnrow" id="sl-dec" style="display:none">
+      <button class="btn go" onclick="verdict(1)"><svg class="i"><use href="#i-check"/></svg>GO</button>
+      <button class="btn no" onclick="verdict(0)"><svg class="i"><use href="#i-x"/></svg>NO GO</button></div>
+    <div class="verdict" id="sl-v"><svg class="i sm" style="margin-top:1px"><use href="#i-check"/></svg><span id="sl-vt"></span></div>
+    <div style="height:14px"></div>
+  </div></div>
+  <nav class="tabs">
+    <button class="tb" onclick="go('home')"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+    <button class="tb" onclick="go('siglist')"><svg class="i"><use href="#i-alert"/></svg>Signaux</button>
+    <button class="tb on"><svg class="i"><use href="#i-climb"/></svg>SLAM</button>
+    <button class="tb" onclick="go('parc')"><svg class="i"><use href="#i-antenna"/></svg>Parc</button>
+    <button class="tb" onclick="go('tdb')"><svg class="i"><use href="#i-chart"/></svg>Tableau</button>
+  </nav>
+</section>
+
+<!-- ===== PERMIS ===== -->
+<section class="screen" id="s-permis">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Vue responsable</span></div>
+  <header class="hd"><button class="back" onclick="go('home')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Permis 2026-042</h1><div class="sub">Demande reçue à 07:45</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="card" style="padding:12px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line2);font-size:13px"><span style="color:var(--mut)">Site</span><b style="font-weight:650">Client KATI — toiture</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line2);font-size:13px"><span style="color:var(--mut)">Travaux</span><b style="font-weight:650">Pose LiteBeam 5AC</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line2);font-size:13px"><span style="color:var(--mut)">Intervenants</span><b style="font-weight:650">A. Koné, M. Sissoko</b></div>
+      <div style="display:flex;justify-content:space-between;padding:6px 0;font-size:13px"><span style="color:var(--mut)">Créneau</span><b style="font-weight:650">08:00 → 12:00</b></div>
+    </div>
+    <div class="sec">CONTRÔLES AUTOMATIQUES <span class="n">3/4</span></div>
+    <ul class="cl">
+      <li class="ok"><span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">SLAM réalisés par les 2 intervenants (GO)</span></li>
+      <li class="ok"><span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">Formations travaux en hauteur valides</span></li>
+      <li class="ok"><span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">Météo sans alerte sur le créneau</span></li>
+      <li class="ko" style="border-color:#F5C6C2;background:var(--red-soft)"><span class="cb"><svg class="i sm"><use href="#i-x"/></svg></span><span class="tx">Harnais H-003 (M. Sissoko) — vérification dépassée</span></li>
+    </ul>
+    <div class="banner err"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div><b>Validation bloquée.</b> Réaffectez un EPI conforme ou faites vérifier le harnais H-003.</div><span class="act" onclick="go('epi')">Voir</span></div>
+    <button class="btn gh">Réaffecter un EPI conforme</button>
+    <button class="btn pri" disabled><svg class="i sm"><use href="#i-lock"/></svg>Valider et délivrer</button>
+  </div></div>
+</section>
+
+<!-- ===== PARC ===== -->
+<section class="screen" id="s-parc">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">128 équipements</span></div>
+  <header class="hd"><div class="mk">H</div><div><h1>Parc & configurations</h1><div class="sub">12 sites · 4 marques</div></div></header>
+  <div class="wrap"><div class="body"><div class="pad">
+    <div style="position:relative;margin-bottom:11px"><svg class="i" style="position:absolute;left:11px;top:13px;color:var(--mut)"><use href="#i-search"/></svg>
+      <input class="inp" style="padding-left:36px" placeholder="Identity, site, n° de série…"></div>
+    <div class="segs" style="margin-bottom:12px"><button class="seg on">Tous</button><button class="seg">MikroTik</button><button class="seg">Grandstream</button><button class="seg">Ubiquiti</button><button class="seg">Ruijie</button></div>
+    <div class="row" onclick="go('config')" style="cursor:pointer"><span class="lead nv"><svg class="i"><use href="#i-antenna"/></svg></span>
+      <div class="tx"><b>FAS-AP-01 · MikroTik LHG 5</b><div class="meta"><span>FASO-NET</span><span>Pylône 24 m</span></div>
+        <div class="meta" style="margin-top:5px"><span class="tag t-gr">−58 dBm · CCQ 96 %</span><span class="tag t-gy">Sauvegardes ✓</span></div></div>
+      <svg class="i chev"><use href="#i-chev"/></svg></div>
+    <div class="row"><span class="lead nv"><svg class="i"><use href="#i-antenna"/></svg></span>
+      <div class="tx"><b>BKO-PBX-01 · Grandstream UCM6302</b><div class="meta"><span>Siège</span><span>Baie A</span><span>24 extensions</span></div>
+        <div class="meta" style="margin-top:5px"><span class="tag t-gr">Firmware à jour</span><span class="tag t-gy">Backup UCM ✓</span></div></div>
+      <svg class="i chev"><use href="#i-chev"/></svg></div>
+    <div class="row" style="border-color:#F6D9C4"><span class="lead or"><svg class="i"><use href="#i-antenna"/></svg></span>
+      <div class="tx"><b>KAT-ST-02 · Ubiquiti LiteBeam 5AC</b><div class="meta"><span>KATI</span><span>Toiture</span></div>
+        <div class="meta" style="margin-top:5px"><span class="tag t-or">Sauvegarde .cfg manquante</span></div></div>
+      <svg class="i chev"><use href="#i-chev"/></svg></div>
+    <div class="banner info" style="margin-top:4px"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div>Les identifiants ne figurent jamais sur les fiches : ils sont dans le <b>coffre-fort chiffré</b>.</div><span class="act" onclick="go('vault')">Ouvrir</span></div>
+    <div style="height:56px"></div>
+  </div></div>
+  <button class="fab" onclick="go('config')" aria-label="Nouvelle configuration"><svg class="i lg"><use href="#i-plus"/></svg></button></div>
+  <nav class="tabs">
+    <button class="tb" onclick="go('home')"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+    <button class="tb" onclick="go('siglist')"><svg class="i"><use href="#i-alert"/></svg>Signaux</button>
+    <button class="tb" onclick="go('slam')"><svg class="i"><use href="#i-climb"/></svg>SLAM</button>
+    <button class="tb on"><svg class="i"><use href="#i-antenna"/></svg>Parc</button>
+    <button class="tb" onclick="go('tdb')"><svg class="i"><use href="#i-chart"/></svg>Tableau</button>
+  </nav>
+</section>
+
+<!-- ===== CONFIG MIKROTIK ===== -->
+<section class="screen" id="s-config">
+  <div class="net offline"><svg class="i sm"><use href="#i-wifioff"/></svg>Hors connexion<span class="sp">Enregistrement local</span></div>
+  <header class="hd"><button class="back" onclick="go('parc')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Fiche de configuration</h1><div class="sub">MikroTik RouterOS</div></div></header>
+  <div class="body"><div class="pad">
+    <label class="f">Équipement</label>
+    <input class="inp" value="FAS-AP-01 · LHG 5 · SN4C7A21" readonly>
+    <label class="f">Type d'intervention</label>
+    <div class="segs"><button class="seg on">Reconfiguration</button><button class="seg">Installation</button><button class="seg">Mise à jour</button><button class="seg">Alignement</button></div>
+    <label class="f">Réseau</label>
+    <input class="inp" value="10.0.0.2/30" aria-label="IP">
+    <label class="f">Sans fil</label>
+    <div style="display:flex;gap:7px"><input class="inp" value="5180 MHz / 20 MHz" aria-label="Fréquence"><input class="inp" value="nv2" aria-label="Protocole" style="max-width:82px"></div>
+    <div style="display:flex;gap:7px;margin-top:7px">
+      <div style="flex:1"><input class="inp" value="−58 dBm" aria-label="Signal" style="border-color:#BFE3CF;background:var(--green-soft);font-weight:600"><p style="font-size:10.5px;color:var(--green);margin-top:3px;font-weight:600">Dans l'objectif (−50 à −65)</p></div>
+      <div style="flex:1"><input class="inp" value="CCQ 96 %" aria-label="CCQ" style="border-color:#BFE3CF;background:var(--green-soft);font-weight:600"><p style="font-size:10.5px;color:var(--green);margin-top:3px;font-weight:600">Objectif &gt; 90 % atteint</p></div>
+    </div>
+    <label class="f">Tests</label>
+    <ul class="cl">
+      <li class="ok"><span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">Ping passerelle et Internet</span></li>
+      <li class="ok"><span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">Redémarrage : liaison rétablie seule</span></li>
+    </ul>
+    <label class="f">Sauvegardes</label>
+    <div class="drop"><svg class="i lg"><use href="#i-file"/></svg>FAS-AP-01-20260904 (.rsc + .backup)</div>
+    <div class="banner info" style="margin-top:12px"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div>Aucun champ mot de passe ici, <b>par conception</b> : les identifiants vont au coffre-fort.</div></div>
+    <button class="btn gold" onclick="toast('Fiche enregistrée · ENR-SHEQ-2026-118',1)"><svg class="i sm"><use href="#i-check"/></svg>Enregistrer la fiche</button>
+  </div></div>
+  <div class="toast" id="tst2"><svg class="i sm ok"><use href="#i-check"/></svg><span id="tsttx2"></span></div>
+</section>
+
+<!-- ===== COFFRE-FORT ===== -->
+<section class="screen" id="s-vault">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Accès journalisé</span></div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Coffre-fort</h1><div class="sub">Chiffré · rôle requis</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="vault"><div style="display:flex;gap:9px;align-items:center"><span class="lead nv"><svg class="i"><use href="#i-key"/></svg></span>
+      <div><b style="font-size:13.5px;font-weight:650">FAS-AP-01 · MikroTik</b><div style="font-size:11.5px;color:var(--mut)">admin : ak-adm · Winbox 8391</div></div></div>
+      <div class="secret"><code id="v1">••••••••••••</code><button class="eye" onclick="reveal('v1','K7#mR2vX9!qL')" aria-label="Afficher"><svg class="i"><use href="#i-eye"/></svg></button></div></div>
+    <div class="vault"><div style="display:flex;gap:9px;align-items:center"><span class="lead nv"><svg class="i"><use href="#i-key"/></svg></span>
+      <div><b style="font-size:13.5px;font-weight:650">BKO-PBX-01 · Grandstream</b><div style="font-size:11.5px;color:var(--mut)">admin web HTTPS</div></div></div>
+      <div class="secret"><code id="v2">••••••••••••</code><button class="eye" onclick="reveal('v2','Uc!84#Tz@wPm')" aria-label="Afficher"><svg class="i"><use href="#i-eye"/></svg></button></div></div>
+    <div class="vault"><div style="display:flex;gap:9px;align-items:center"><span class="lead nv"><svg class="i"><use href="#i-wifi"/></svg></span>
+      <div><b style="font-size:13.5px;font-weight:650">Wi-Fi siège · HIT-LAB</b><div style="font-size:11.5px;color:var(--mut)">WPA3 · renouvelé 01/09</div></div></div>
+      <div class="secret"><code id="v3">••••••••••••</code><button class="eye" onclick="reveal('v3','Hir0nd3ll&s26')" aria-label="Afficher"><svg class="i"><use href="#i-eye"/></svg></button></div></div>
+    <div class="banner info" id="vlog"><svg class="i sm" style="margin-top:1px"><use href="#i-clock"/></svg><div>Chaque affichage est tracé (qui, quand, quel secret) et se masque après 15 secondes.</div></div>
+    <button class="btn pri"><svg class="i sm"><use href="#i-plus"/></svg>Ajouter un secret</button>
+    <button class="btn gh">Générer un mot de passe fort</button>
+  </div></div>
+</section>
+
+<!-- ===== TABLEAU DE BORD ===== -->
+<section class="screen" id="s-tdb">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Temps réel</span></div>
+  <header class="hd"><div class="mk">H</div><div><h1>Tableau de bord</h1><div class="sub">Référent SHEQ · septembre 2026</div></div>
+    <div class="act"><button class="ib" aria-label="Exporter"><svg class="i"><use href="#i-doc"/></svg></button></div></header>
+  <div class="body"><div class="pad">
+    <div class="metrics four">
+      <div class="met g"><div class="v">0</div><div class="l">accident avec arrêt</div></div>
+      <div class="met"><div class="v">6</div><div class="l">signalements</div></div>
+      <div class="met a"><div class="v">2</div><div class="l">EPI à vérifier</div></div>
+      <div class="met g"><div class="v">96%</div><div class="l">conformité</div></div>
+    </div>
+    <div style="height:14px"></div>
+    <div class="card" style="padding:13px">
+      <div class="sec" style="margin-bottom:11px">PLAN D'ACTION <span class="n">16 actions</span></div>
+      <div class="bar"><div class="lb"><b>Réalisées</b><span>7</span></div><div class="trk"><div class="fl g" style="width:44%"></div></div></div>
+      <div class="bar"><div class="lb"><b>En cours</b><span>5</span></div><div class="trk"><div class="fl gd" style="width:31%"></div></div></div>
+      <div class="bar" style="margin-bottom:0"><div class="lb"><b>En retard</b><span>2</span></div><div class="trk"><div class="fl o" style="width:13%"></div></div></div>
+    </div>
+    <div style="height:10px"></div>
+    <div class="card" style="padding:13px">
+      <div class="sec" style="margin-bottom:11px">SIGNALEMENTS PAR MOIS</div>
+      <div class="bar"><div class="lb"><b>Juin</b><span>3</span></div><div class="trk"><div class="fl n" style="width:30%"></div></div></div>
+      <div class="bar"><div class="lb"><b>Juillet</b><span>4</span></div><div class="trk"><div class="fl n" style="width:40%"></div></div></div>
+      <div class="bar"><div class="lb"><b>Août</b><span>5</span></div><div class="trk"><div class="fl n" style="width:50%"></div></div></div>
+      <div class="bar" style="margin-bottom:0"><div class="lb"><b>Septembre</b><span>6</span></div><div class="trk"><div class="fl gd" style="width:60%"></div></div></div>
+      <p style="font-size:11.5px;color:var(--mut);margin-top:9px">La hausse est un bon signe : la culture de signalement progresse.</p>
+    </div>
+    <div style="height:10px"></div>
+    <button class="btn gh"><svg class="i sm"><use href="#i-doc"/></svg>Exporter le rapport de revue (PDF)</button>
+    <div style="height:14px"></div>
+  </div></div>
+  <nav class="tabs">
+    <button class="tb" onclick="go('home')"><svg class="i"><use href="#i-home"/></svg>Accueil</button>
+    <button class="tb" onclick="go('siglist')"><svg class="i"><use href="#i-alert"/></svg>Signaux</button>
+    <button class="tb" onclick="go('slam')"><svg class="i"><use href="#i-climb"/></svg>SLAM</button>
+    <button class="tb" onclick="go('parc')"><svg class="i"><use href="#i-antenna"/></svg>Parc</button>
+    <button class="tb on"><svg class="i"><use href="#i-chart"/></svg>Tableau</button>
+  </nav>
+</section>
+
+<!-- ===== MENU MODULES ===== -->
+<section class="screen" id="s-menu">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('home')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Modules</h1><div class="sub">Selon votre rôle : technicien</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="sec">PRÉVENTION</div>
+    <div class="modgrid" style="margin-bottom:14px">
+      <button class="qa" onclick="go('risques')"><span class="ic" style="background:var(--red-soft);color:var(--red)"><svg class="i"><use href="#i-target"/></svg></span><span><b>Risques</b><span>18 évalués</span></span></button>
+      <button class="qa" onclick="go('actions')"><span class="ic" style="background:var(--green-soft);color:var(--green)"><svg class="i"><use href="#i-check"/></svg></span><span><b>Plan d'action</b><span>16 actions</span></span></button>
+      <button class="qa" onclick="go('siglist')"><span class="ic" style="background:var(--red-soft);color:var(--red)"><svg class="i"><use href="#i-alert"/></svg></span><span><b>Signalements</b><span>2 nouveaux</span></span></button>
+      <button class="qa" onclick="go('epi')"><span class="ic" style="background:var(--orange-soft);color:var(--orange)"><svg class="i"><use href="#i-vest"/></svg></span><span><b>EPI antichute</b><span>2 à vérifier</span></span></button>
+    </div>
+    <div class="sec">TERRAIN</div>
+    <div class="modgrid" style="margin-bottom:14px">
+      <button class="qa" onclick="go('slam')"><span class="ic" style="background:var(--gold-soft);color:var(--gold)"><svg class="i"><use href="#i-climb"/></svg></span><span><b>SLAM & permis</b><span>1 actif</span></span></button>
+      <button class="qa" onclick="go('insp')"><span class="ic" style="background:var(--green-soft);color:var(--green)"><svg class="i"><use href="#i-clip"/></svg></span><span><b>Inspections</b><span>3 planifiées</span></span></button>
+      <button class="qa" onclick="go('parc')"><span class="ic" style="background:var(--navy-soft);color:var(--navy2)"><svg class="i"><use href="#i-antenna"/></svg></span><span><b>Parc & configs</b><span>128 équip.</span></span></button>
+      <button class="qa" onclick="go('vault')"><span class="ic" style="background:var(--navy-soft);color:var(--navy2)"><svg class="i"><use href="#i-lock"/></svg></span><span><b>Coffre-fort</b><span>Accès tracé</span></span></button>
+    </div>
+    <div class="sec">PILOTAGE</div>
+    <div class="modgrid">
+      <button class="qa" onclick="go('form')"><span class="ic" style="background:var(--blue-soft);color:var(--blue)"><svg class="i"><use href="#i-cap"/></svg></span><span><b>Formations</b><span>Séance J-5</span></span></button>
+      <button class="qa" onclick="go('audit')"><span class="ic" style="background:var(--blue-soft);color:var(--blue)"><svg class="i"><use href="#i-list"/></svg></span><span><b>Audits & revues</b><span>Auto-diagnostic</span></span></button>
+      <button class="qa" onclick="go('docs')"><span class="ic" style="background:var(--gold-soft);color:var(--gold)"><svg class="i"><use href="#i-doc"/></svg></span><span><b>Documents</b><span>36 référencés</span></span></button>
+      <button class="qa" onclick="go('visit')"><span class="ic" style="background:#F1F3F7;color:var(--mut)"><svg class="i"><use href="#i-door"/></svg></span><span><b>Visiteurs</b><span>2 sur site</span></span></button>
+      <button class="qa" onclick="go('dechets')"><span class="ic" style="background:var(--green-soft);color:var(--green)"><svg class="i"><use href="#i-recycle"/></svg></span><span><b>Déchets DEEE</b><span>14 kg</span></span></button>
+      <button class="qa" onclick="go('satis')"><span class="ic" style="background:var(--gold-soft);color:var(--gold)"><svg class="i"><use href="#i-star"/></svg></span><span><b>Satisfaction</b><span>4,6 / 5</span></span></button>
+    </div>
+    <div style="height:14px"></div>
+  </div></div>
+</section>
+
+<!-- ===== RISQUES ===== -->
+<section class="screen" id="s-risques">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Registre des risques</h1><div class="sub">18 risques · cotation P × G</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="card" style="padding:12px;margin-bottom:12px">
+      <div class="sec" style="margin-bottom:8px">MATRICE DE CRITICITÉ</div>
+      <div class="mtx" id="mtx"></div>
+      <div style="display:flex;justify-content:space-between;font-size:9.5px;color:var(--mut);margin-top:5px"><span>Probabilité ↑ · Gravité →</span><span>4 risques élevés</span></div>
+    </div>
+    <div class="row"><span class="lead red"><svg class="i"><use href="#i-target"/></svg></span>
+      <div class="tx"><b>Perte ou vol de données</b><div class="meta"><span>P3 × G4</span><span>Sécurité information</span><span>2 actions</span></div></div><span class="tag t-or">C 12</span></div>
+    <div class="row"><span class="lead or"><svg class="i"><use href="#i-target"/></svg></span>
+      <div class="tx"><b>Incendie équipements électriques</b><div class="meta"><span>P2 × G5</span><span>Réévalué le 04/09</span></div></div><span class="tag t-or">C 10</span></div>
+    <div class="row"><span class="lead or"><svg class="i"><use href="#i-climb"/></svg></span>
+      <div class="tx"><b>Chute de hauteur</b><div class="meta"><span>P2 × G5</span><span>Permis + SLAM + EPI</span></div></div><span class="tag t-or">C 10</span></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-target"/></svg></span>
+      <div class="tx"><b>TMS travail sur écran</b><div class="meta"><span>P3 × G2</span><span>Aménagements en cours</span></div></div><span class="tag t-gd">C 6</span></div>
+    <button class="btn pri"><svg class="i sm"><use href="#i-plus"/></svg>Ajouter ou réévaluer</button>
+  </div></div>
+</section>
+
+<!-- ===== ACTIONS ===== -->
+<section class="screen" id="s-actions">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Plan d'action</h1><div class="sub">16 actions · 44 % réalisées</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="segs" style="margin-bottom:12px"><button class="seg on">Toutes</button><button class="seg">En retard · 2</button><button class="seg">Les miennes · 3</button></div>
+    <div class="row" style="border-color:#F5C6C2"><span class="lead red"><svg class="i"><use href="#i-clock"/></svg></span>
+      <div class="tx"><b>Vérification des installations électriques</b><div class="meta"><span>Direction</span><span style="color:var(--red);font-weight:650">35 jours de retard</span></div>
+        <div class="trk" style="margin-top:7px"><div class="fl o" style="width:20%"></div></div></div><span class="tag t-red">RETARD</span></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-shield"/></svg></span>
+      <div class="tx"><b>Sensibilisation cybersécurité</b><div class="meta"><span>Resp. IT</span><span>Échéance 30/09</span></div>
+        <div class="trk" style="margin-top:7px"><div class="fl gd" style="width:60%"></div></div></div><span class="tag t-gd">EN COURS</span></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="tx"><b>Aménagement ergonomique des postes</b><div class="meta"><span>Référent SHEQ</span><span>Issue du risque n°1</span></div>
+        <div class="trk" style="margin-top:7px"><div class="fl gd" style="width:70%"></div></div></div><span class="tag t-gd">EN COURS</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="tx"><b>Pose de goulottes — câbles au sol</b><div class="meta"><span>Réalisée le 28/08</span><span>Issue de SIG-2026-016</span></div></div><span class="tag t-gr">RÉALISÉE</span></div>
+    <button class="btn pri"><svg class="i sm"><use href="#i-plus"/></svg>Nouvelle action</button>
+  </div></div>
+</section>
+
+<!-- ===== INSPECTION ===== -->
+<section class="screen" id="s-insp">
+  <div class="net offline"><svg class="i sm"><use href="#i-wifioff"/></svg>Hors connexion<span class="sp">Saisie locale</span></div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Incendie & extincteurs</h1><div class="sub">Siège · 04/09 · A. Koné</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="statbar"><span>Conformité</span><span class="v" id="cval" style="color:var(--mut)">—</span></div>
+    <ul class="cl" id="ilist">
+      <li><span class="tx">Extincteurs présents aux emplacements prévus</span><span class="tri"><button class="c" onclick="tri(this)">C</button><button class="n" onclick="tri(this)">NC</button><button class="s" onclick="tri(this)">SO</button></span></li>
+      <li><span class="tx">Pression correcte (aiguille en zone verte)</span><span class="tri"><button class="c" onclick="tri(this)">C</button><button class="n" onclick="tri(this)">NC</button><button class="s" onclick="tri(this)">SO</button></span></li>
+      <li><span class="tx">Vérification annuelle valide</span><span class="tri"><button class="c" onclick="tri(this)">C</button><button class="n" onclick="tri(this)">NC</button><button class="s" onclick="tri(this)">SO</button></span></li>
+      <li><span class="tx">Issues de secours dégagées</span><span class="tri"><button class="c" onclick="tri(this)">C</button><button class="n" onclick="tri(this)">NC</button><button class="s" onclick="tri(this)">SO</button></span></li>
+      <li><span class="tx">Plan d'évacuation affiché et à jour</span><span class="tri"><button class="c" onclick="tri(this)">C</button><button class="n" onclick="tri(this)">NC</button><button class="s" onclick="tri(this)">SO</button></span></li>
+    </ul>
+    <div class="banner info"><svg class="i sm" style="margin-top:1px"><use href="#i-check"/></svg><div>Chaque « NC » crée une action corrective, avec photo possible.</div></div>
+    <button class="btn pri">Terminer et signer</button>
+  </div></div>
+</section>
+
+<!-- ===== EPI ===== -->
+<section class="screen" id="s-epi">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>EPI antichute</h1><div class="sub">9 équipements suivis</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="banner warn"><svg class="i sm" style="margin-top:1px"><use href="#i-alert"/></svg><div><b>2 EPI demandent une action.</b> H-003 est dépassé et bloque la délivrance des permis.</div></div>
+    <div class="row" style="border-color:#F5C6C2"><span class="lead red"><svg class="i"><use href="#i-vest"/></svg></span>
+      <div class="tx"><b>H-003 · Harnais complet</b><div class="meta"><span>M. Sissoko</span><span style="color:var(--red);font-weight:650">Dépassé depuis le 28/08</span></div></div><span class="tag t-red">À VÉRIFIER</span></div>
+    <div class="row"><span class="lead or"><svg class="i"><use href="#i-clock"/></svg></span>
+      <div class="tx"><b>L-002 · Longe double + absorbeur</b><div class="meta"><span>A. Koné</span><span>Prochaine vérification 09/09</span></div></div><span class="tag t-or">J−5</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-vest"/></svg></span>
+      <div class="tx"><b>H-001 · Harnais complet</b><div class="meta"><span>A. Koné</span><span>Vérifié 03/26</span><span>Fin de vie 2035</span></div></div><span class="tag t-gr">EN SERVICE</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-shield"/></svg></span>
+      <div class="tx"><b>C-004 · Casque à jugulaire</b><div class="meta"><span>O. Diarra</span><span>Vérifié 03/26</span></div></div><span class="tag t-gr">EN SERVICE</span></div>
+    <div class="row" style="opacity:.7"><span class="lead gy"><svg class="i"><use href="#i-x"/></svg></span>
+      <div class="tx"><b>H-002 · Harnais complet</b><div class="meta"><span>Réformé le 12/07 — a arrêté une chute</span></div></div><span class="tag t-gy">RÉFORMÉ</span></div>
+    <button class="btn pri">Enregistrer une vérification</button>
+  </div></div>
+</section>
+
+<!-- ===== FORMATIONS ===== -->
+<section class="screen" id="s-form">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Formations</h1><div class="sub">Compétences · planning · quiz</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="row"><span class="lead bl"><svg class="i"><use href="#i-cap"/></svg></span>
+      <div class="tx"><b>Signalement des situations dangereuses</b><div class="meta"><span>Mardi 09/09 · 10h00</span><span>O. Diarra</span><span>Émargement mobile</span></div></div><span class="tag t-bl">J−5</span></div>
+    <div class="sec" style="margin-top:14px">MES COMPÉTENCES</div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-check"/></svg></span>
+      <div class="tx"><b>Travaux en hauteur</b><div class="meta"><span>Formé 03/2026</span><span>Recyclage 03/2028</span></div></div><span class="tag t-gr">VALIDE</span></div>
+    <div class="row"><span class="lead or"><svg class="i"><use href="#i-alert"/></svg></span>
+      <div class="tx"><b>Secourisme</b><div class="meta"><span>Requis pour votre poste</span></div></div><span class="tag t-or">À PLANIFIER</span></div>
+    <div class="sec" style="margin-top:14px">QUIZ <span class="n">Question 3/10</span></div>
+    <div class="card" style="padding:13px">
+      <p style="font-size:14px;font-weight:600;margin-bottom:11px">Un harnais qui a arrêté une chute :</p>
+      <button class="btn gh" style="justify-content:flex-start;text-align:left;min-height:42px" onclick="quiz(this,0)">Peut être réutilisé s'il semble en bon état</button>
+      <button class="btn gh" style="justify-content:flex-start;text-align:left;min-height:42px" onclick="quiz(this,1)">Est réformé définitivement</button>
+      <p id="qmsg" style="font-size:12px;color:var(--mut);margin-top:10px">Score : 2/2 · seuil de réussite 7/10</p>
+    </div>
+  </div></div>
+</section>
+
+<!-- ===== AUDIT ===== -->
+<section class="screen" id="s-audit">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Audit interne</h1><div class="sub">Base ISO 45001 · 0 / 1 / 2</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="statbar"><span>Maturité du système</span><span class="v" id="aval" style="color:var(--mut)">—</span></div>
+    <ul class="cl" id="alist">
+      <li><span class="tx">Politique SHEQ signée, affichée et connue</span><span class="tri"><button onclick="sc(this)">0</button><button onclick="sc(this)">1</button><button onclick="sc(this)">2</button></span></li>
+      <li><span class="tx">Registre des risques à jour</span><span class="tri"><button onclick="sc(this)">0</button><button onclick="sc(this)">1</button><button onclick="sc(this)">2</button></span></li>
+      <li><span class="tx">Permis de hauteur systématiques</span><span class="tri"><button onclick="sc(this)">0</button><button onclick="sc(this)">1</button><button onclick="sc(this)">2</button></span></li>
+      <li><span class="tx">Incidents analysés et soldés</span><span class="tri"><button onclick="sc(this)">0</button><button onclick="sc(this)">1</button><button onclick="sc(this)">2</button></span></li>
+    </ul>
+    <p style="font-size:11.5px;color:var(--mut);margin-bottom:11px">22 exigences dans la version complète. Les écarts alimentent le plan d'action et la revue de direction.</p>
+    <button class="btn gh">Dernière revue de direction (06/2026)</button>
+    <button class="btn pri">Clôturer et générer le rapport</button>
+  </div></div>
+</section>
+
+<!-- ===== DOCUMENTS ===== -->
+<section class="screen" id="s-docs">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Documents</h1><div class="sub">36 référencés · liste maîtresse</div></div></header>
+  <div class="body"><div class="pad">
+    <div style="position:relative;margin-bottom:11px"><svg class="i" style="position:absolute;left:11px;top:13px;color:var(--mut)"><use href="#i-search"/></svg>
+      <input class="inp" style="padding-left:36px" placeholder="Référence, titre…"></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-doc"/></svg></span>
+      <div class="tx"><b>POL-SHEQ-001 · Politique SHEQ</b><div class="meta"><span>v01</span><span>Lue par 9/11</span></div></div><span class="tag t-gr">EN VIGUEUR</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-doc"/></svg></span>
+      <div class="tx"><b>CDC-SHEQ-001 · Cahier des charges</b><div class="meta"><span>v03</span><span>v01 et v02 archivées</span></div></div><span class="tag t-gr">EN VIGUEUR</span></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-clock"/></svg></span>
+      <div class="tx"><b>PRO-SHEQ-002 · Travaux en hauteur</b><div class="meta"><span>v02 en relecture</span><span>A. Traoré · depuis 02/09</span></div></div><span class="tag t-gd">APPROBATION</span></div>
+    <div class="row" style="opacity:.7"><span class="lead gy"><svg class="i"><use href="#i-file"/></svg></span>
+      <div class="tx"><b>FOR-SHEQ-006 · Config générique v01</b><div class="meta"><span>Remplacée par les fiches par marque</span></div></div><span class="tag t-gy">ARCHIVE</span></div>
+    <div class="banner info"><svg class="i sm" style="margin-top:1px"><use href="#i-lock"/></svg><div>Un document en approbation n'est pas utilisable : seule la version en vigueur apparaît dans les modules.</div></div>
+  </div></div>
+</section>
+
+<!-- ===== VISITEURS ===== -->
+<section class="screen" id="s-visit">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Tablette d'accueil</span></div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Visiteurs</h1><div class="sub">2 personnes sur site</div></div></header>
+  <div class="body"><div class="pad">
+    <label class="f" for="vn">Nom et prénom</label><input class="inp" id="vn" placeholder="Votre nom complet">
+    <label class="f" for="vs">Société / motif</label><input class="inp" id="vs" placeholder="Livraison, réunion…">
+    <label class="f">Personne visitée</label>
+    <div class="segs"><button class="seg">A. Traoré</button><button class="seg on">O. Diarra</button><button class="seg">A. Koné</button><button class="seg">Autre</button></div>
+    <div class="banner warn" style="margin-top:13px"><svg class="i sm" style="margin-top:1px"><use href="#i-shield"/></svg><div><b>Consignes de sécurité (30 s)</b><br>Issues de secours · point de rassemblement · zones interdites</div><span class="act">Lire</span></div>
+    <button class="btn gold" onclick="toast('Visiteur enregistré · badge V-042',2)">J'accepte et je m'enregistre</button>
+    <div class="sec" style="margin-top:16px">SUR SITE <span class="n">2</span></div>
+    <div class="row"><span class="lead nv"><svg class="i"><use href="#i-door"/></svg></span>
+      <div class="tx"><b>M. Camara — ElectroPlus</b><div class="meta"><span>Arrivé 09:40</span><span>Direction</span></div></div><span class="tag t-gr">PRÉSENT</span></div>
+    <div class="row"><span class="lead nv"><svg class="i"><use href="#i-door"/></svg></span>
+      <div class="tx"><b>Mme Keita — FASO-NET</b><div class="meta"><span>Arrivée 10:15</span><span>Réunion projet</span></div></div><span class="tag t-gr">PRÉSENT</span></div>
+  </div></div>
+  <div class="toast" id="tst3"><svg class="i sm ok"><use href="#i-check"/></svg><span id="tsttx3"></span></div>
+</section>
+
+<!-- ===== DÉCHETS ===== -->
+<section class="screen" id="s-dechets">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne</div>
+  <header class="hd"><button class="back" onclick="go('menu')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>Déchets & environnement</h1><div class="sub">Registre DEEE</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="metrics"><div class="met"><div class="v">14</div><div class="l">kg DEEE en stock</div></div>
+      <div class="met"><div class="v">3</div><div class="l">enlèvements 2026</div></div>
+      <div class="met g"><div class="v">100%</div><div class="l">justificatifs</div></div></div>
+    <div style="height:14px"></div>
+    <div class="row"><span class="lead gd"><svg class="i"><use href="#i-inbox"/></svg></span>
+      <div class="tx"><b>Bac DEEE — local technique</b><div class="meta"><span>2 routeurs HS</span><span>Câbles</span><span>1 onduleur</span></div></div><span class="tag t-gd">EN STOCK</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-recycle"/></svg></span>
+      <div class="tx"><b>Enlèvement du 15/07</b><div class="meta"><span>8 kg + 4 batteries</span><span>Bon BR-2214</span></div></div><span class="tag t-gr">TRACÉ</span></div>
+    <div class="row"><span class="lead gr"><svg class="i"><use href="#i-recycle"/></svg></span>
+      <div class="tx"><b>Cartouches et toners</b><div class="meta"><span>12 unités</span><span>Filière recyclage</span></div></div><span class="tag t-gr">TRACÉ</span></div>
+    <button class="btn pri"><svg class="i sm"><use href="#i-plus"/></svg>Enregistrer un déchet</button>
+    <div class="banner info" style="margin-top:11px"><svg class="i sm" style="margin-top:1px"><use href="#i-recycle"/></svg><div>DEEE et batteries : filières agréées uniquement, jamais aux ordures.</div></div>
+  </div></div>
+</section>
+
+<!-- ===== SATISFACTION ===== -->
+<section class="screen" id="s-satis">
+  <div class="net online"><svg class="i sm"><use href="#i-wifi"/></svg>En ligne<span class="sp">Lien client</span></div>
+  <header class="hd"><div class="mk">H</div><div><h1>Votre avis</h1><div class="sub">Intervention du 04/09 · KATI</div></div></header>
+  <div class="body"><div class="pad">
+    <p style="font-size:13px;color:var(--mut);margin-bottom:6px">Envoyé par SMS ou QR code — sans compte à créer.</p>
+    <label class="f">Qualité de l'installation</label><div class="stars"></div>
+    <label class="f">Propreté et sécurité du chantier</label><div class="stars" data-n="4"></div>
+    <label class="f">Professionnalisme des techniciens</label><div class="stars"></div>
+    <label class="f" for="sc1">Un commentaire ?</label>
+    <textarea class="inp" id="sc1" placeholder="Vos remarques et suggestions…"></textarea>
+    <div style="height:13px"></div>
+    <button class="btn gold" onclick="this.innerHTML='Merci pour votre retour';this.disabled=true">Envoyer mon avis</button>
+    <div class="banner info" style="margin-top:11px"><svg class="i sm" style="margin-top:1px"><use href="#i-alert"/></svg><div>Toute note ≤ 2 alerte le référent SHEQ et ouvre une analyse.</div></div>
+  </div></div>
+</section>
+
+<!-- ===== ÉTATS SYSTÈME ===== -->
+<section class="screen" id="s-states">
+  <div class="net offline"><svg class="i sm"><use href="#i-wifioff"/></svg>Hors connexion<span class="sp">3 en attente</span></div>
+  <header class="hd"><button class="back" onclick="go('home')" aria-label="Retour"><svg class="i"><use href="#i-back"/></svg></button>
+    <div><h1>États du système</h1><div class="sub">Vide · chargement · erreurs</div></div></header>
+  <div class="body"><div class="pad">
+    <div class="sec">FILE DE SYNCHRONISATION</div>
+    <div class="card" style="padding:12px;margin-bottom:14px">
+      <div style="display:flex;gap:9px;align-items:center;padding-bottom:9px;border-bottom:1px solid var(--line2)">
+        <span class="lead or"><svg class="i"><use href="#i-sync"/></svg></span>
+        <div style="flex:1"><b style="font-size:13px;font-weight:650">3 éléments en attente</b><div style="font-size:11.5px;color:var(--mut)">2 signalements · 1 inspection</div></div></div>
+      <div style="font-size:12.5px;padding-top:9px;display:flex;justify-content:space-between"><span style="color:var(--mut)">SIG-2026-018</span><span class="tag t-or">EN ATTENTE</span></div>
+      <div style="font-size:12.5px;padding-top:7px;display:flex;justify-content:space-between"><span style="color:var(--mut)">INSP-2026-054</span><span class="tag t-or">EN ATTENTE</span></div>
+    </div>
+    <div class="sec">CONFLIT DE VERSION</div>
+    <div class="banner err" style="margin-bottom:14px"><svg class="i sm" style="margin-top:1px"><use href="#i-alert"/></svg>
+      <div><b>Modifié entre-temps par O. Diarra.</b> Choisissez la version à conserver — rien n'est écrasé automatiquement.</div></div>
+    <div class="btnrow" style="margin-bottom:16px"><button class="btn gh">Garder la mienne</button><button class="btn gh">Voir la différence</button></div>
+    <div class="sec">CHARGEMENT</div>
+    <div class="skel"><div class="sk" style="width:32px;height:32px;border-radius:8px"></div><div style="flex:1"><div class="sk" style="height:11px;width:70%;margin-bottom:7px"></div><div class="sk" style="height:9px;width:45%"></div></div></div>
+    <div class="skel"><div class="sk" style="width:32px;height:32px;border-radius:8px"></div><div style="flex:1"><div class="sk" style="height:11px;width:55%;margin-bottom:7px"></div><div class="sk" style="height:9px;width:62%"></div></div></div>
+    <div class="sec" style="margin-top:14px">ÉCRAN VIDE</div>
+    <div class="card">
+      <div class="empty"><div class="ic"><svg class="i xl"><use href="#i-inbox"/></svg></div>
+        <b>Aucun signalement ce mois</b><p>Un danger repéré ? Le signaler prend deux minutes et évite l'accident de demain.</p>
+        <button class="btn pri" style="max-width:220px;margin:0 auto" onclick="go('newsig')"><svg class="i sm"><use href="#i-plus"/></svg>Créer un signalement</button></div>
+    </div>
+    <div style="height:14px"></div>
+  </div></div>
+</section>
+
+</div></div>
+
+<script>
+function go(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.querySelectorAll('.pbar button').forEach(b=>b.classList.toggle('on',b.dataset.s===id));
+}
+document.querySelectorAll('.pbar button').forEach(b=>b.addEventListener('click',()=>go(b.dataset.s)));
+document.querySelectorAll('.segs').forEach(g=>g.querySelectorAll('.seg').forEach(s=>s.addEventListener('click',()=>{
+  g.querySelectorAll('.seg').forEach(x=>x.classList.remove('on'));s.classList.add('on');})));
+
+/* toast */
+function toast(msg,n){
+  const t=document.getElementById(n===2?'tst2':n===3?'tst3':'tst');
+  const x=document.getElementById(n===2?'tsttx2':n===3?'tsttx3':'tsttx');
+  if(!t)return; x.textContent=msg; t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2600);
+}
+
+/* SLAM */
+const S=[{l:'S',t:"S'arrêter",s:'Avant de monter, prenez une minute',i:["Je connais la tâche et le mode opératoire","Je suis apte : pas de fatigue ni de vertige","Le permis de travail est validé","Le surveillant au sol est présent"]},
+{l:'L',t:'Observer',s:'Inspectez la zone et repérez les dangers',i:["Météo favorable : ni vent fort ni orage","Structure et points d'ancrage vérifiés","Distances aux lignes électriques respectées","Zone au sol balisée"]},
+{l:'A',t:'Évaluer',s:'Ces risques sont-ils maîtrisables ?',i:["Risque de chute maîtrisé par l'ancrage","Outils attachés contre la chute d'objets","Moyens d'alerte et plan de sauvetage connus","Chaleur et durée prises en compte"]},
+{l:'M',t:'Maîtriser',s:'Dernier contrôle avant la montée',i:["Harnais et longe double vérifiés","Casque à jugulaire porté","Ancrage 100 % du temps, même en déplacement","Contact testé avec le surveillant"]}];
+let st=0;
+function rs(){
+  const c=S[st];
+  document.getElementById('sl-l').textContent=c.l;
+  document.getElementById('sl-t').textContent=c.t;
+  document.getElementById('sl-s').textContent=c.s;
+  document.getElementById('sl-c').textContent=(st+1)+'/4';
+  for(let i=0;i<4;i++)document.getElementById('p'+i).classList.toggle('on',i<=st);
+  const ul=document.getElementById('sl-list');ul.innerHTML='';
+  c.i.forEach(t=>{const li=document.createElement('li');
+    li.innerHTML='<span class="cb"><svg class="i sm"><use href="#i-check"/></svg></span><span class="tx">'+t+'</span>';
+    li.onclick=()=>{li.classList.toggle('ok');ck();};ul.appendChild(li);});
+  document.getElementById('sl-next').style.display=st<3?'flex':'none';
+  document.getElementById('sl-dec').style.display=st===3?'grid':'none';
+  document.getElementById('sl-v').className='verdict';ck();
+}
+function ck(){const a=[...document.querySelectorAll('#sl-list li')];
+  const d=a.every(l=>l.classList.contains('ok'));const n=document.getElementById('sl-next');n.disabled=!d;}
+function slNext(){if(st<3){st++;rs();}}
+function verdict(ok){const v=document.getElementById('sl-v'),t=document.getElementById('sl-vt');
+  v.className='verdict show '+(ok?'g':'n');
+  t.textContent=ok?"GO enregistré. Bonne intervention — restez ancré à 100 %. Le responsable est notifié."
+   :"NO GO enregistré. Vous avez bien fait : l'intervention est reportée et le responsable prévenu.";}
+rs();
+
+/* inspection */
+function tri(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  let c=0,n=0;document.querySelectorAll('#ilist .tri').forEach(r=>{if(r.querySelector('.c.on'))c++;if(r.querySelector('.n.on'))n++;});
+  const e=document.getElementById('cval');
+  if(!c&&!n){e.textContent='—';e.style.color='var(--mut)';return;}
+  const p=Math.round(100*c/(c+n));e.textContent=p+' %';
+  e.style.color=p>=90?'var(--green)':p>=70?'var(--orange)':'var(--red)';}
+
+/* audit */
+function sc(b){b.parentElement.querySelectorAll('button').forEach(x=>x.classList.remove('on'));b.classList.add('on');
+  b.style.background='var(--navy)';b.style.borderColor='var(--navy)';b.style.color='#fff';
+  b.parentElement.querySelectorAll('button').forEach(x=>{if(x!==b){x.style.background='';x.style.borderColor='';x.style.color='';}});
+  let s=0,n=0;document.querySelectorAll('#alist .tri').forEach(r=>{const o=r.querySelector('button.on');if(o){s+=+o.textContent;n++;}});
+  const e=document.getElementById('aval');if(!n){e.textContent='—';return;}
+  const p=Math.round(100*s/(n*2));e.textContent=p+' %';
+  e.style.color=p>=80?'var(--green)':p>=50?'var(--orange)':'var(--red)';}
+
+/* coffre */
+function reveal(id,s){const e=document.getElementById(id);e.textContent=s;e.style.letterSpacing='0';
+  document.getElementById('vlog').innerHTML='<svg class="i sm" style="margin-top:1px"><use href="#i-clock"/></svg><div>Consultation tracée : <b>A. Koné · '+new Date().toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'})+'</b> — masquage dans 15 s.</div>';
+  setTimeout(()=>{e.textContent='••••••••••••';e.style.letterSpacing='1.5px';},15000);}
+
+/* étoiles */
+document.querySelectorAll('.stars').forEach(g=>{
+  const n=+(g.dataset.n||5);
+  for(let i=0;i<5;i++){const b=document.createElement('button');b.className='star'+(i<n?' on':'');
+    b.innerHTML='<svg class="i"><use href="#i-star"/></svg>';b.setAttribute('aria-label',(i+1)+' étoiles');
+    b.onclick=()=>[...g.children].forEach((x,j)=>x.classList.toggle('on',j<=i));g.appendChild(b);} });
+
+/* quiz */
+function quiz(b,ok){const m=document.getElementById('qmsg');
+  b.parentElement.querySelectorAll('.btn').forEach(x=>x.disabled=true);
+  b.style.background=ok?'var(--green)':'var(--red)';b.style.color='#fff';b.style.borderColor='transparent';
+  m.textContent=ok?'Bonne réponse. Score 3/3 — question suivante.':"Non : un EPI ayant arrêté une chute est réformé définitivement. Le point sera repris en séance.";
+  m.style.color=ok?'var(--green)':'var(--red)';m.style.fontWeight='650';}
+
+/* matrice */
+(function(){const g=document.getElementById('mtx');if(!g)return;
+ const col=v=>v>=15?'#F2B8B2':v>=8?'#F8CFA8':v>=4?'#F6EAB8':'#CFE7D6';
+ const here={'2-5':1,'3-4':1,'3-2':1};
+ for(let p=5;p>=1;p--){const ax=document.createElement('div');ax.className='ax';ax.textContent=p;g.appendChild(ax);
+  for(let gr=1;gr<=5;gr++){const v=p*gr;const d=document.createElement('div');d.className='mc';
+   d.style.background=col(v);d.textContent=v;
+   if(here[p+'-'+gr]){d.classList.add('here');d.innerHTML=v+'<span class="pt"></span>';}
+   g.appendChild(d);} }
+ const e=document.createElement('div');e.className='ax';g.appendChild(e);
+ [1,2,3,4,5].forEach(n=>{const a=document.createElement('div');a.className='ax';a.textContent=n;g.appendChild(a);});
+})();
+</script>
+</body>
+</html>

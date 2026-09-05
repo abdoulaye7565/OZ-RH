@@ -1,0 +1,60 @@
+/*
+ * Charte visuelle HIRONDELLES SHEQ (navy / or).
+ * Référence : CLAUDE.md point 8, affinée avec les maquettes
+ * docs/maquettes/Maquettes_SHEQ_*.html (source de vérité visuelle du projet).
+ */
+:root {
+  /* Couleurs de marque */
+  --navy: #16305b;
+  --navy2: #25467e;
+  --navy-soft: #edf1f8;
+  --gold: #b8901b;
+  --gold-soft: #fbf3dc;
+
+  /* Couleurs d'état — usage constant dans toute l'application */
+  --red: #b42318;
+  --red-soft: #fef0ef;
+  --orange: #b54708;
+  --orange-soft: #fef3ea;
+  --green: #067647;
+  --green-soft: #ecf7f1;
+  --blue: #175cd3;
+  --blue-soft: #eff4ff;
+
+  /* Neutres */
+  --bg: #f5f6f8;
+  --surface: #ffffff;
+  --surface2: #fafbfc;
+  --ink: #0f172a;
+  --ink2: #334155;
+  --mut: #64748b;
+  --line: #e2e6ec;
+  --line2: #eef1f5;
+
+  /* Forme */
+  --r: 8px;
+  --r-lg: 12px;
+  --sh: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --sh-md: 0 4px 12px -4px rgba(16, 24, 40, 0.1);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-variant-numeric: tabular-nums; /* alignement des chiffres dans les tableaux */
+}
+
+#app {
+  min-height: 100vh;
+}
