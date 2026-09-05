@@ -42,3 +42,5 @@ class Permissions:
     # tableau de bord à ces deux rôles ferait fuir cette agrégation. Restreint
     # aux rôles de consultation large déjà identifiés dans le CDC (5.2.1, 5.2.5).
     CONSULTER_TABLEAU_BORD: tuple[R, ...] = (R.ADMINISTRATEUR, R.REFERENT_SHEQ, R.RESPONSABLE)
+    # Section 5.3.2 du CDC, "Acteurs" : "Gestion : référent SHEQ."
+    GERER_EPI: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)

@@ -24,7 +24,7 @@ un prompt terminé, testé et commité.
 
 ## LOT 2 — Travaux en hauteur
 
-- [ ] 2.1 — API des EPI
+- [x] 2.1 — API des EPI
 - [ ] 2.2 — SLAM et permis, avec la règle de blocage
 - [ ] 2.3 — Interfaces SLAM et permis
 - [ ] 2.4 — Inspections
@@ -615,3 +615,64 @@ sections ci-dessus, prompt par prompt) :
 - Notification du référent SHEQ = log applicatif, pas un enregistrement
   persistant (aucune entité NOTIFICATION avant le lot 4.4)
 - Pas de révocation serveur du refresh token (aucune table de session)
+
+## LOT 2 — Travaux en hauteur
+
+### Détail — Prompt 2.1 (terminé le 2026-09-05)
+
+Sources lues : section 5.3.2 du CDC (module EPI) et règle 6 du point 7 de
+CLAUDE.md.
+
+Implémenté : `POST /epi` (numérotation automatique), `GET /epi` (filtres
+type/statut/porteur_id), `GET /epi/verifications-dues` (horizon 30 jours par
+défaut), `GET /epi/{id}`, `PATCH /epi/{id}/affectation`,
+`POST /epi/{id}/verification-periodique`,
+`POST /epi/{id}/verification-avant-utilisation`, `POST /epi/{id}/retirer`,
+`POST /epi/{id}/reformer`. Nouvelle propriété calculée `Epi.est_conforme`
+(chapitre 7.3.2 du CDC), distincte du champ `statut` stocké — servira à la
+règle de blocage des permis (lot 2.2).
+
+**Compromis et écarts à signaler :**
+
+1. **Nouvelle dépendance : `python-dateutil`.** Nécessaire pour ajouter
+   12 mois calendaires exacts (`relativedelta`) plutôt qu'une approximation à
+   365 jours qui dérive avec les années bissextiles — direct sur une échéance
+   réglementaire de sécurité, pas un détail cosmétique.
+2. **Lettres de numérotation pour 3 des 6 types d'EPI, interprétées.** Le
+   dictionnaire (chapitre 7.3.1) ne donne H/L/C que pour harnais/longe/casque ;
+   antichute mobile, connecteur et ligne de vie ont reçu A/K/V par déduction,
+   à confirmer avec le référent SHEQ.
+3. **Numérotation en séquence globale, pas par lettre** : l'exemple du prompt
+   ("H-001, L-002, C-003") attribue des numéros consécutifs à des types
+   différents plutôt que de recommencer à 001 pour chaque lettre — interprété
+   à la lettre de cet exemple.
+4. **`prochaine_verification` amorcée dès la création** (date de mise en
+   service + 12 mois), avant toute vérification réelle : le dictionnaire ne
+   donne la formule qu'après une vérification effective ; sans cette amorce,
+   un EPI neuf jamais vérifié n'aurait pas d'échéance et serait conforme par
+   défaut indéfiniment.
+5. **Colonne `motif_reforme` ajoutée**, absente du dictionnaire (7.2.6) : sans
+   elle, le motif de réforme (« a arrêté une chute ») envoyé par l'API aurait
+   été accepté puis silencieusement perdu. À l'inverse, le motif de simple
+   retrait n'a PAS été persisté (champ retiré du schéma d'entrée) : le CDC
+   n'insiste pas sur sa traçabilité comme il le fait pour la réforme.
+6. **Vérification "avant utilisation" ne laisse aucune trace si elle est
+   conforme** — seul un échec a un effet persistant (passage à "à vérifier").
+   Même limite que le cas de recette 13 (prompt 1.6) : aucune table
+   d'historique des vérifications n'existe parmi les 14 entités.
+7. **`est_conforme` distinct du `statut` stocké**, et volontairement plus
+   strict que prévu au premier jet : un bug a été trouvé par les tests
+   eux-mêmes pendant l'écriture de ce prompt — la version initiale ne
+   considérait "à vérifier" comme non conforme que si la date était en plus
+   dépassée, ratant le cas où une vérification vient d'échouer alors que
+   l'échéance calendaire, elle, est repoussée à 12 mois. Corrigé : seul
+   `EN_SERVICE` est conforme, la date dépassée reste vérifiée en plus (pour le
+   cas où `statut` serait resté EN_SERVICE en base après une échéance dépassée,
+   faute de tâche planifiée qui le resynchronise — le lot 4.4 n'existe pas
+   encore).
+
+**Vérifié en conditions réelles :** 88 tests pytest passent, 3 toujours
+skippés (1.4). Migration testée en upgrade/downgrade/upgrade. Sur le serveur
+de démo redémarré à neuf : création d'un EPI, réforme avec motif persisté
+confirmé dans la réponse, puis 409 confirmé sur une tentative de retrait après
+réforme.

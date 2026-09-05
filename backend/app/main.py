@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.actions import router as actions_router
 from app.api.v1.auth import router as auth_router
+from app.api.v1.epi import router as epi_router
 from app.api.v1.signalements import router as signalements_router
 from app.api.v1.tableau_bord import router as tableau_bord_router
 from app.core.config import settings
@@ -25,6 +26,7 @@ app.include_router(auth_router, prefix="/api/v1")
 app.include_router(signalements_router, prefix="/api/v1")
 app.include_router(actions_router, prefix="/api/v1")
 app.include_router(tableau_bord_router, prefix="/api/v1")
+app.include_router(epi_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])

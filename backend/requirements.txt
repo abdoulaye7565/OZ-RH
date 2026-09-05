@@ -9,6 +9,10 @@ sqlalchemy>=2.0,<2.1
 alembic>=1.14,<2
 psycopg[binary]>=3.2,<4
 
+# Calculs de dates calendaires (échéances EPI à +12 mois exacts, pas une
+# approximation à 365 jours qui dérive avec les années bissextiles)
+python-dateutil>=2.9,<3
+
 # Authentification et sécurité
 pyjwt>=2.10,<3
 passlib[argon2]>=1.7,<2
