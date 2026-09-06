@@ -1,9 +1,10 @@
-"""Importer ce module enregistre les 14 entités (+ 1 hors dictionnaire, voir
-point_checklist.py) auprès de Base.metadata — nécessaire pour qu'Alembic les
-détecte à l'autogénération et que les relations inter-modèles (chaînes de
-classes) se résolvent."""
+"""Importer ce module enregistre les 14 entités (+ 2 hors dictionnaire, voir
+point_checklist.py et cotation_risque.py) auprès de Base.metadata — nécessaire
+pour qu'Alembic les détecte à l'autogénération et que les relations
+inter-modèles (chaînes de classes) se résolvent."""
 from app.models.action import Action
 from app.models.configuration import Configuration
+from app.models.cotation_risque import CotationRisque
 from app.models.document import Document
 from app.models.epi import Epi
 from app.models.equipement import Equipement
@@ -21,6 +22,7 @@ from app.models.utilisateur import Utilisateur
 __all__ = [
     "Action",
     "Configuration",
+    "CotationRisque",
     "Document",
     "Epi",
     "Equipement",

@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 
 import app.models  # noqa: F401 — enregistre les 14 entités
 from app.db.base import Base
+from app.models.cotation_risque import CotationRisque
 from app.models.enums import (
     CategorieRisque,
     NiveauRisque,
@@ -96,10 +97,11 @@ def test_cycle_site_utilisateur_fonctionne_en_pratique(session):
     assert site.cree_par_id == admin.id
 
 
-def test_risque_criticite_et_niveau_sont_des_champs_libres_non_calcules_ici(session):
-    """Rappel volontaire : ce prompt (0.2) ne fait QUE modéliser. criticite/niveau
-    sont de simples colonnes ; leur calcul est une règle de service, absente à ce
-    stade (elle arrivera avec le module Risques, lot 4.1)."""
+def test_risque_ne_porte_plus_la_cotation_elle_meme(session):
+    """Mis à jour au prompt 4.1 : RISQUE ne porte plus que l'identité stable du
+    risque, la cotation (probabilite/gravite/criticite/niveau, calculés par le
+    service métier) vit désormais sur CotationRisque — voir app/models/risque.py
+    pour la justification (une réévaluation ne remplace jamais la précédente)."""
     site = Site(nom="Site technique", type=TypeSite.CLIENT)
     session.add(site)
     session.flush()
@@ -120,6 +122,12 @@ def test_risque_criticite_et_niveau_sont_des_champs_libres_non_calcules_ici(sess
         danger="Chute de hauteur lors d'une intervention sur pylône",
         categorie=CategorieRisque.CHUTE_CIRCULATION,
         unite_travail="Terrain",
+    )
+    session.add(risque)
+    session.flush()
+
+    cotation = CotationRisque(
+        risque_id=risque.id,
         probabilite=3,
         gravite=5,
         criticite=15,
@@ -128,11 +136,12 @@ def test_risque_criticite_et_niveau_sont_des_champs_libres_non_calcules_ici(sess
         date_evaluation=date.today(),
         auteur_id=utilisateur.id,
     )
-    session.add(risque)
+    session.add(cotation)
     session.commit()
 
     assert risque.id is not None
-    assert risque.criticite == risque.probabilite * risque.gravite
+    assert cotation.id is not None
+    assert cotation.criticite == cotation.probabilite * cotation.gravite
 
 
 def test_probabilite_hors_bornes_est_rejetee(session):
@@ -155,6 +164,12 @@ def test_probabilite_hors_bornes_est_rejetee(session):
         danger="Danger factice",
         categorie=CategorieRisque.ELECTRIQUE,
         unite_travail="Bureaux",
+    )
+    session.add(risque)
+    session.flush()
+
+    cotation = CotationRisque(
+        risque_id=risque.id,
         probabilite=6,  # hors bornes 1-5
         gravite=3,
         criticite=18,
@@ -163,6 +178,6 @@ def test_probabilite_hors_bornes_est_rejetee(session):
         date_evaluation=date.today(),
         auteur_id=utilisateur.id,
     )
-    session.add(risque)
+    session.add(cotation)
     with pytest.raises(Exception):
         session.commit()

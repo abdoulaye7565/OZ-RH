@@ -64,3 +64,8 @@ class Permissions:
     # un acte d'administration du référentiel (reprise de données), pas une
     # saisie de terrain : distinct de GERER_PARC, plus restrictif.
     IMPORTER_PARC: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)
+    # Section 5.2.5 du CDC, "Acteurs" : "Rédaction et mise à jour : référent
+    # SHEQ." Couvre création, réévaluation et import du registre — le CDC ne
+    # distingue pas d'acteur "administration" séparé pour ce module (à la
+    # différence de 5.2.3) : une seule constante suffit ici.
+    GERER_RISQUES: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)

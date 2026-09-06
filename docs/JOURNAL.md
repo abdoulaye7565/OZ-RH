@@ -33,11 +33,14 @@ un prompt terminé, testé et commité.
 
 - [x] 3.1 — Parc d'équipements
 - [x] 3.2 — Fiches de configuration par marque
-- [ ] 3.3 — Coffre-fort d'identifiants
+- [ ] 3.3 — Coffre-fort d'identifiants (conception présentée le 2026-09-06,
+      en attente de validation avant codage — comme convenu pour un module
+      aussi sensible ; le 4.1 a été traité entre-temps à la demande explicite
+      de l'utilisateur)
 
 ## LOT 4 — Pilotage et modules complémentaires
 
-- [ ] 4.1 — Risques
+- [x] 4.1 — Risques
 - [ ] 4.2 — Formations, audits et revues
 - [ ] 4.3 — Documents, visiteurs, déchets, satisfaction
 - [ ] 4.4 — Notifications
@@ -1074,3 +1077,111 @@ affichées « — » plutôt que le littéral Python `None` (corrigé après
 inspection visuelle du PDF généré, pas détecté par les tests automatisés —
 même leçon que pour les chemins de fichiers du prompt 1.3 : certains défauts
 ne se voient qu'en regardant le résultat réel).
+
+### Détail — Prompt 4.1 (terminé le 2026-09-06)
+
+Sources lues : section 5.2.5 du CDC (module Risques et plan d'action),
+l'entité RISQUE au dictionnaire (7.2.2), et le classeur réel
+`docs/REG-SHEQ-001_Registre_des_Risques.xlsx` (18 risques réels, feuilles
+Cotation/Registre/Synthèse). Prompt 3.3 (coffre-fort) reste en pause, sa
+conception ayant été présentée mais pas encore validée par l'utilisateur —
+celui-ci a explicitement sélectionné le 4.1 ensuite, sans répondre sur le 3.3 ;
+traité comme un report, sur le même principe que le 1.4 en son temps.
+
+**Décision architecturale majeure, à signaler explicitement** : le
+dictionnaire modélise RISQUE avec une cotation unique intégrée (probabilite,
+gravite, criticite, niveau, date_evaluation, auteur_id en colonnes directes).
+Mais la règle de gestion 5.2.5 est explicite et sans ambiguïté : « Une
+réévaluation ne remplace pas la cotation antérieure : elle s'ajoute à
+l'historique. » Ces deux exigences sont incompatibles avec des colonnes à
+valeur unique, et le dictionnaire ne décrit aucune entité d'historique pour
+les résoudre. Scindé RISQUE (identité stable : numéro, danger, catégorie,
+unité de travail, personnes exposées) et une nouvelle entité
+**COTATION_RISQUE** (une ligne par réévaluation, immuable après création,
+même principe que CONFIGURATION) — une 16e table hors du dictionnaire des 14,
+même précédent que POINT_CHECKLIST (prompt 2.4), signalée plutôt que passée
+sous silence. Migration `88a3ec5c2f5f`, `batch_alter_table` requis (retrait
+de colonnes + contrainte de clé étrangère sur SQLite), avec un piège
+supplémentaire découvert en la testant : le mode batch reporte tel quel tout
+CHECK constraint existant non explicitement supprimé, y compris ceux qui
+référencent une colonne sur le point d'être retirée — a fait échouer la
+reconstruction de la table ("no such column: gravite") jusqu'à l'ajout d'un
+`drop_constraint` explicite pour les deux CHECK hérités de RISQUE. Cycle
+upgrade/downgrade/upgrade vérifié avant d'aller plus loin. Cette
+restructuration a nécessité la mise à jour de quatre fichiers de tests
+préexistants (`test_models.py`, `test_actions.py`, `test_recette_lot1.py`,
+`test_tableau_bord.py`) dont les fixtures créaient un `Risque` selon
+l'ancienne forme à une seule table.
+
+**Bug préexistant repéré en passant, non corrigé** : les CHECK constraints de
+l'entité RISQUE originale (migration `0ecd676d66b6`, prompt 0.2) portent un
+nom doublé (`ck_risque_ck_risque_gravite_1_5` au lieu de
+`ck_risque_gravite_1_5`), à cause d'un nom déjà préfixé passé en dur au
+`CheckConstraint(name=...)` alors que la convention de nommage
+(`app/db/base.py`) ajoute déjà ce préfixe automatiquement. Sans conséquence
+fonctionnelle (le nom reste valide et unique), mais pas reproduit sur la
+nouvelle table `cotation_risque`. Non corrigé sur `risque` pour ne pas
+toucher une migration déjà appliquée ailleurs — signalé pour mémoire.
+
+Implémenté : `POST/GET /risques`, `GET /risques/{id}` (détail avec historique
+complet des cotations), `POST /risques/{id}/reevaluer`, `GET /risques/matrice`
+(grille 5×5 complète, cases vides incluses), `GET /risques/revues-dues`,
+`POST /risques/import` (CSV/XLSX, rapport d'erreurs par ligne).
+
+**Compromis et écarts à signaler :**
+
+1. **Règle « gravité 4 ou 5 → au moins une mesure de maîtrise » déjà couverte
+   structurellement**, sans logique conditionnelle dédiée : `mesures_proposees`
+   est obligatoire et non vide pour TOUTE cotation, quelle que soit la
+   gravité (le dictionnaire le marque "Oui" sans distinction) — aucune
+   dérogation n'existe qui permettrait de contourner la règle pour les
+   gravités 1 à 3, donc rien de plus à ajouter pour 4/5 spécifiquement.
+2. **Périodicité de la revue annuelle fixée à 12 mois** depuis la date de la
+   dernière cotation — le CDC dit "revue annuelle obligatoire, rappelée
+   automatiquement" sans donner de formule (contrairement à EPI, chapitre
+   7.3.2, qui donne "+12 mois" explicitement) : douze mois retenu par
+   cohérence directe avec le mot "annuelle", pas une valeur inventée sans
+   ancrage. Une réévaluation reporte naturellement la prochaine échéance.
+3. **Numéro de registre attribué par le serveur** (séquence globale,
+   max+1) à la création normale ; **honoré tel quel à l'import** (la colonne
+   N° du classeur réel préserve l'ordre historique du registre papier),
+   avec rejet si un numéro importé est déjà pris. Après import, les
+   créations normales continuent au-delà du plus grand numéro existant.
+4. **Colonnes du classeur réel sans équivalent modélisé** : « Responsable »,
+   « Échéance », « Statut » sont en réalité des champs d'ACTION (section
+   5.2.5), pas de RISQUE — mais « Responsable » y est un intitulé de rôle
+   ("Référent SHEQ", "Direction", "Tout le personnel"), pas un identifiant
+   d'utilisateur réel : aucune correspondance fiable n'est possible sans
+   deviner. Ces colonnes sont ignorées à l'import (le module Actions,
+   prompt 1.2, permet de créer le suivi manuellement via `risque_id`) — même
+   principe que les colonnes non modélisées ignorées au prompt 3.1.
+5. **« Danger identifié » et « Risque / Dommage potentiel » concaténés**
+   dans le seul champ `danger` du dictionnaire (200 caractères) : le
+   classeur réel sépare cause et conséquence en deux colonnes, le
+   dictionnaire n'en prévoit qu'une — concaténées plutôt que de perdre l'une
+   des deux silencieusement ; une ligne dont le résultat dépasserait 200
+   caractères est rejetée avec le nombre de caractères, à raccourcir
+   manuellement (aucun cas réel du classeur ne dépasse la limite).
+6. **Date d'évaluation uniforme pour tout un import** (paramètre optionnel de
+   la route, par défaut la date du jour) : le classeur réel ne donne qu'une
+   période globale ("mars – mai 2026"), pas une date par ligne. Même logique
+   que l'auteur (utilisateur qui déclenche l'import, faute de "Évaluateurs"
+   nommément rattachables à des comptes réels).
+7. **Droits** : `GERER_RISQUES` (référent SHEQ + administrateur) couvre
+   création, réévaluation et import — la section 5.2.5 ne distingue pas
+   d'acteur "administration" séparé comme le faisait 5.2.3 pour le parc.
+   Consultation ouverte à tout utilisateur authentifié ("ensemble du
+   personnel").
+8. **Hors connexion non traité** (même limite que les prompts précédents).
+
+**Vérifié en conditions réelles :** 169 tests pytest passent (157 précédents
++ 12 nouveaux), 3 toujours skippés (1.4). Migration `88a3ec5c2f5f` testée en
+upgrade/downgrade/upgrade. Sur le serveur de démo redémarré à neuf, le
+classeur réel `REG-SHEQ-001_Registre_des_Risques.xlsx` importé intégralement :
+18/18 lignes importées sans erreur, criticité et niveau recalculés
+serveur-side pour chacune — et la répartition par niveau qui en résulte
+(0 critique, 9 élevé, 7 modéré, 2 faible) reproduit exactement la feuille
+« Synthèse » du classeur source, qui donne les mêmes quatre chiffres. Matrice
+5×5 vérifiée : les risques apparaissent dans la bonne case, les cases vides
+sont bien présentes. Rappel de revue vérifié avec une cotation antidatée de
+370 jours : correctement signalée `due`.

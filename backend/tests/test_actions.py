@@ -4,6 +4,7 @@ from datetime import date, timedelta
 import pytest
 
 from app.core.security import creer_access_token, hacher_mot_de_passe
+from app.models.cotation_risque import CotationRisque
 from app.models.enums import RoleUtilisateur
 from app.models.risque import Risque
 from app.models.utilisateur import Utilisateur
@@ -17,21 +18,37 @@ def _entete(utilisateur):
 
 @pytest.fixture()
 def risque(db_session, referent_sheq):
+    # RISQUE ne porte plus la cotation elle-même depuis le prompt 4.1 (voir
+    # app/models/risque.py) — une CotationRisque est requise séparément, même
+    # si ce fichier n'a besoin ici que de risque.id comme clé étrangère.
     r = Risque(
         numero=1,
         danger="Chute de hauteur",
         categorie=CategorieRisque.CHUTE_CIRCULATION,
         unite_travail="Terrain",
-        probabilite=3,
-        gravite=5,
-        criticite=15,
-        niveau=NiveauRisque.CRITIQUE,
-        mesures_proposees="Port du harnais",
-        date_evaluation=date.today(),
-        auteur_id=referent_sheq.id,
+        cree_par_id=referent_sheq.id,
     )
     db_session.add(r)
+    db_session.flush()
+    db_session.add(
+        CotationRisque(
+            risque_id=r.id,
+            probabilite=3,
+            gravite=5,
+            criticite=15,
+            niveau=NiveauRisque.CRITIQUE,
+            mesures_proposees="Port du harnais",
+            date_evaluation=date.today(),
+            auteur_id=referent_sheq.id,
+            cree_par_id=referent_sheq.id,
+        )
+    )
     db_session.commit()
+    # Attribut transitoire (non mappé), pour la seule commodité des tests de ce
+    # fichier : `auteur_id` n'existe plus sur le modèle Risque depuis le prompt
+    # 4.1 (déplacé sur CotationRisque) mais `_donnees_action` ci-dessous reste
+    # inchangée pour ne pas devoir modifier ses ~15 points d'appel.
+    r.auteur_id = referent_sheq.id
     return r
 
 

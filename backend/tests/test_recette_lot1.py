@@ -13,6 +13,7 @@ from datetime import date, datetime, timezone
 import pytest
 
 from app.core.security import creer_access_token
+from app.models.cotation_risque import CotationRisque
 from app.models.enums import CategorieRisque, NiveauRisque
 from app.models.risque import Risque
 
@@ -42,15 +43,23 @@ def risque_recette(db_session, referent_sheq):
         danger="Chute de hauteur",
         categorie=CategorieRisque.CHUTE_CIRCULATION,
         unite_travail="Terrain",
-        probabilite=3,
-        gravite=5,
-        criticite=15,
-        niveau=NiveauRisque.CRITIQUE,
-        mesures_proposees="Port du harnais",
-        date_evaluation=date.today(),
-        auteur_id=referent_sheq.id,
+        cree_par_id=referent_sheq.id,
     )
     db_session.add(r)
+    db_session.flush()
+    db_session.add(
+        CotationRisque(
+            risque_id=r.id,
+            probabilite=3,
+            gravite=5,
+            criticite=15,
+            niveau=NiveauRisque.CRITIQUE,
+            mesures_proposees="Port du harnais",
+            date_evaluation=date.today(),
+            auteur_id=referent_sheq.id,
+            cree_par_id=referent_sheq.id,
+        )
+    )
     db_session.commit()
     return r
 
