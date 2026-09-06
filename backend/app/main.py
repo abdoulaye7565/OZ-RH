@@ -6,7 +6,9 @@ from app.api.v1.actions import router as actions_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.epi import router as epi_router
 from app.api.v1.evaluations_slam import router as slam_router
+from app.api.v1.inspections import router as inspections_router
 from app.api.v1.permis import router as permis_router
+from app.api.v1.points_checklist import router as points_checklist_router
 from app.api.v1.signalements import router as signalements_router
 from app.api.v1.tableau_bord import router as tableau_bord_router
 from app.core.config import settings
@@ -31,6 +33,8 @@ app.include_router(tableau_bord_router, prefix="/api/v1")
 app.include_router(epi_router, prefix="/api/v1")
 app.include_router(slam_router, prefix="/api/v1")
 app.include_router(permis_router, prefix="/api/v1")
+app.include_router(points_checklist_router, prefix="/api/v1")
+app.include_router(inspections_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])

@@ -1,17 +1,16 @@
 """Entité INSPECTION — non détaillée par le dictionnaire (chapitre 7.2), reconstituée
-depuis le MCD et la section 5.3.1. Comme pour EVALUATION_SLAM, les points de
-checklist et leur cotation (C/NC/SO) sont modélisés en JSON : aucune entité
-MODELE_CHECKLIST ou POINT_INSPECTION ne figure dans la liste des 14 entités
-demandées. Une entité dédiée aux modèles de checklists paramétrables sera
-probablement nécessaire pour gérer leur cycle de vie propre (créer/modifier un
-modèle) — à évaluer au prompt 2.4."""
+depuis le MCD et la section 5.3.1.
+
+`taux_conformite` était une colonne stockée depuis le prompt 0.2 ; convertie en
+propriété calculée au prompt 2.4, cohérent avec Action.en_retard et
+Epi.est_conforme (jamais de valeur dérivée qui peut devenir périmée en base)."""
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, JSON, Numeric
+from sqlalchemy import Date, ForeignKey, JSON
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel, enum_column
-from app.models.enums import StatutInspection, TypeInspection
+from app.models.enums import CotationPoint, StatutInspection, TypeInspection
 
 
 class Inspection(BaseModel):
@@ -21,10 +20,20 @@ class Inspection(BaseModel):
     site_id: Mapped[int] = mapped_column(ForeignKey("site.id"), nullable=False)
     inspecteur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
-    # Liste des points : {libelle, cotation: "C"|"NC"|"SO", observation, photo}.
+    # Liste de {point_checklist_id, libelle, cotation: "C"|"NC"|"SO", observation,
+    # photo}. `libelle` est un instantané du référentiel au moment de
+    # l'inspection : si un point est reformulé plus tard, les inspections
+    # passées gardent le texte tel qu'il était réellement lu sur le terrain.
     points: Mapped[list] = mapped_column(JSON, nullable=False)
-    # Calculé (règle 6, CLAUDE.md) : conformes / (conformes + non conformes), SO exclus.
-    taux_conformite: Mapped[float | None] = mapped_column(Numeric(5, 2), nullable=True)
     statut: Mapped[StatutInspection] = mapped_column(
         enum_column(StatutInspection, "statut_inspection"), default=StatutInspection.EN_COURS, nullable=False
     )
+
+    @property
+    def taux_conformite(self) -> float | None:
+        """Calculé (règle 6, CLAUDE.md) : conformes / (conformes + non conformes),
+        les « sans objet » exclus."""
+        conformes = sum(1 for p in self.points if p["cotation"] == CotationPoint.CONFORME.value)
+        non_conformes = sum(1 for p in self.points if p["cotation"] == CotationPoint.NON_CONFORME.value)
+        total = conformes + non_conformes
+        return (conformes / total) if total else None

@@ -48,3 +48,7 @@ class Permissions:
     # d'équipe" — pas de rôle "chef d'équipe" distinct dans la matrice (point 6
     # de CLAUDE.md), couvert par "responsable".
     VALIDER_PERMIS: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)
+    # Section 5.3.1 du CDC ne nomme pas d'acteur unique pour la gestion du
+    # référentiel de checklists ; traité comme les autres référentiels
+    # SHEQ (EPI, documents) : propriété du référent SHEQ.
+    GERER_CHECKLISTS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)

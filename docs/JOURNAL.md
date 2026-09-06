@@ -27,7 +27,7 @@ un prompt terminé, testé et commité.
 - [x] 2.1 — API des EPI
 - [x] 2.2 — SLAM et permis, avec la règle de blocage
 - [x] 2.3 — Interfaces SLAM et permis (hors connexion non traité, prompt 1.4 requis)
-- [ ] 2.4 — Inspections
+- [x] 2.4 — Inspections
 
 ## LOT 3 — Parc, configurations et coffre-fort
 
@@ -810,3 +810,74 @@ avec son motif), bouton "Valider et délivrer" désactivé. Captures d'écran
 comparées visuellement aux maquettes. Zéro erreur console sur les deux
 parcours. 118 tests pytest passent (117 précédents + 1 nouveau sur `details`),
 3 toujours skippés (1.4).
+
+### Détail — Prompt 2.4 (terminé le 2026-09-06)
+
+Source lue : section 5.3.1 du CDC (module Inspections). Ce prompt est backend
+uniquement (pas de bullet d'écran).
+
+**Décision architecturale majeure, au-delà des 14 entités — à signaler
+explicitement** : le CDC demande des « modèles de checklists paramétrables ».
+Recherche des sources réelles (`FOR-SHEQ-011_Checklists_Inspection.xlsx` pour
+locaux/incendie/électricité, `FOR-SHEQ-005`/`FOR-SHEQ-010` pour installations/
+équipements) : **93 points réels** au total, organisés en catégories pour 2
+des 5 types. Un volume et un besoin de « paramétrable » de cet ordre ne
+pouvaient pas rester une constante Python (contrairement au référentiel SLAM,
+fixe et jamais qualifié de « paramétrable » par le CDC) : ajout d'une entité
+**POINT_CHECKLIST**, une 15e table hors du dictionnaire des 14, avec CRUD
+minimal (créer, lister, archiver — pas de suppression physique). Les 93
+points réels sont semés par une migration de données dédiée, dont le contenu
+vit dans `app/models/checklist_referentiel.py` (partagé avec les fixtures de
+test — voir plus bas).
+
+Implémenté : `POST/GET /points-checklist`, `POST /points-checklist/{id}/archiver` ;
+`POST /inspections` (cotation C/NC/SO en un seul envoi), `PATCH .../points`
+(tant que non clôturée), `POST .../points/{id}/photo`, `POST .../cloturer`
+(génère les actions correctives, une par point NC), `GET .../planification`.
+
+**`Inspection.taux_conformite` converti en propriété calculée**, il était une
+colonne stockée depuis le prompt 0.2 — cohérent avec `Action.en_retard` et
+`Epi.est_conforme` : jamais de valeur dérivée susceptible de devenir périmée
+en base.
+
+**Bug d'infrastructure trouvé et corrigé pendant l'écriture des tests** : les
+tests utilisent `Base.metadata.create_all()`, pas Alembic — la migration de
+données (les 93 points) ne s'exécutait donc jamais pour la base de test,
+11 tests échouaient avec `IndexError`. Corrigé en extrayant le contenu dans
+`app/models/checklist_referentiel.py`, importé à la fois par la migration et
+par `tests/conftest.py` : plus jamais de divergence possible entre ce qui est
+semé en développement/production et ce que les tests utilisent.
+
+**Compromis et écarts à signaler :**
+
+1. **Actions correctives générées à la clôture, pas à la saisie de chaque
+   point.** Le prompt dit « à l'enregistrement » (ambigu) ; générer à chaque
+   sauvegarde intermédiaire aurait dupliqué les actions si l'inspection est
+   corrigée avant d'être close. Résolu en faveur de la clôture, seul moment
+   où le contenu est définitif.
+2. **Délai des actions correctives fixé à 30 jours**, non donné par le CDC —
+   choisi par cohérence avec l'alerte "actions à J-7" du tableau 3 (chapitre
+   6.3), à confirmer avec le référent SHEQ.
+3. **Responsable par défaut de l'action = l'inspecteur lui-même** : le CDC ne
+   précise pas qui doit traiter un écart constaté ; l'inspecteur reste
+   modifiable ensuite via l'API Actions (prompt 1.2).
+4. **Photo uniquement après création**, via un endpoint dédié par point
+   (`POST .../points/{id}/photo`), pas dans la requête de création elle-même
+   — simplifie le contrat de `POST /inspections` (JSON pur, pas de
+   multipart) puisque ce prompt n'a pas de contrainte d'écran à respecter.
+5. **Planification calculée en direct depuis les inspections clôturées**
+   (pas de table de planification dédiée) : périodicités reprises telles
+   quelles des formulaires sources ("Fréquence recommandée" / "recommandation"
+   dans FOR-SHEQ-005/010/011). Équipements varie selon la criticité dans le
+   formulaire d'origine (trimestrielle à semestrielle) ; trimestrielle
+   retenue par défaut faute de champ de criticité sur EQUIPEMENT.
+6. **Hors connexion non traité** (même limite que 1.3/2.3) : aucun bandeau
+   ajouté ici faute d'écran à construire dans ce prompt.
+
+**Vérifié en conditions réelles :** 132 tests pytest passent (118 précédents +
+14 nouveaux), 3 toujours skippés (1.4). Migrations testées en upgrade et
+downgrade, 93 points confirmés en base (13/14/15/25/26 par type, total exact).
+Sur le serveur de démo redémarré à neuf : inspection électricité créée avec
+1 conforme/1 non conforme/1 sans objet → taux 0,5 confirmé ; clôture génère
+exactement 1 action avec l'échéance +30 jours ; planification recalculée
+immédiatement après (90 jours, périodicité trimestrielle électricité).
