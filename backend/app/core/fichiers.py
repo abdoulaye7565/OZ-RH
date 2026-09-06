@@ -20,6 +20,15 @@ TAILLE_MAX_PHOTO_OCTETS = 5 * 1024 * 1024  # 5 Mo
 EXTENSIONS_SAUVEGARDE_AUTORISEES = {".rsc", ".backup", ".cfg", ".conf", ".zip", ".tar", ".gz", ".txt"}
 TAILLE_MAX_SAUVEGARDE_OCTETS = 10 * 1024 * 1024  # 10 Mo — export de configuration, plus volumineux qu'une photo
 
+# Formats réels du SMI documentaire (LM-SHEQ-001, colonne "Format" : Word,
+# Excel) plus PDF pour les documents diffusés en lecture seule.
+EXTENSIONS_DOCUMENT_AUTORISEES = {".docx", ".doc", ".xlsx", ".xls", ".pdf"}
+TAILLE_MAX_DOCUMENT_OCTETS = 20 * 1024 * 1024  # 20 Mo
+
+# Justificatifs numérisés (déchets, prompt 4.3) : photo d'un bon/reçu ou PDF scanné.
+EXTENSIONS_JUSTIFICATIF_AUTORISEES = {".jpg", ".jpeg", ".png", ".pdf"}
+TAILLE_MAX_JUSTIFICATIF_OCTETS = 5 * 1024 * 1024  # 5 Mo — même ordre de grandeur qu'une photo
+
 
 async def enregistrer_photos(fichiers: list[UploadFile], sous_dossier: str, nombre_max: int) -> list[str]:
     """Valide type et taille, écrit sur disque sous un nom aléatoire (jamais le nom
@@ -63,33 +72,37 @@ async def enregistrer_photos(fichiers: list[UploadFile], sous_dossier: str, nomb
     return chemins
 
 
-async def enregistrer_sauvegardes(fichiers: list[UploadFile], sous_dossier: str, nombre_max: int) -> list[str]:
-    """Même principe que `enregistrer_photos` (extensions/taille validées, nom
-    aléatoire sur disque, tout ou rien) mais pour les exports de configuration
-    plutôt que des photos. Le nom ORIGINAL du fichier (contrôlé par
-    app/services/configuration_service.py contre la convention SITE-IDENTITY-
-    AAAAMMJJ avant même d'appeler cette fonction) n'est jamais celui utilisé sur
-    disque — même raison qu'ailleurs : ne jamais faire confiance au nom fourni
-    par le client pour l'écriture réelle."""
+async def _enregistrer_par_extension(
+    fichiers: list[UploadFile],
+    sous_dossier: str,
+    nombre_max: int,
+    extensions_autorisees: set[str],
+    taille_max_octets: int,
+) -> list[str]:
+    """Même principe que `enregistrer_photos` (nom aléatoire sur disque, tout ou
+    rien) mais validé par extension de nom de fichier plutôt que par type MIME
+    déclaré — utilisé pour les formats où le type MIME envoyé par le client
+    n'est pas fiable ou pas discriminant (configurations, documents,
+    justificatifs). Le nom ORIGINAL n'est jamais celui utilisé sur disque."""
     if len(fichiers) > nombre_max:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"{nombre_max} fichiers de sauvegarde maximum, {len(fichiers)} envoyés",
+            detail=f"{nombre_max} fichiers maximum, {len(fichiers)} envoyés",
         )
 
     contenus: list[tuple[bytes, str]] = []
     for fichier in fichiers:
         extension = Path(fichier.filename or "").suffix.lower()
-        if extension not in EXTENSIONS_SAUVEGARDE_AUTORISEES:
+        if extension not in extensions_autorisees:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Extension non autorisée : « {extension} » (autorisées : {sorted(EXTENSIONS_SAUVEGARDE_AUTORISEES)})",
+                detail=f"Extension non autorisée : « {extension} » (autorisées : {sorted(extensions_autorisees)})",
             )
         contenu = await fichier.read()
-        if len(contenu) > TAILLE_MAX_SAUVEGARDE_OCTETS:
+        if len(contenu) > taille_max_octets:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Fichier trop volumineux : {len(contenu) / 1024 / 1024:.1f} Mo (10 Mo maximum)",
+                detail=f"Fichier trop volumineux : {len(contenu) / 1024 / 1024:.1f} Mo ({taille_max_octets / 1024 / 1024:.0f} Mo maximum)",
             )
         contenus.append((contenu, extension))
 
@@ -103,3 +116,28 @@ async def enregistrer_sauvegardes(fichiers: list[UploadFile], sous_dossier: str,
         chemins.append((Path(sous_dossier) / nom_fichier).as_posix())
 
     return chemins
+
+
+async def enregistrer_sauvegardes(fichiers: list[UploadFile], sous_dossier: str, nombre_max: int) -> list[str]:
+    """Exports de configuration (prompt 3.2). Le nom ORIGINAL est contrôlé par
+    app/services/configuration_service.py contre la convention SITE-IDENTITY-
+    AAAAMMJJ avant même d'appeler cette fonction."""
+    return await _enregistrer_par_extension(
+        fichiers, sous_dossier, nombre_max, EXTENSIONS_SAUVEGARDE_AUTORISEES, TAILLE_MAX_SAUVEGARDE_OCTETS
+    )
+
+
+async def enregistrer_documents(fichiers: list[UploadFile], sous_dossier: str, nombre_max: int = 1) -> list[str]:
+    """Fichier joint d'un DOCUMENT (prompt 4.3, section 5.3.5) : Word/Excel/PDF,
+    formats réels du SMI documentaire (LM-SHEQ-001, colonne "Format")."""
+    return await _enregistrer_par_extension(
+        fichiers, sous_dossier, nombre_max, EXTENSIONS_DOCUMENT_AUTORISEES, TAILLE_MAX_DOCUMENT_OCTETS
+    )
+
+
+async def enregistrer_justificatifs(fichiers: list[UploadFile], sous_dossier: str, nombre_max: int = 3) -> list[str]:
+    """Justificatif numérisé d'un déchet enlevé (prompt 4.3, section 5.3.6) :
+    photo d'un bon/reçu ou PDF scanné."""
+    return await _enregistrer_par_extension(
+        fichiers, sous_dossier, nombre_max, EXTENSIONS_JUSTIFICATIF_AUTORISEES, TAILLE_MAX_JUSTIFICATIF_OCTETS
+    )

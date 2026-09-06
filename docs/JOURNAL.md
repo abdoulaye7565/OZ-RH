@@ -42,7 +42,7 @@ un prompt terminé, testé et commité.
 
 - [x] 4.1 — Risques
 - [x] 4.2 — Formations, audits et revues
-- [ ] 4.3 — Documents, visiteurs, déchets, satisfaction
+- [x] 4.3 — Documents, visiteurs, déchets, satisfaction
 - [ ] 4.4 — Notifications
 
 ## LOT 5 — Finalisation
@@ -1293,3 +1293,112 @@ une évolution de +50 points, cohérente par chapitre ; revue de direction
 créée avec ses indicateurs de période assemblés automatiquement, décision
 non soldée correctement reportée dans les données d'entrée de la revue
 suivante avec son identifiant de revue d'origine conservé.
+
+### Détail — Prompt 4.3 (terminé le 2026-09-06)
+
+Quatre modules implémentés ensemble, comme demandé. Sources lues : sections
+5.3.5 et 5.3.6 du CDC (une seule section combinée pour Visiteurs/Déchets/
+Satisfaction, pas trois sous-sections distinctes), et les documents réels
+LM-SHEQ-001 (Liste maîtresse), REG-SHEQ-004 (Registre des visiteurs),
+REG-SHEQ-005 (Registre des déchets), PRO-SHEQ-004 (Procédure de maîtrise
+documentaire) et FOR-SHEQ-018 (Fiche de satisfaction client). Conformément à
+la consigne du prompt ("plus simples que les précédents : privilégie la
+cohérence avec l'existant"), DOCUMENT (déjà modélisé depuis le prompt 0.2,
+avec `accuses_lecture` déjà anticipé en JSON) a été réutilisé et étendu
+plutôt que reconstruit, et seulement quatre nouvelles entités ont été
+ajoutées au lieu d'une par sous-fonctionnalité.
+
+**Nouvelle note de cohérence documentaire** : le CDC contient ici aussi des
+renvois de figures incohérents (déjà rencontré aux prompts 3.1, 3.2 et 4.2).
+§5.3.5 cite la figure A.38 pour l'écran de gestion des documents, mais A.38
+est en réalité l'écran Déchets ; le bon renvoi est A.36 ("Liste maîtresse des
+documents"). §5.3.6 cite A.39-A.41 pour Visiteurs/Déchets/Satisfaction, mais
+A.40-A.41 sont en réalité Utilisateurs/rôles et Paramètres ; le bon renvoi
+est A.37-A.39. Sans conséquence ici (prompt backend), à signaler au référent
+SHEQ pour correction du document source.
+
+**Décision de modélisation notable — DOCUMENT** : la règle 5.3.5 ("une seule
+version en vigueur à un instant donné" + "la version antérieure passant
+automatiquement en archive" à l'approbation) exigeait de lever la contrainte
+d'unicité posée sur `reference` seule depuis le prompt 0.2 — remplacée par
+une contrainte composite `(reference, version)`, migration `6efa01e166a2`
+avec `batch_alter_table`. Une nouvelle version est une NOUVELLE ligne
+(statut BROUILLON), jamais une réécriture de l'ancienne — même principe que
+CONFIGURATION et COTATION_RISQUE — et l'ancienne version EN_VIGUEUR n'est
+archivée qu'au moment où la NOUVELLE est approuvée, pas au moment où le
+brouillon de la nouvelle version est créé (lu littéralement dans la règle :
+c'est "approuver" qui déclenche l'archivage, pas "créer une nouvelle
+version").
+
+**Quatre nouvelles entités hors dictionnaire** : Visiteur, Dechet,
+EnqueteSatisfaction, ReponseSatisfaction — le chapitre 7 n'en contient
+aucune, ni pour ces trois modules ni pour Documents (même constat que les
+prompts 4.1/4.2 : le dictionnaire réel ne couvre que 8 entités). Ajout
+également de `Action.reponse_satisfaction_id` (5e origine possible, après
+risque/signalement/inspection/cotation_audit), pour "l'ouverture d'une
+analyse" que la règle 5.3.6 associe à une note de satisfaction basse.
+
+**Compromis et écarts à signaler :**
+
+1. **Visibilité des documents filtrée par statut, pas par route séparée** :
+   un document EN_APPROBATION ou BROUILLON renvoie 404 (pas 403) à un
+   utilisateur non autorisé à le voir — délibéré, pour ne pas révéler
+   qu'un brouillon existe à qui n'y a pas droit (règle 5.3.5 : "n'est pas
+   accessible aux utilisateurs finaux").
+2. **Séparation rédaction/approbation assurée par les rôles, pas par une
+   vérification "auteur ≠ approbateur"** : `GERER_DOCUMENTS`
+   (référent SHEQ + administrateur) et `APPROUVER_DOCUMENTS`
+   (responsable + administrateur) sont des ensembles disjoints sauf pour
+   l'administrateur, qui peut se retrouver rédacteur et approbateur du même
+   document — cohérent avec le principe "Tout" de son propre périmètre déjà
+   appliqué partout ailleurs dans l'application (CLAUDE.md, point 6), pas
+   une lacune propre à ce prompt.
+3. **Visiteur.personne_visitee en texte libre**, pas une clé étrangère vers
+   UTILISATEUR : le registre réel (REG-SHEQ-004) note un nom en clair, pas
+   nécessairement celui d'un compte de l'application (accueil, service
+   générique...).
+4. **Dechet.quantite en texte libre** ("2 unités", "5 kg") plutôt qu'un
+   nombre et une unité séparés : fidèle au registre réel (REG-SHEQ-005), qui
+   mélange les deux sans les distinguer.
+5. **Les 6 critères de satisfaction traités comme une constante Python**
+   (`satisfaction_service.CRITERES`), pas une table de référence
+   supplémentaire hors dictionnaire : contrairement au quiz de sensibilisation
+   ou aux checklists, le CDC ne les déclare jamais "paramétrables".
+6. **"Ouverture d'une analyse... selon la procédure de gestion des
+   signalements" interprétée comme le mécanisme d'action corrective déjà
+   existant** (`Action.reponse_satisfaction_id`), pas une création automatique
+   de SIGNALEMENT : un signalement exige un site et une description
+   d'incident interne, deux champs qui ne correspondent pas naturellement à
+   une réponse de satisfaction client — l'action reste un acte manuel
+   (même choix qu'au prompt 4.2 pour les écarts d'audit), pas générée
+   automatiquement à la soumission.
+7. **Envoi d'enquête ouvert au technicien**, pas réservé au seul référent
+   SHEQ : la section 5.3.6 dit "traitement par le référent SHEQ" pour les
+   réponses, mais ne restreint pas explicitement qui peut envoyer une
+   enquête après une intervention — ouvert au technicien qui vient de la
+   terminer, plus restrictif pour le traitement des réponses.
+8. **Aucun envoi réel (e-mail/SMS) du lien** : la route renvoie le jeton, à
+   charge du futur frontend de construire l'URL partageable — aucune
+   dépendance d'envoi ajoutée, non demandée explicitement et hors périmètre
+   d'un prompt qui insiste sur la simplicité.
+9. **Première route publique sans authentification de l'application**
+   (`GET`/`POST /satisfaction/questionnaire/{jeton}`) : jeton
+   `secrets.token_urlsafe(24)`, à usage unique (`repondu` verrouille l'accès
+   après soumission), 404 générique que le jeton soit invalide ou déjà
+   utilisé (pas de distinction révélant l'un des deux cas à un appelant non
+   authentifié).
+10. **Hors connexion non traité** (même limite que tous les prompts
+    précédents).
+
+**Vérifié en conditions réelles :** 217 tests pytest passent (193 précédents
++ 24 nouveaux), 3 toujours skippés (1.4). Migration `6efa01e166a2` testée en
+upgrade/downgrade/upgrade. Sur le serveur de démo redémarré à neuf : document
+créé, soumis, approuvé, nouvelle version créée puis approuvée à son tour —
+confirmé que la version 01 passe bien en archive à l'approbation de la 02 ;
+visiteur enregistré puis retiré de la liste des présents après son départ ;
+déchet créé puis enlèvement enregistré avec un vrai fichier joint
+(chemin stocké sous nom aléatoire, jamais le nom original) ; enquête de
+satisfaction envoyée, questionnaire consulté et répondu **sans aucun en-tête
+d'autorisation** (vérifié explicitement : la route publique fonctionne bien
+sans jeton JWT), une note à 1/5 déclenchant correctement `necessite_analyse`,
+et une seconde tentative sur le même jeton rejetée en 404.

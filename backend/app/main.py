@@ -6,6 +6,8 @@ from app.api.v1.actions import router as actions_router
 from app.api.v1.audits import router as audits_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.configurations import router as configurations_router
+from app.api.v1.dechets import router as dechets_router
+from app.api.v1.documents import router as documents_router
 from app.api.v1.epi import router as epi_router
 from app.api.v1.equipements import router as equipements_router
 from app.api.v1.evaluations_slam import router as slam_router
@@ -15,8 +17,10 @@ from app.api.v1.permis import router as permis_router
 from app.api.v1.points_checklist import router as points_checklist_router
 from app.api.v1.revues import router as revues_router
 from app.api.v1.risques import router as risques_router
+from app.api.v1.satisfaction import router as satisfaction_router
 from app.api.v1.signalements import router as signalements_router
 from app.api.v1.tableau_bord import router as tableau_bord_router
+from app.api.v1.visiteurs import router as visiteurs_router
 from app.core.config import settings
 
 app = FastAPI(
@@ -47,6 +51,10 @@ app.include_router(risques_router, prefix="/api/v1")
 app.include_router(formations_router, prefix="/api/v1")
 app.include_router(audits_router, prefix="/api/v1")
 app.include_router(revues_router, prefix="/api/v1")
+app.include_router(documents_router, prefix="/api/v1")
+app.include_router(visiteurs_router, prefix="/api/v1")
+app.include_router(dechets_router, prefix="/api/v1")
+app.include_router(satisfaction_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])

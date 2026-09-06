@@ -84,3 +84,23 @@ class Permissions:
     # rendu — à confirmer avec le référent SHEQ si ce rapprochement est trop
     # large.
     GERER_REVUES: tuple[R, ...] = (R.REFERENT_SHEQ, R.RESPONSABLE, R.ADMINISTRATEUR)
+    # Section 5.3.5, "Acteurs" : "Rédaction : référent SHEQ." Couvre dépôt,
+    # nouvelle version et accusé de lecture (l'accusé est en réalité ouvert à
+    # tout utilisateur pour SA PROPRE lecture — vérifié route par route).
+    GERER_DOCUMENTS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.5, "Acteurs" : "Approbation : direction." Même rapprochement
+    # que GERER_REVUES.
+    APPROUVER_DOCUMENTS: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)
+    # Section 5.3.6, "Acteurs" : "Déchets : référent SHEQ."
+    GERER_DECHETS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.6, "Acteurs" : "Satisfaction : clients, avec traitement par
+    # le référent SHEQ" — l'envoi d'une enquête n'est pas réservé au seul
+    # référent SHEQ dans le texte (un technicien termine une intervention et
+    # peut vouloir l'envoyer immédiatement) : ouvert au technicien également,
+    # à la différence du traitement des réponses (réservé au référent SHEQ).
+    ENVOYER_ENQUETE_SATISFACTION: tuple[R, ...] = (R.TECHNICIEN, R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    TRAITER_SATISFACTION: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.6, "Acteurs" : "Visiteurs : accueil" — aucun rôle "accueil"
+    # distinct dans la matrice : ouvert à tout utilisateur authentifié plutôt
+    # que restreint, l'accueil des visiteurs n'étant pas un privilège
+    # sensible comparable aux autres référentiels SHEQ.

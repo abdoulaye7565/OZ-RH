@@ -1,8 +1,16 @@
 """Entité DOCUMENT — non détaillée par le dictionnaire (chapitre 7.2), reconstituée
-depuis le MCD et la section 5.3.5."""
+depuis le MCD et la section 5.3.5.
+
+Une nouvelle version (PRO-SHEQ-004, § 3 "RÉVISION : toute modification crée une
+nouvelle version (01 → 02) ; l'ancienne est déplacée en 09-Archives et n'est
+plus utilisée") est une NOUVELLE ligne, jamais une réécriture de l'ancienne —
+même principe que CONFIGURATION et COTATION_RISQUE. `reference` n'est donc
+plus unique à elle seule : c'est le couple (reference, version) qui l'est ;
+la règle "une seule version en vigueur à la fois" (5.3.5) est une règle de
+service, pas une contrainte SQL (comme le reste du cycle de vie)."""
 from datetime import date
 
-from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, JSON, String
+from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, JSON, String, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel, enum_column
@@ -11,9 +19,12 @@ from app.models.enums import ConfidentialiteDocument, StatutDocument
 
 class Document(BaseModel):
     __tablename__ = "document"
-    __table_args__ = (CheckConstraint("niveau BETWEEN 1 AND 4", name="ck_document_niveau_1_4"),)
+    __table_args__ = (
+        CheckConstraint("niveau BETWEEN 1 AND 4", name="ck_document_niveau_1_4"),
+        UniqueConstraint("reference", "version", name="uq_document_reference_version"),
+    )
 
-    reference: Mapped[str] = mapped_column(String(30), unique=True, nullable=False)
+    reference: Mapped[str] = mapped_column(String(30), nullable=False)
     intitule: Mapped[str] = mapped_column(String(200), nullable=False)
     # Reprend la hiérarchie à 4 niveaux du SMI documentaire existant (politique,
     # pilotage, procédures, formulaires). Colonne entière : NiveauDocument (IntEnum)

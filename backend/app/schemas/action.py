@@ -14,17 +14,26 @@ class ActionCreation(BaseModel):
     # Ajouté au prompt 4.2 : "Créer une action corrective à partir d'un écart"
     # (section 5.3.4) — anticipé dans le modèle Action depuis le prompt 1.2.
     cotation_audit_id: int | None = None
+    # Ajouté au prompt 4.3 : section 5.3.6, "toute note ≤ 2 déclenche...
+    # l'ouverture d'une analyse".
+    reponse_satisfaction_id: int | None = None
     type_mesure: TypeMesureAction
     responsable_id: int
     echeance: date
 
     @model_validator(mode="after")
     def _une_seule_origine(self) -> "ActionCreation":
-        origines = [self.risque_id, self.signalement_id, self.inspection_id, self.cotation_audit_id]
+        origines = [
+            self.risque_id,
+            self.signalement_id,
+            self.inspection_id,
+            self.cotation_audit_id,
+            self.reponse_satisfaction_id,
+        ]
         if sum(o is not None for o in origines) != 1:
             raise ValueError(
                 "Une action doit être rattachée à exactement une origine : "
-                "risque_id, signalement_id, inspection_id ou cotation_audit_id"
+                "risque_id, signalement_id, inspection_id, cotation_audit_id ou reponse_satisfaction_id"
             )
         return self
 
@@ -47,6 +56,7 @@ class ActionSortie(BaseModel):
     signalement_id: int | None
     inspection_id: int | None
     cotation_audit_id: int | None
+    reponse_satisfaction_id: int | None
     type_mesure: TypeMesureAction
     responsable_id: int
     echeance: date

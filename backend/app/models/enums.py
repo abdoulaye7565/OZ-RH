@@ -230,3 +230,12 @@ class StatutDecisionRevue(str, enum.Enum):
 
     OUVERTE = "ouverte"
     SOLDEE = "soldee"
+
+
+class Recommandation(str, enum.Enum):
+    """Trois valeurs reprises telles quelles de FOR-SHEQ-018 ("Recommanderiez-vous
+    Hirondelles IT Lab ?")."""
+
+    OUI_CERTAINEMENT = "oui_certainement"
+    PROBABLEMENT = "probablement"
+    NON = "non"
