@@ -44,3 +44,7 @@ class Permissions:
     CONSULTER_TABLEAU_BORD: tuple[R, ...] = (R.ADMINISTRATEUR, R.REFERENT_SHEQ, R.RESPONSABLE)
     # Section 5.3.2 du CDC, "Acteurs" : "Gestion : référent SHEQ."
     GERER_EPI: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.2.2 du CDC, "Acteurs" : "Validation : responsable ou chef
+    # d'équipe" — pas de rôle "chef d'équipe" distinct dans la matrice (point 6
+    # de CLAUDE.md), couvert par "responsable".
+    VALIDER_PERMIS: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)

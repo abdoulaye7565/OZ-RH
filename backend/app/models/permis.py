@@ -31,7 +31,12 @@ class Permis(BaseModel):
     support: Mapped[SupportPermis] = mapped_column(enum_column(SupportPermis, "support_permis"), nullable=False)
     hauteur_estimee: Mapped[float | None] = mapped_column(Numeric(4, 1), nullable=True)
     intervenants: Mapped[list["Utilisateur"]] = relationship("Utilisateur", secondary=permis_intervenants)
-    surveillant_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
+    # Rendu nullable au prompt 2.2 (posé NOT NULL au 0.2) : "aucun surveillant
+    # désigné" est l'une des quatre causes de blocage évaluées ENSEMBLE par le
+    # service dédié, au même titre que l'EPI ou le SLAM — une contrainte NOT
+    # NULL empêcherait même la création de la demande et produirait une erreur
+    # de validation Pydantic plutôt que le motif de blocage explicite attendu.
+    surveillant_id: Mapped[int | None] = mapped_column(ForeignKey("utilisateur.id"), nullable=True)
     debut_validite: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     fin_validite: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     # Résultat des vérifications automatiques (règle 1, CLAUDE.md) : calculé par le

@@ -97,3 +97,18 @@ def referent_sheq(db_session, site, mot_de_passe_clair):
     db_session.add(referent)
     db_session.commit()
     return referent
+
+
+@pytest.fixture()
+def responsable(db_session, site, mot_de_passe_clair):
+    resp = Utilisateur(
+        nom="Traoré",
+        prenom="Fatoumata",
+        identifiant="f.traore",
+        mot_de_passe=hacher_mot_de_passe(mot_de_passe_clair),
+        role=RoleUtilisateur.RESPONSABLE,
+        site_id=site.id,
+    )
+    db_session.add(resp)
+    db_session.commit()
+    return resp

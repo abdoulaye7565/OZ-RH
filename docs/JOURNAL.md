@@ -25,7 +25,7 @@ un prompt terminé, testé et commité.
 ## LOT 2 — Travaux en hauteur
 
 - [x] 2.1 — API des EPI
-- [ ] 2.2 — SLAM et permis, avec la règle de blocage
+- [x] 2.2 — SLAM et permis, avec la règle de blocage
 - [ ] 2.3 — Interfaces SLAM et permis
 - [ ] 2.4 — Inspections
 
@@ -676,3 +676,79 @@ skippés (1.4). Migration testée en upgrade/downgrade/upgrade. Sur le serveur
 de démo redémarré à neuf : création d'un EPI, réforme avec motif persisté
 confirmé dans la réponse, puis 409 confirmé sur une tentative de retrait après
 réforme.
+
+### Détail — Prompt 2.2 (terminé le 2026-09-06)
+
+Sources lues : section 5.2.2 du CDC (module Travaux en hauteur), règle 1 du
+point 7 de CLAUDE.md, et `docs/diagrammes/sequence.png` (regardé avant tout
+code, comme demandé). Les 4 étapes SLAM et leurs 16 points ont été repris
+littéralement du script de la maquette mobile (`const S=[...]`,
+Maquettes_SHEQ_Management_v2.html), pas inventés — voir
+`app/models/slam_referentiel.py`.
+
+**Ce prompt est backend uniquement** : l'interface SLAM/permis est un prompt
+séparé (2.3).
+
+**LA RÈGLE CENTRALE** vit exclusivement dans
+`app/services/regle_blocage_permis.py`, un fichier dédié à une seule fonction
+(`evaluer_controles`), appelée à la fois à la création ET ré-exécutée à chaque
+tentative de validation — jamais mise en cache. C'est cette relecture
+systématique qui rend la règle impossible à contourner : un test dédié
+(`test_impossible_de_contourner_en_validant_apres_coup`) dégrade un EPI
+*entre* la demande et la validation et vérifie que le blocage s'applique
+quand même.
+
+**Découverte importante en lisant le diagramme de séquence** : il montre que
+même un permis automatiquement bloqué est **persisté** (avec référence,
+visible du responsable), pas rejeté sans trace — cohérent avec le statut
+`bloqué` déjà présent dans le dictionnaire depuis le prompt 0.2. Un permis est
+donc toujours créé à la demande (statut `demande` ou `bloqué` selon les
+contrôles), jamais refusé silencieusement.
+
+**Compromis et écarts à signaler :**
+
+1. **`surveillant_id` rendu nullable** (posé NOT NULL au 0.2) : sinon "aucun
+   surveillant désigné" ne pourrait jamais être une des quatre causes de
+   blocage évaluées ensemble — ce serait une erreur de validation Pydantic
+   avant même d'atteindre le service, pas un motif explicite. Migration
+   testée en upgrade/downgrade avec `batch_alter_table` (SQLite ne supporte
+   pas ALTER COLUMN directement).
+2. **Fenêtre de validité du SLAM résolue** (point ouvert depuis le 0.2) : un
+   intervenant doit avoir un GO daté du **même jour calendaire** que le début
+   du créneau du permis. Un GO d'hier ne couvre pas une montée aujourd'hui —
+   testé explicitement. À confirmer avec le référent SHEQ si la réalité du
+   terrain est plus nuancée (plusieurs permis le même jour, décalage horaire
+   nuit/matin…).
+3. **Incohérence trouvée entre deux sources de référence, non résolue en
+   silence** : la maquette mobile SLAM liste "Le permis de travail est validé"
+   comme point de contrôle de l'étape 1 (S'arrêter), ce qui suggère SLAM
+   *après* permis — alors que la règle 1 de CLAUDE.md et le diagramme de
+   séquence (lecture des évaluations SLAM avant création du permis) impliquent
+   l'inverse. Résolu en faveur de la règle et du diagramme (sources plus
+   autoritatives qu'un unique point de texte UI) : SLAM est vérifié comme
+   pré-condition du permis. Le texte du point de contrôle est repris tel quel
+   dans le référentiel (fidélité à la maquette), mais aucune vérification
+   serveur ne porte sur CE point précis individuellement — seul le résultat
+   global (GO/NO_GO) compte pour la règle de blocage.
+4. **"Étape suivante impossible sans tout valider" traduit en règle serveur
+   équivalente, pas identique** : l'évaluation est soumise en un seul envoi
+   (mobile hors connexion, pas d'échange par étape), donc le serveur valide
+   "impossible de déclarer GO si un seul point sur 16 n'est pas coché" plutôt
+   que de contrôler une progression écran par écran, qui reste une
+   responsabilité du client (prompt 2.3).
+5. **Notifications** (responsable à la demande, intervenant à la délivrance,
+   responsable au NO GO) = logs applicatifs, même limite que les prompts 1.1
+   et 2.1 — le service de notifications persistant est le lot 4.4.
+6. **Réponse HTTP du cœur de la règle non-uniforme avec le reste de l'API** :
+   `POST /permis/{id}/valider` renvoie 409 avec `detail` structuré
+   (`{message, motifs}`) plutôt qu'une simple chaîne comme les autres 409 du
+   projet — nécessaire pour transmettre plusieurs motifs cumulés lisiblement,
+   à harmoniser si d'autres endpoints ont un jour le même besoin.
+
+**Vérifié en conditions réelles :** 117 tests pytest passent (88 précédents +
+29 nouveaux), 3 toujours skippés (1.4). La règle centrale a sa propre suite
+(9 tests : cas nominal + une cause par condition, plus une cause supplémentaire
+EPI réformé, plus le cumul de plusieurs causes). Sur le serveur de démo
+redémarré à neuf : un permis avec EPI conforme + SLAM GO + surveillant valide
+est créé `demande` puis délivré ; un second permis sans surveillant est
+immédiatement `bloqué` avec le motif exact affiché en clair.
