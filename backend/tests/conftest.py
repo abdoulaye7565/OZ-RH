@@ -4,14 +4,18 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import app.models  # noqa: F401 — enregistre les 14 entités (+1, voir point_checklist.py)
+import app.models  # noqa: F401 — enregistre les 14 entités (+ hors dictionnaire, voir models/__init__.py)
 from app.core.security import hacher_mot_de_passe
 from app.db.base import Base
 from app.db.session import get_db
 from app.main import app
+from app.models.audit_referentiel import lignes_a_semer as lignes_audit_a_semer
 from app.models.checklist_referentiel import lignes_a_semer
 from app.models.enums import RoleUtilisateur, TypeSite
+from app.models.exigence_audit import ExigenceAudit
 from app.models.point_checklist import PointChecklist
+from app.models.question_quiz import QuestionQuiz
+from app.models.quiz_referentiel import lignes_a_semer as lignes_quiz_a_semer
 from app.models.site import Site
 from app.models.utilisateur import Utilisateur
 
@@ -32,6 +36,11 @@ def db_session():
     # (app/models/checklist_referentiel.py) pour ne jamais diverger de ce que
     # la migration insère réellement en développement/production.
     session.add_all(PointChecklist(**ligne) for ligne in lignes_a_semer())
+    # Même principe pour les 22 exigences d'audit (prompt 4.2, migrations
+    # c1a2b3d4e5f6/d2b3c4e5f6a7) et les 10 questions de quiz : jamais exécutées
+    # ici non plus (create_all, pas Alembic).
+    session.add_all(ExigenceAudit(**ligne) for ligne in lignes_audit_a_semer())
+    session.add_all(QuestionQuiz(**ligne) for ligne in lignes_quiz_a_semer())
     session.commit()
     try:
         yield session

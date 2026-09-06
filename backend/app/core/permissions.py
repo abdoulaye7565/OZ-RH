@@ -69,3 +69,18 @@ class Permissions:
     # distingue pas d'acteur "administration" séparé pour ce module (à la
     # différence de 5.2.3) : une seule constante suffit ici.
     GERER_RISQUES: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.3 du CDC, "Acteurs" : "Gestion : référent SHEQ." Couvre
+    # compétences, habilitations, séances et référentiel de quiz.
+    GERER_FORMATIONS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.4, "Acteurs" : "Audit : référent SHEQ ou auditeur désigné."
+    # Aucun rôle "auditeur" distinct dans la matrice (point 6, CLAUDE.md) :
+    # couvert par référent SHEQ, comme pour les autres référentiels SHEQ.
+    GERER_AUDITS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.3.4, "Acteurs" : "Revue : direction." Aucun rôle "direction"
+    # distinct dans la matrice : rapproché du rôle RESPONSABLE, même
+    # interprétation que pour le parc (5.2.3). Référent SHEQ ajouté malgré
+    # l'absence de mention explicite dans les Acteurs : FOR-SHEQ-016 (le
+    # formulaire réel) le désigne comme rédacteur et cosignataire du compte
+    # rendu — à confirmer avec le référent SHEQ si ce rapprochement est trop
+    # large.
+    GERER_REVUES: tuple[R, ...] = (R.REFERENT_SHEQ, R.RESPONSABLE, R.ADMINISTRATEUR)

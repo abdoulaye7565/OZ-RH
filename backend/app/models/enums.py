@@ -211,3 +211,22 @@ class StatutDocument(str, enum.Enum):
 class ConfidentialiteDocument(str, enum.Enum):
     NORMAL = "normal"
     CONFIDENTIEL = "confidentiel"
+
+
+class StatutSeance(str, enum.Enum):
+    """Non énuméré par le CDC (section 5.3.3 ne détaille pas de cycle de vie
+    explicite) ; déduit du couple "séances planifiées et réalisées" (données
+    gérées) et de la fonctionnalité d'émargement, qui suppose une séance déjà
+    tenue."""
+
+    PLANIFIEE = "planifiee"
+    REALISEE = "realisee"
+    ANNULEE = "annulee"
+
+
+class StatutDecisionRevue(str, enum.Enum):
+    """Non énuméré par le CDC ; déduit de la règle 5.3.4 "les décisions de revue
+    non soldées sont automatiquement reportées"."""
+
+    OUVERTE = "ouverte"
+    SOLDEE = "soldee"

@@ -25,6 +25,7 @@ def creer_action(db: Session, donnees: ActionCreation, cree_par_id: int) -> Acti
         risque_id=donnees.risque_id,
         signalement_id=donnees.signalement_id,
         inspection_id=donnees.inspection_id,
+        cotation_audit_id=donnees.cotation_audit_id,
         type_mesure=donnees.type_mesure,
         responsable_id=donnees.responsable_id,
         echeance=donnees.echeance,

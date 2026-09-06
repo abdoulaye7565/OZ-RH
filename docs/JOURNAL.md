@@ -41,7 +41,7 @@ un prompt terminé, testé et commité.
 ## LOT 4 — Pilotage et modules complémentaires
 
 - [x] 4.1 — Risques
-- [ ] 4.2 — Formations, audits et revues
+- [x] 4.2 — Formations, audits et revues
 - [ ] 4.3 — Documents, visiteurs, déchets, satisfaction
 - [ ] 4.4 — Notifications
 
@@ -1185,3 +1185,111 @@ serveur-side pour chacune — et la répartition par niveau qui en résulte
 5×5 vérifiée : les risques apparaissent dans la bonne case, les cases vides
 sont bien présentes. Rappel de revue vérifié avec une cotation antidatée de
 370 jours : correctement signalée `due`.
+
+### Détail — Prompt 4.2 (terminé le 2026-09-06)
+
+Trois modules liés implémentés en un seul prompt, comme demandé explicitement
+par son texte. Sources lues : sections 5.3.3 et 5.3.4 du CDC, et les
+formulaires réels FOR-SHEQ-014 (Feuille de présence), FOR-SHEQ-015 (Quiz de
+sensibilisation, 10 questions), FOR-SHEQ-016 (CR de revue de direction) et
+FOR-SHEQ-017 (Grille d'audit interne, non classée confidentielle contrairement
+aux fiches de configuration).
+
+**Constat préalable, à signaler** : le chapitre 7 du dictionnaire ne contient
+en réalité que 8 entités détaillées avec table de champs (UTILISATEUR,
+RISQUE, SIGNALEMENT, EQUIPEMENT, CONFIGURATION, EPI, PERMIS, SECRET/
+JOURNAL_ACCES) — SITE, ACTION, DOCUMENT, INSPECTION, EVALUATION_SLAM n'ont
+jamais eu de table de champs propre non plus (déjà noté dans leurs modèles
+respectifs). FORMATION, COMPETENCE, QUIZ, AUDIT, EXIGENCE, REVUE_DIRECTION et
+DECISION n'existent nulle part dans le CDC, ni comme entité ni comme liste
+énumérée (aucune liste des « 22 exigences » citées par le prompt) : tout le
+modèle de données de ce prompt est une reconstruction, faite pour coller aux
+formulaires papier réels plutôt qu'aux seules 5 phrases fonctionnelles de
+chaque section du CDC.
+
+**Sept nouvelles entités hors dictionnaire** (même précédent que
+POINT_CHECKLIST et COTATION_RISQUE) : Competence, Habilitation, Seance,
+Emargement, QuestionQuiz, TentativeQuiz (Formations) ; ExigenceAudit,
+CampagneAudit, CotationAudit (Audits) ; RevueDirection, DecisionRevue
+(Revues) — onze au total. `Action.cotation_audit_id` ajouté, comme anticipé
+explicitement dans le commentaire du modèle Action depuis le prompt 1.2
+("AUDIT n'existe pas encore — colonne à ajouter par migration au lot 4").
+Trois migrations chaînées : `b0fef0f9add6` (schéma, `batch_alter_table` pour
+la colonne sur `action`), `c1a2b3d4e5f6` (seed des 22 exigences réelles de
+FOR-SHEQ-017) et `d2b3c4e5f6a7` (seed des 10 questions réelles de
+FOR-SHEQ-015) — même principe que `dafa396b65c4` (prompt 2.4) : contenu
+partagé entre la migration et `tests/conftest.py` via `audit_referentiel.py`
+et `quiz_referentiel.py`, pour ne jamais diverger.
+
+**Décision de portée** : ce prompt insiste sur le soin de présentation de la
+comparaison de maturité, mais reste dans la même famille que 2.1/2.4/3.2/4.1
+(pas de figure d'écran citée explicitement comme condition du prompt lui-même,
+contrairement au 3.2). Backend uniquement, comme les précédents modules de
+cette forme : la structure de `ComparaisonCampagnes` (delta signé, par
+chapitre, prêt pour un graphique) est pensée pour qu'un futur écran n'ait pas
+à retravailler les données, mais aucun écran n'est construit ici.
+
+**Compromis et écarts à signaler :**
+
+1. **Score de maturité au dénominateur variable** : formule du chapitre 7.3.2
+   ("somme des cotations rapportée au double du nombre d'exigences cotées")
+   appliquée littéralement — une campagne partiellement remplie a un score
+   maximal égal à 2× ses seules exigences déjà cotées, pas 44 (2×22) par
+   défaut. Vérifié en conditions réelles (une seule exigence cotée à 2/2 →
+   score 2/2 = 100 %, pas 2/44).
+2. **Seuils d'interprétation (mature ≥ 80 %, en construction 50-79 %,
+   prioriser < 50 %) et seuils de cotation (0/1/2)** repris littéralement de
+   FOR-SHEQ-017, pas inventés — le CDC lui-même ne les donne pas.
+3. **« Créer une action corrective à partir d'un écart » traité comme un acte
+   manuel**, pas une génération automatique à la clôture (contrairement à
+   Inspection, où CLAUDE.md énonce explicitement la règle automatique) : le
+   CDC ne formule pas cette règle pour les audits de la même façon, et
+   générer 22 actions à chaque clôture (même pour des écarts mineurs déjà
+   suivis autrement) aurait été une interprétation plus intrusive que le
+   texte ne l'exige.
+4. **Seuil de réussite du quiz exprimé en proportion (70 %)**, pas en valeur
+   absolue "sur 10" : le référentiel de questions est géré par le référent
+   SHEQ (comme POINT_CHECKLIST) et peut donc évoluer en nombre — une
+   proportion reste correcte quel que soit le total, une valeur absolue "7"
+   ne le resterait pas.
+5. **Émargement idempotent par (séance, participant)** : un second appel
+   corrige le premier plutôt que de dupliquer la ligne — une présence n'est
+   pas un historique à conserver point par point (contrairement aux
+   cotations de risque ou aux configurations, délibérément immuables).
+6. **Clôture de séance = renouvellement automatique des habilitations des
+   présents**, seulement si la séance est rattachée à une compétence : lien
+   direct avec la phrase "données gérées" de la section 5.3.3, qui associe
+   explicitement compétences et séances — vérifié en conditions réelles
+   (date d'expiration exactement +12 mois après la date de séance).
+7. **Décisions de revue reportées globalement**, pas seulement celles de la
+   revue immédiatement précédente : toute décision encore ouverte, quelle
+   que soit son ancienneté, apparaît dans les données d'entrée de la
+   prochaine revue — cohérent avec une décision qui resterait ouverte sur
+   plusieurs cycles trimestriels.
+8. **Rapport de revue sans le taux de conformité moyen des inspections** :
+   `Inspection.taux_conformite` est une propriété Python calculée (prompt
+   2.4), pas une colonne — la moyenner sans un N+1 aurait exigé de charger
+   toutes les inspections de la période, jugé disproportionné pour ce seul
+   champ du rapport.
+9. **Droits du module Revues rapprochés de RESPONSABLE/ADMINISTRATEUR +
+   REFERENT_SHEQ** : le CDC ne cite que "direction" comme acteur, mais
+   FOR-SHEQ-016 désigne le référent SHEQ comme rédacteur et cosignataire du
+   compte rendu — à confirmer avec le référent SHEQ si ce rapprochement est
+   trop large.
+10. **Hors connexion non traité** (même limite que tous les prompts
+    précédents).
+
+**Vérifié en conditions réelles :** 193 tests pytest passent (169 précédents
++ 24 nouveaux), 3 toujours skippés (1.4). Les trois migrations testées en
+upgrade/downgrade/upgrade. Sur le serveur de démo redémarré à neuf :
+compétence + séance créées, émargement enregistré, clôture de la séance
+confirmée renouveler l'habilitation du participant présent (expiration
+2027-09-06 pour une séance du 2026-09-06 et une périodicité de 12 mois) ;
+quiz passé avec les 10 questions réelles, score recalculé serveur-side ;
+campagne d'audit cotée sur les 22 exigences réelles (cotation 1 partout →
+score 22/44 = 50 %, "En construction", exactement conforme à l'interprétation
+de FOR-SHEQ-017) ; comparaison entre deux campagnes (50 % puis 100 %) donnant
+une évolution de +50 points, cohérente par chapitre ; revue de direction
+créée avec ses indicateurs de période assemblés automatiquement, décision
+non soldée correctement reportée dans les données d'entrée de la revue
+suivante avec son identifiant de revue d'origine conservé.

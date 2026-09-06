@@ -1,7 +1,7 @@
 """Entité ACTION — non détaillée par le dictionnaire (chapitre 7.2), reconstituée
 depuis la section 5.2.5 et le MCD. Une action est rattachée à une origine parmi
-RISQUE, SIGNALEMENT ou INSPECTION (les seules entités d'origine possibles déjà
-modélisées ; AUDIT n'existe pas encore — colonne à ajouter par migration au lot 4)."""
+RISQUE, SIGNALEMENT, INSPECTION ou COTATION_AUDIT (colonne `cotation_audit_id`
+ajoutée au prompt 4.2, comme anticipé ici depuis le prompt 1.2)."""
 from datetime import date
 
 from sqlalchemy import CheckConstraint, Date, ForeignKey, Integer, String, Text
@@ -22,6 +22,7 @@ class Action(BaseModel):
     risque_id: Mapped[int | None] = mapped_column(ForeignKey("risque.id"), nullable=True)
     signalement_id: Mapped[int | None] = mapped_column(ForeignKey("signalement.id"), nullable=True)
     inspection_id: Mapped[int | None] = mapped_column(ForeignKey("inspection.id"), nullable=True)
+    cotation_audit_id: Mapped[int | None] = mapped_column(ForeignKey("cotation_audit.id"), nullable=True)
 
     type_mesure: Mapped[TypeMesureAction] = mapped_column(
         enum_column(TypeMesureAction, "type_mesure_action"), nullable=False
