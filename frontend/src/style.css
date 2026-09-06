@@ -936,3 +936,203 @@ textarea.inp {
     grid-template-columns: repeat(2, 1fr);
   }
 }
+
+/* ---------- SLAM (prompt 2.3) ---------- */
+.slam {
+  background: linear-gradient(160deg, var(--navy) 0%, #0e2447 100%);
+  color: #fff;
+  padding: 13px 14px;
+  flex: 0 0 auto;
+}
+.slam .top {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.slam .lt {
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(240, 198, 62, 0.16);
+  border: 1px solid rgba(240, 198, 62, 0.5);
+  color: #f0c63e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 21px;
+  font-weight: 800;
+  flex: 0 0 auto;
+}
+.slam h2 {
+  font-size: 16px;
+  font-weight: 700;
+  margin: 0;
+}
+.slam .s {
+  font-size: 11.5px;
+  color: #a9b8d4;
+}
+.slam .prog {
+  display: flex;
+  gap: 4px;
+  margin-top: 11px;
+}
+.slam .st {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.18);
+}
+.slam .st.on {
+  background: #f0c63e;
+}
+.slam .cnt {
+  margin-left: auto;
+  font-size: 11px;
+  color: #a9b8d4;
+  font-weight: 600;
+  flex: 0 0 auto;
+}
+
+.verdict {
+  margin-top: 10px;
+  border-radius: var(--r);
+  padding: 12px;
+  font-size: 13px;
+  font-weight: 600;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.verdict.g {
+  background: var(--green-soft);
+  color: var(--green);
+}
+.verdict.n {
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.cl {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.cl li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 11px;
+  margin-bottom: 7px;
+  font-size: 13.5px;
+  cursor: pointer;
+  box-shadow: var(--sh);
+}
+.cl li .cb {
+  width: 21px;
+  height: 21px;
+  border: 1.5px solid #cbd3df;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  flex: 0 0 auto;
+}
+.cl li.ok {
+  border-color: #bfe3cf;
+  background: var(--green-soft);
+}
+.cl li.ok .cb {
+  background: var(--green);
+  border-color: var(--green);
+}
+.cl li.ko {
+  border-color: #f5c6c2;
+  background: var(--red-soft);
+  cursor: default;
+}
+.cl li.ko .cb {
+  background: var(--red);
+  border-color: var(--red);
+}
+.cl li .tx {
+  flex: 1;
+}
+
+.btn.go {
+  background: var(--green);
+  color: #fff;
+}
+.btn.no {
+  background: var(--red);
+  color: #fff;
+}
+.btnrow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+/* ---------- sauvetage / urgence (ajout hors maquette, voir JOURNAL.md) ---------- */
+.urgence {
+  background: var(--red-soft);
+  border: 1px solid #f5c6c2;
+  border-radius: var(--r-lg);
+  padding: 12px;
+  margin-top: 10px;
+}
+.urgence summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  color: var(--red);
+  cursor: pointer;
+  list-style: none;
+}
+.urgence summary::-webkit-details-marker {
+  display: none;
+}
+.urgence .contenu {
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: var(--ink2);
+  line-height: 1.55;
+}
+.urgence .numero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--surface);
+  border-radius: 7px;
+  padding: 8px 10px;
+  margin: 6px 0;
+  font-weight: 650;
+}
+.urgence .numero a {
+  color: var(--red);
+  text-decoration: none;
+}
+
+.kv {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--line2);
+  font-size: 12.5px;
+}
+.kv:last-child {
+  border-bottom: 0;
+}
+.kv span {
+  color: var(--mut);
+}
+.kv b {
+  font-weight: 650;
+  text-align: right;
+}

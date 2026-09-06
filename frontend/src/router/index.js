@@ -5,6 +5,8 @@ import NouveauSignalementView from "../views/NouveauSignalementView.vue";
 import SignalementsView from "../views/SignalementsView.vue";
 import TableauBordMobileView from "../views/TableauBordMobileView.vue";
 import TableauBordDesktopView from "../views/TableauBordDesktopView.vue";
+import SlamView from "../views/SlamView.vue";
+import PermisValidationView from "../views/PermisValidationView.vue";
 import { useAuthStore } from "../stores/auth";
 
 const router = createRouter({
@@ -28,6 +30,18 @@ const router = createRouter({
       path: "/tableau-de-bord",
       name: "tableau-de-bord",
       component: TableauBordMobileView,
+      meta: { necessiteAuth: true },
+    },
+    {
+      path: "/slam",
+      name: "slam",
+      component: SlamView,
+      meta: { necessiteAuth: true },
+    },
+    {
+      path: "/permis/:id/validation",
+      name: "permis-validation",
+      component: PermisValidationView,
       meta: { necessiteAuth: true },
     },
     // Préfixe /gestion : amorce de l'interface de gestion desktop (CDC 11.1,

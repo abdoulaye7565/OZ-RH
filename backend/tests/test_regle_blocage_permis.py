@@ -227,3 +227,24 @@ def test_plusieurs_causes_cumulees_toutes_listees(db_session, intervenant):
     assert resultat.conforme is False
     assert any("surveillant" in m.lower() for m in resultat.motifs)
     assert any("SLAM" in m for m in resultat.motifs)
+
+
+def test_details_montre_les_4_conditions_y_compris_celles_qui_passent(db_session, intervenant, surveillant):
+    """Ajouté au prompt 2.3 : l'écran de validation responsable a besoin de
+    voir les conditions qui PASSENT aussi, pas seulement celles en échec."""
+    _donner_epi_conforme(db_session, intervenant)
+    # Pas de SLAM : seule cette condition doit apparaître en échec.
+
+    resultat = evaluer_controles(
+        db_session,
+        intervenant_ids=[intervenant.id],
+        surveillant_id=surveillant.id,
+        debut_validite=datetime.now(timezone.utc),
+    )
+
+    assert len(resultat.details) == 4
+    par_cle = {d.cle: d for d in resultat.details}
+    assert par_cle["epi"].conforme is True
+    assert par_cle["slam"].conforme is False
+    assert par_cle["surveillant_designe"].conforme is True
+    assert par_cle["surveillant_hors_intervenants"].conforme is True

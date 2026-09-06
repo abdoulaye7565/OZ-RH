@@ -38,9 +38,21 @@ class RefusEntree(BaseModel):
     motif: str
 
 
+class ControleDetail(BaseModel):
+    cle: str
+    libelle: str
+    conforme: bool
+    detail: str | None = None
+
+
 class ControlesAutomatiquesSortie(BaseModel):
     conforme: bool
     motifs: list[str]
+    # Ajouté au prompt 2.3 (rétrocompatible, `motifs` conservé) : l'écran de
+    # validation responsable doit afficher les QUATRE conditions avec leur
+    # résultat individuel ("liste des contrôles automatiques avec leur
+    # résultat"), pas seulement les motifs des conditions en échec.
+    details: list[ControleDetail] = []
 
 
 class PermisSortie(BaseModel):

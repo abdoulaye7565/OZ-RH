@@ -116,6 +116,7 @@ function pourcent(n, total) {
     <nav class="tabs">
       <button class="tb" @click="router.push({ name: 'accueil' })"><Icone nom="home" />Accueil</button>
       <button class="tb" @click="router.push({ name: 'signalements' })"><Icone nom="alert" />Signaux</button>
+      <button class="tb" @click="router.push({ name: 'slam' })"><Icone nom="climb" />SLAM</button>
       <button class="tb on"><Icone nom="chart" />Tableau</button>
     </nav>
   </div>

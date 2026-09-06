@@ -21,7 +21,7 @@ from app.models.enums import DecisionSlam
 from app.models.epi import Epi
 from app.models.evaluation_slam import EvaluationSlam
 from app.models.utilisateur import Utilisateur
-from app.schemas.permis import ControlesAutomatiquesSortie
+from app.schemas.permis import ControleDetail, ControlesAutomatiquesSortie
 
 
 def _epi_non_conformes_de(db: Session, intervenant_id: int) -> list[Epi]:
@@ -55,14 +55,20 @@ def evaluer_controles(
     debut_validite: datetime,
 ) -> ControlesAutomatiquesSortie:
     motifs: list[str] = []
+    motifs_epi: list[str] = []
+    motifs_slam: list[str] = []
 
     # (c) Aucun surveillant désigné.
+    motif_surveillant_designe = None
     if surveillant_id is None:
-        motifs.append("Aucun surveillant au sol n'est désigné")
+        motif_surveillant_designe = "Aucun surveillant au sol n'est désigné"
+        motifs.append(motif_surveillant_designe)
 
     # (d) Le surveillant figure parmi les intervenants.
+    motif_surveillant_hors_intervenants = None
     if surveillant_id is not None and surveillant_id in intervenant_ids:
-        motifs.append("Le surveillant ne peut pas figurer parmi les intervenants")
+        motif_surveillant_hors_intervenants = "Le surveillant ne peut pas figurer parmi les intervenants"
+        motifs.append(motif_surveillant_hors_intervenants)
 
     for intervenant_id in intervenant_ids:
         intervenant = db.get(Utilisateur, intervenant_id)
@@ -70,10 +76,45 @@ def evaluer_controles(
 
         # (a) EPI non conforme affecté à un intervenant.
         for epi in _epi_non_conformes_de(db, intervenant_id):
-            motifs.append(f"EPI {epi.numero} de {nom} non conforme (vérification dépassée ou statut {epi.statut.value})")
+            m = f"EPI {epi.numero} de {nom} non conforme (vérification dépassée ou statut {epi.statut.value})"
+            motifs.append(m)
+            motifs_epi.append(m)
 
         # (b) Pas de SLAM en GO le jour du permis.
         if not _a_un_slam_go_le_jour(db, intervenant_id, debut_validite):
-            motifs.append(f"{nom} n'a pas d'évaluation SLAM en GO pour cette journée")
+            m = f"{nom} n'a pas d'évaluation SLAM en GO pour cette journée"
+            motifs.append(m)
+            motifs_slam.append(m)
 
-    return ControlesAutomatiquesSortie(conforme=not motifs, motifs=motifs)
+    # Quatre lignes fixes, une par condition (a/b/c/d), pour l'écran de
+    # validation responsable (prompt 2.3) : "liste des contrôles automatiques
+    # avec leur résultat" suppose de voir les conditions qui PASSENT aussi,
+    # pas seulement celles qui échouent (ce que `motifs` seul ne permet pas).
+    details = [
+        ControleDetail(
+            cle="epi",
+            libelle="Équipements de protection conformes",
+            conforme=not motifs_epi,
+            detail="; ".join(motifs_epi) or None,
+        ),
+        ControleDetail(
+            cle="slam",
+            libelle="Évaluations SLAM en GO du jour",
+            conforme=not motifs_slam,
+            detail="; ".join(motifs_slam) or None,
+        ),
+        ControleDetail(
+            cle="surveillant_designe",
+            libelle="Surveillant au sol désigné",
+            conforme=motif_surveillant_designe is None,
+            detail=motif_surveillant_designe,
+        ),
+        ControleDetail(
+            cle="surveillant_hors_intervenants",
+            libelle="Surveillant distinct des intervenants",
+            conforme=motif_surveillant_hors_intervenants is None,
+            detail=motif_surveillant_hors_intervenants,
+        ),
+    ]
+
+    return ControlesAutomatiquesSortie(conforme=not motifs, motifs=motifs, details=details)

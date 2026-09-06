@@ -106,6 +106,7 @@ function formaterDate(iso) {
     <nav class="tabs">
       <button class="tb" @click="router.push({ name: 'accueil' })"><Icone nom="home" />Accueil</button>
       <button class="tb on"><Icone nom="alert" />Signaux</button>
+      <button class="tb" @click="router.push({ name: 'slam' })"><Icone nom="climb" />SLAM</button>
       <button class="tb" @click="router.push({ name: 'tableau-de-bord' })"><Icone nom="chart" />Tableau</button>
     </nav>
   </div>

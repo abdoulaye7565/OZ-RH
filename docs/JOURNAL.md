@@ -26,7 +26,7 @@ un prompt terminé, testé et commité.
 
 - [x] 2.1 — API des EPI
 - [x] 2.2 — SLAM et permis, avec la règle de blocage
-- [ ] 2.3 — Interfaces SLAM et permis
+- [x] 2.3 — Interfaces SLAM et permis (hors connexion non traité, prompt 1.4 requis)
 - [ ] 2.4 — Inspections
 
 ## LOT 3 — Parc, configurations et coffre-fort
@@ -752,3 +752,61 @@ EPI réformé, plus le cumul de plusieurs causes). Sur le serveur de démo
 redémarré à neuf : un permis avec EPI conforme + SLAM GO + surveillant valide
 est créé `demande` puis délivré ; un second permis sans surveillant est
 immédiatement `bloqué` avec le motif exact affiché en clair.
+
+### Détail — Prompt 2.3 (terminé le 2026-09-06)
+
+Sources lues : figures A.5, A.6 et A.30 (renvoyées vers les écrans réels des
+maquettes : `#s-slam` et `#s-permis` du fichier mobile — A.30, desktop, n'a
+pas de bullet de livrable propre dans ce prompt, seulement citée en lecture,
+donc pas construite ici).
+
+**Blocage signalé avant de commencer** : ce prompt demande explicitement de
+"réutiliser le mécanisme du lot 1" pour le hors connexion — mécanisme qui
+n'existe pas (prompt 1.4 jamais implémenté). Impossible de réutiliser ce qui
+n'existe pas. Traité comme au prompt 1.3 : écran fonctionnel en ligne
+uniquement, avec un bandeau honnête plutôt qu'une fausse promesse.
+
+Implémenté : `SlamView.vue` (stepper 4 étapes fidèle à `#s-slam`, contenu
+chargé depuis `GET /slam/referentiel`, jamais dupliqué en dur côté frontend),
+`PermisValidationView.vue` (vue responsable fidèle à `#s-permis`).
+
+**Amélioration backend nécessaire pour cet écran** : `ControlesAutomatiquesSortie`
+(prompt 2.2) ne renvoyait qu'une liste plate de motifs d'échec — impossible d'en
+tirer "la liste des contrôles avec leur résultat" (qui suppose de montrer aussi
+ce qui PASSE). Ajouté `details: list[ControleDetail]`, une ligne fixe par
+condition (a/b/c/d) avec son statut individuel, rétrocompatible (`motifs`
+conservé). Testé (nouveau test dédié) avant de construire l'écran dessus.
+
+**Compromis et écarts à signaler :**
+
+1. **Accès au plan de sauvetage entièrement absent de la maquette** : aucun
+   bouton, aucun écran dédié dans le prototype de référence. Construit de
+   toutes pièces (`PlanSauvetage.vue`), avec un contenu réel — pas inventé —
+   repris de `03-Procedures_et_consignes/PLA-SHEQ-002_Plan_Sauvetage_Hauteur.docx`
+   (numéros SAMU/Protection civile, conduite à tenir résumée). Codé en dur
+   faute de module Documents (lot 4.3) pour le servir dynamiquement.
+2. **Bandeau d'intervention de la maquette remplacé.** `#s-slam` affiche en
+   dur "Pylône 24 m — FASO-NET, permis 2026-041, surveillant : O. Diarra" —
+   impossible à reproduire fidèlement puisque SLAM n'est relié à aucun permis
+   précis dans notre modèle (décision actée au 2.2). Omis plutôt que simulé.
+3. **Noms des intervenants non affichés** (`Utilisateur #id` à la place) sur
+   l'écran de validation : l'API ne renvoie que des `intervenant_ids`, même
+   limite déjà signalée pour l'auteur d'un signalement au prompt 1.3.
+4. **Aucun écran de liste des permis** : la maquette desktop (A.30) en a un,
+   mais ce prompt ne le demande pas explicitement dans ses livrables — la vue
+   de validation n'est donc atteignable que par URL directe
+   (`/permis/{id}/validation`), pas depuis un menu. Écart de navigation réel,
+   à combler si une liste des permis est demandée plus tard.
+5. **Hors connexion non traité** (détaillé plus haut) : bandeau honnête sur
+   l'écran SLAM, comme sur l'écran Signalement depuis le prompt 1.3.
+
+**Vérifié en conditions réelles, dans un vrai navigateur :** parcours SLAM
+complet automatisé — 4 étapes traversées, bouton "Étape suivante" refusant
+d'avancer tant qu'un point n'est pas coché (vérifié explicitement à chaque
+étape), décision GO enregistrée avec le message exact de la maquette. Écran de
+validation testé avec un permis réellement bloqué (créé via l'API) : les 4
+contrôles s'affichent avec leur résultat individuel (3 conformes, 1 en échec
+avec son motif), bouton "Valider et délivrer" désactivé. Captures d'écran
+comparées visuellement aux maquettes. Zéro erreur console sur les deux
+parcours. 118 tests pytest passent (117 précédents + 1 nouveau sur `details`),
+3 toujours skippés (1.4).
