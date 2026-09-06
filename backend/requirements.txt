@@ -20,6 +20,12 @@ argon2-cffi>=23.1,<24
 cryptography>=44,<45
 python-multipart>=0.0.20,<0.1
 
+# Nouvelle dépendance (prompt 3.1, CLAUDE.md point 9 : "ne rajoute pas de
+# dépendance sans le dire") : lecture du gabarit d'import XLSX du parc
+# d'équipements (docs/INV-SHEQ-001_Inventaire_Parc.xlsx) — la bibliothèque
+# standard ne lit pas ce format, seul le CSV.
+openpyxl>=3.1,<4
+
 # Tests
 pytest>=8.3,<9
 pytest-cov>=6,<7

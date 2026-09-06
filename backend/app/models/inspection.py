@@ -18,6 +18,12 @@ class Inspection(BaseModel):
 
     modele: Mapped[TypeInspection] = mapped_column(enum_column(TypeInspection, "type_inspection"), nullable=False)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.id"), nullable=False)
+    # Ajouté au prompt 3.1 : FOR-SHEQ-010 précise "une même fiche est remplie
+    # par équipement ou par baie/site selon le contexte" — sans ce lien, la
+    # fiche équipement du prompt 3.1 ("historique complet : configurations,
+    # inspections, incidents") ne pourrait jamais retrouver ses inspections.
+    # Nullable : seules les inspections de type "équipements" le renseignent.
+    equipement_id: Mapped[int | None] = mapped_column(ForeignKey("equipement.id"), nullable=True)
     inspecteur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     # Liste de {point_checklist_id, libelle, cotation: "C"|"NC"|"SO", observation,

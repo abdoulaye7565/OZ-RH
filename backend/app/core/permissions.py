@@ -52,3 +52,15 @@ class Permissions:
     # référentiel de checklists ; traité comme les autres référentiels
     # SHEQ (EPI, documents) : propriété du référent SHEQ.
     GERER_CHECKLISTS: tuple[R, ...] = (R.REFERENT_SHEQ, R.ADMINISTRATEUR)
+    # Section 5.2.3 du CDC, "Acteurs" : "Saisie : techniciens." La matrice de
+    # rôles (point 6 de CLAUDE.md) n'a pas de rôle "responsable technique" ni
+    # "direction" distinct : l'administrateur couvre "Tout" par son propre
+    # périmètre.
+    GERER_PARC: tuple[R, ...] = (R.TECHNICIEN, R.ADMINISTRATEUR)
+    # Section 5.2.3, "Acteurs" : "consultation et administration : responsable
+    # technique, direction". Aucun rôle "responsable technique"/"direction"
+    # dans la matrice : rapproché du rôle RESPONSABLE existant, le plus proche
+    # sémantiquement — à confirmer avec le référent SHEQ. L'import initial est
+    # un acte d'administration du référentiel (reprise de données), pas une
+    # saisie de terrain : distinct de GERER_PARC, plus restrictif.
+    IMPORTER_PARC: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)

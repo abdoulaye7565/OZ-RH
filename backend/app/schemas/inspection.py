@@ -15,6 +15,10 @@ class PointInspectionEntree(BaseModel):
 class InspectionCreation(BaseModel):
     modele: TypeInspection
     site_id: int
+    # Ajouté au prompt 3.1, pertinent surtout pour modele="equipements"
+    # (FOR-SHEQ-010 : "une même fiche est remplie par équipement ou par
+    # baie/site selon le contexte") — laissé optionnel pour les 4 autres types.
+    equipement_id: int | None = None
     points: list[PointInspectionEntree]
 
     @field_validator("points")
@@ -43,6 +47,7 @@ class InspectionSortie(BaseModel):
     id: int
     modele: TypeInspection
     site_id: int
+    equipement_id: int | None
     inspecteur_id: int
     date: date
     points: list[PointInspectionSortie]

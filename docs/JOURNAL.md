@@ -31,7 +31,7 @@ un prompt terminé, testé et commité.
 
 ## LOT 3 — Parc, configurations et coffre-fort
 
-- [ ] 3.1 — Parc d'équipements
+- [x] 3.1 — Parc d'équipements
 - [ ] 3.2 — Fiches de configuration par marque
 - [ ] 3.3 — Coffre-fort d'identifiants
 
@@ -881,3 +881,96 @@ Sur le serveur de démo redémarré à neuf : inspection électricité créée a
 1 conforme/1 non conforme/1 sans objet → taux 0,5 confirmé ; clôture génère
 exactement 1 action avec l'échéance +30 jours ; planification recalculée
 immédiatement après (90 jours, périodicité trimestrielle électricité).
+
+### Détail — Prompt 3.1 (terminé le 2026-09-06)
+
+Source lue : section 5.2.3 du CDC (module Parc et configurations). Ce prompt
+est backend uniquement (pas de bullet d'écran) : aucune vue frontend n'existe
+encore pour EPI ni Inspections non plus (2.1, 2.4), ce module suit le même
+principe.
+
+**Note de cohérence documentaire, sans impact sur le code** : la section 5.2.3
+cite les « figures A.7 et A.33 » comme écrans de référence. Vérification dans
+le CDC : la figure A.33 réelle est légendée « Formations : matrice de
+compétences... », pas le parc — la bonne figure desktop est en réalité
+**A.31** (« Parc et configurations : équipements, qualité de liaison et état
+des sauvegardes »). Incohérence de renvoi dans le document source lui-même, à
+signaler au référent SHEQ ; sans conséquence ici puisque ce prompt ne
+comporte pas d'écran.
+
+**Ajout d'un lien `Inspection.equipement_id` (nullable), en amont de ce
+prompt** : FOR-SHEQ-010 précise qu'« une même fiche est remplie par
+équipement ou par baie/site selon le contexte ». Sans ce lien, la fiche
+équipement demandée ici (« historique complet : configurations, inspections,
+incidents ») n'aurait jamais pu retrouver les inspections d'un équipement
+donné. Migration `14382e24e575`, avec `batch_alter_table` (SQLite ne
+supporte pas l'ajout d'une contrainte de clé étrangère nommée hors mode
+batch, même motif que `4b398dde2947` et `fb8c539876c8`) — cycle
+upgrade/downgrade/upgrade vérifié avant d'aller plus loin.
+
+Implémenté : `POST/GET/PATCH /equipements`, `GET /equipements/{id}`,
+`GET /equipements/{id}/fiche` (agrégat configurations + inspections +
+incidents), `POST /equipements/import` (CSV ou XLSX, rapport d'erreurs ligne
+par ligne).
+
+**Compromis et écarts à signaler :**
+
+1. **Format `identity` validé par une forme structurelle (regex
+   `SITE-FONCTION-NN`, normalisée en majuscules), pas par un vocabulaire de
+   FONCTION fermé.** Le chapitre 7.3.1 (« Tableau 5 ») donne la forme mais
+   aucune liste de codes FONCTION n'existe ailleurs dans le CDC, à la
+   différence des préfixes EPI (H/L/C...) — cohérent avec sa propre mention
+   « saisi par le technicien, unicité contrôlée ». À confirmer avec le
+   référent SHEQ si une liste fermée doit finalement être imposée.
+2. **« Incidents associés » de la fiche équipement = signalements de type
+   incident/accident du même SITE, pas de l'équipement précis.** Le
+   dictionnaire ne modélise aucun lien SIGNALEMENT → EQUIPEMENT (seulement
+   SIGNALEMENT → SITE), contrairement à CONFIGURATION et au nouveau
+   INSPECTION.equipement_id. Ajouter une colonne équipement à SIGNALEMENT
+   sur la seule base du mot « associés » (sans le point d'appui textuel
+   explicite qui existait pour INSPECTION via FOR-SHEQ-010) aurait été une
+   extension trop spéculative du modèle : la corrélation par site est donc
+   une approximation assumée, à affiner si le référent SHEQ le demande.
+3. **Nouvelle dépendance `openpyxl` (3.1.x)** — la bibliothèque standard ne
+   lit pas le format XLSX, seul le CSV (module `csv`). Signalée dans
+   `requirements.txt`.
+4. **Le gabarit réel (`docs/INV-SHEQ-001_Inventaire_Parc.xlsx`) contient des
+   colonnes sans équivalent dans le modèle EQUIPEMENT** : « Adresse IP »
+   (donnée de CONFIGURATION, pas d'EQUIPEMENT), « Type d'équipement » (non
+   modélisé, seuls marque/modèle le sont), « Fiche de configuration (réf.) »
+   et « Dernière inspection » (dérivées des historiques, jamais saisies).
+   Ces colonnes sont acceptées si présentes mais ignorées à l'import plutôt
+   que de rejeter le fichier réel tel qu'il existe.
+5. **Dates du gabarit au format MM/AAAA** (ex. « 03/2026 »), pas une date
+   complète : jour fixé au 1er du mois faute de jour réel connu. Les formats
+   JJ/MM/AAAA et AAAA-MM-JJ restent acceptés par tolérance.
+6. **Import "tout ou rien" par ligne, pas par fichier** : chaque ligne est
+   validée et insérée indépendamment ; une ligne en erreur n'empêche pas les
+   lignes valides du même fichier d'être importées — cohérent avec la
+   demande explicite d'un « rapport d'erreurs par ligne » plutôt qu'un rejet
+   global.
+7. **Droits** : `GERER_PARC` (création/modification) ouvert à technicien +
+   administrateur, conforme à « Saisie : techniciens » (5.2.3). Le CDC cite
+   aussi « responsable technique, direction » pour la consultation et
+   l'administration, deux libellés absents de la matrice de rôles
+   (CLAUDE.md, point 6) : l'import initial (reprise de données, pas une
+   saisie de terrain) est rapproché du rôle RESPONSABLE existant plutôt que
+   laissé ouvert au technicien — à confirmer avec le référent SHEQ. La
+   consultation (recherche, fiche) reste ouverte à tout utilisateur
+   authentifié, comme pour EPI (2.1).
+8. **Hors connexion non traité** (même limite que 1.3/2.3/2.4) : aucun
+   bandeau ajouté ici faute d'écran à construire dans ce prompt.
+
+**Vérifié en conditions réelles :** 145 tests pytest passent (132 précédents +
+13 nouveaux), 3 toujours skippés (1.4). Migration `14382e24e575` testée en
+upgrade/downgrade/upgrade sur une base SQLite fraîche. Sur le serveur de démo
+redémarré à neuf : équipement créé via l'API avec une identity saisie en
+minuscules (`bko-st-01`) → confirmée normalisée en `BKO-ST-01` ; recherche
+par fragment d'identity, par site et par marque toutes vérifiées ; fiche
+équipement confirmée vide (aucun historique) pour un équipement neuf. Le
+fichier réel `docs/INV-SHEQ-001_Inventaire_Parc.xlsx` importé tel quel contre
+le serveur vivant : sa ligne d'exemple (site `[Client A]`, explicitement
+marquée « Exemple à supprimer » dans le classeur) est correctement rejetée
+avec l'erreur « Site « [Client A] » introuvable » plutôt qu'importée ou
+provoquant un plantage — comportement attendu puisqu'aucun site de ce nom
+n'existe en base.

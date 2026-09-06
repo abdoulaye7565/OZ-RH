@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.v1.actions import router as actions_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.epi import router as epi_router
+from app.api.v1.equipements import router as equipements_router
 from app.api.v1.evaluations_slam import router as slam_router
 from app.api.v1.inspections import router as inspections_router
 from app.api.v1.permis import router as permis_router
@@ -35,6 +36,7 @@ app.include_router(slam_router, prefix="/api/v1")
 app.include_router(permis_router, prefix="/api/v1")
 app.include_router(points_checklist_router, prefix="/api/v1")
 app.include_router(inspections_router, prefix="/api/v1")
+app.include_router(equipements_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])
