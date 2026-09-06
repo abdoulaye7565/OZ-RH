@@ -26,6 +26,13 @@ python-multipart>=0.0.20,<0.1
 # standard ne lit pas ce format, seul le CSV.
 openpyxl>=3.1,<4
 
+# Nouvelle dépendance (prompt 3.2) : export PDF des fiches de configuration
+# (section 5.2.3 du CDC : "Exporter une fiche de configuration au format PDF").
+# La bibliothèque standard ne génère pas de PDF ; reportlab est pur Python (pas
+# de dépendance système type GTK/Cairo, contrairement à weasyprint), ce qui
+# compte sur l'environnement de développement Windows de ce projet.
+reportlab>=4.2,<5
+
 # Tests
 pytest>=8.3,<9
 pytest-cov>=6,<7

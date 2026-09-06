@@ -32,7 +32,7 @@ un prompt terminé, testé et commité.
 ## LOT 3 — Parc, configurations et coffre-fort
 
 - [x] 3.1 — Parc d'équipements
-- [ ] 3.2 — Fiches de configuration par marque
+- [x] 3.2 — Fiches de configuration par marque
 - [ ] 3.3 — Coffre-fort d'identifiants
 
 ## LOT 4 — Pilotage et modules complémentaires
@@ -974,3 +974,103 @@ marquée « Exemple à supprimer » dans le classeur) est correctement rejetée
 avec l'erreur « Site « [Client A] » introuvable » plutôt qu'importée ou
 provoquant un plantage — comportement attendu puisqu'aucun site de ce nom
 n'existe en base.
+
+### Détail — Prompt 3.2 (terminé le 2026-09-06)
+
+Sources lues : section 5.2.3 du CDC et les quatre fiches papier réelles
+FOR-SHEQ-006 à 009 (MikroTik, Grandstream, Ubiquiti LiteBeam, Ruijie),
+classées CONFIDENTIEL dans le SMI documentaire — lues directement à leur
+emplacement source (`04-Formulaires_vierges/CONFIDENTIEL/`) pour leur seule
+structure de champs, jamais copiées ni versionnées dans ce dépôt (voir
+`docs/formulaires/LISEZ-MOI.txt`, note posée dès le prompt 0.1). Leur section
+« Identifiants d'accès (CONFIDENTIEL) » (utilisateur/mot de passe admin, clé
+Wi-Fi, etc.) a été lue puis délibérément exclue de tout schéma : c'est
+exactement le contenu que la règle de conception de la section 5.2.3 interdit
+dans ce module (« aucun champ de mot de passe... toute saisie d'identifiant
+se fait exclusivement dans le module coffre-fort », lot 3.3).
+
+**Décision de portée, tranchée par l'utilisateur avant de coder** : ce prompt
+cite une maquette précise (figure A.8) et une exigence visuelle (retour
+vert/orange). Recherche dans `docs/maquettes/Maquettes_SHEQ_Management_v2.html` :
+l'écran existe bien (`#s-config`, fiche MikroTik complète avec champs
+colorés, dépôt de sauvegarde, bandeau anti-mot de passe). Choix fait de
+rester sur le même principe que 2.1/2.4 : **backend uniquement**, l'écran
+mobile étant réservé à un futur prompt « Interfaces », comme cela avait été
+fait pour SLAM/permis (2.3) plutôt que de le construire au fil de 2.2.
+
+**Implémenté** : `POST /configurations` (multipart : champs génériques
++ `parametres_reseau`/`parametres_sansfil` en JSON, fichiers de sauvegarde
+optionnels), `GET /configurations/{id}`, `GET /configurations/{id}/export-pdf`.
+Aucune route de modification/suppression : l'immuabilité (règle 5,
+CLAUDE.md) est garantie par l'absence structurelle de route, pas par une
+vérification applicative contournable.
+
+**Validation par marque** : un schéma Pydantic dédié par marque
+(`parametres_reseau`/`parametres_sansfil`), avec `extra="forbid"` — une
+liste blanche de champs autorisés, qui empêche par construction qu'un champ
+mot de passe s'y glisse, plutôt qu'une liste noire de noms interdits.
+Vérifié explicitement par un test qui tente de glisser `mot_de_passe_admin`
+dans `parametres_reseau` MikroTik : rejeté en 422.
+
+**Compromis et écarts à signaler :**
+
+1. **Grandstream et Ruijie n'ont pas de véritable volet « sans fil »**
+   (téléphonie SIP pour l'un, VLAN/ports/gestion cloud filaire pour l'autre)
+   mais le dictionnaire (7.2.5) ne prévoit que deux champs « Structure » pour
+   CONFIGURATION. Leurs champs spécifiques sont donc regroupés dans
+   `parametres_reseau`, `parametres_sansfil` restant `null` pour ces deux
+   marques (le service rejette explicitement toute valeur envoyée dessus
+   pour elles). Une troisième colonne JSON dédiée aurait été plus propre
+   sémantiquement, mais aurait exigé une migration pour un seul cas d'usage
+   par marque — jugé disproportionné, à revoir si un cinquième champ
+   spécifique apparaît un jour.
+2. **Champs par marque limités à la liste du prompt**, pas à l'intégralité du
+   formulaire papier réel : par exemple, Ruijie a une vraie section Wi-Fi
+   (SSID principal/invité, bandes) dans FOR-SHEQ-009, non reprise ici car le
+   prompt ne demande que « VLAN, ports, mode de gestion cloud » pour cette
+   marque. Champ `protocole` (MikroTik) interprété comme la sécurité
+   sans-fil (WPA2-PSK/WPA3 sur la fiche réelle), le prompt employant un mot
+   différent du formulaire papier.
+3. **Seuils de conformité repris littéralement des fiches réelles** :
+   signal entre -65 et -50 dBm, CCQ > 90 % (mêmes valeurs sur FOR-SHEQ-006 et
+   FOR-SHEQ-008) — sans objet (`null`, gris) pour Grandstream/Ruijie, qui
+   n'envoient pas ces mesures.
+4. **Convention de nommage des sauvegardes clarifiée par la maquette** : le
+   CDC énonce la forme « SITE-IDENTITY-AAAAMMJJ », mais `identity` suit
+   elle-même déjà la forme SITE-FONCTION-NN (prompt 3.1) — la maquette
+   mobile (drop-zone de l'écran s-config : « FAS-AP-01-20260904 ») confirme
+   qu'il n'y a pas de second préfixe de site distinct : le nom attendu est
+   `{identity}-{AAAAMMJJ}`. Contrôlé sur le nom ORIGINAL du fichier avant
+   tout écriture sur disque (tout ou rien) ; le fichier reste stocké sous un
+   nom aléatoire comme partout ailleurs dans l'application (jamais le nom
+   fourni par le client) — la fiche PDF affiche donc ce nom aléatoire, pas
+   le nom conventionné d'origine, celui-ci n'étant conservé nulle part.
+5. **Référence `ENR-SHEQ-AAAA-NNN`** (point 7, CLAUDE.md), confirmée par la
+   maquette (toast « Fiche enregistrée · ENR-SHEQ-2026-118 ») plutôt
+   qu'inventée.
+6. **Nouvelle dépendance `reportlab`** pour l'export PDF — bibliothèque pure
+   Python (pas de dépendance système type GTK/Cairo, contrairement à
+   weasyprint), pertinent sur l'environnement de développement Windows de ce
+   projet. Mise en page simple par sections, fidèle à l'ordre du formulaire
+   papier réel (moins sa section confidentielle) mais pas un fac-similé
+   pixel du papier, faute de gabarit visuel exploitable hors du fichier
+   CONFIDENTIEL lui-même.
+7. **Droits** : `GERER_PARC` réutilisé tel quel (même acteur « Saisie :
+   techniciens » que pour les équipements, section 5.2.3 couvrant les deux
+   sous-modules). Consultation et export PDF ouverts à tout utilisateur
+   authentifié.
+8. **Hors connexion non traité** (même limite que 1.3/2.3/2.4/3.1) : aucun
+   écran construit dans ce prompt.
+
+**Vérifié en conditions réelles :** 157 tests pytest passent (145 précédents
++ 12 nouveaux), 3 toujours skippés (1.4). Sur le serveur de démo redémarré à
+neuf : équipement MikroTik réel créé, fiche de configuration complète créée
+avec un fichier `.rsc` nommé selon la convention (`BKO-AP-01-20260906.rsc`)
+→ acceptée, référence `ENR-SHEQ-2026-001` confirmée ; un second essai avec un
+nom non conforme (`mauvais_nom.rsc`) rejeté en 400 avec le nom attendu
+explicite dans le message d'erreur ; export PDF vérifié comme un document
+PDF 1.4 valide à deux pages, sections dans l'ordre attendu, valeurs vides
+affichées « — » plutôt que le littéral Python `None` (corrigé après
+inspection visuelle du PDF généré, pas détecté par les tests automatisés —
+même leçon que pour les chemins de fichiers du prompt 1.3 : certains défauts
+ne se voient qu'en regardant le résultat réel).
