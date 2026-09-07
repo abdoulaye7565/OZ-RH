@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.models.enums import StatutSignalement, TypeSignalement
 from app.models.signalement import Signalement
 from app.models.utilisateur import Utilisateur
+from app.services.notification_service import notifier_nouveau_signalement
 
 logger = logging.getLogger("app.signalements")
 
@@ -92,14 +93,13 @@ def creer_signalement(
         db.refresh(signalement)
         break
 
-    # Notification du référent SHEQ : simple trace applicative pour l'instant
-    # (le service de notifications complet, avec persistance et envoi, est prévu
-    # au lot 4.4 — voir docs/JOURNAL.md pour cet écart assumé).
+    # Notification du référent SHEQ (tableau 3, chapitre 6.3 — prompt 4.4).
+    notifier_nouveau_signalement(db, signalement)
     if signalement.anonyme:
-        logger.info("Nouveau signalement anonyme %s : référent SHEQ à notifier", signalement.reference)
+        logger.info("Nouveau signalement anonyme %s : référent SHEQ notifié", signalement.reference)
     else:
         logger.info(
-            "Nouveau signalement %s par utilisateur id=%s : référent SHEQ à notifier",
+            "Nouveau signalement %s par utilisateur id=%s : référent SHEQ notifié",
             signalement.reference,
             signalement.auteur_id,
         )

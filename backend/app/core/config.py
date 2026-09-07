@@ -35,6 +35,22 @@ class Settings(BaseSettings):
     # à un stockage objet tant que le volume ne le justifie pas).
     storage_dir: str = "./storage"
 
+    # Notifications (prompt 4.4, section 6.3 du CDC). Aucun serveur SMTP n'est
+    # imposé par le CDC : configuration optionnelle (None = envoi de courriels
+    # non tenté, journalisé comme tel — pas une erreur silencieuse, un choix
+    # explicite de configuration absente).
+    smtp_hote: str | None = None
+    smtp_port: int = 587
+    smtp_utilisateur: str | None = None
+    smtp_mot_de_passe: str | None = None
+    smtp_expediteur: str = "notifications@hirondelles-it-lab.local"
+
+    # Désactive le planificateur de tâches (APScheduler) : mis à False dans
+    # tests/conftest.py pour qu'aucune tâche planifiée ne s'exécute pendant les
+    # tests (ils utiliseraient une session/BD différente de celle du planificateur,
+    # qui ouvre toujours sa propre session sur la base réelle).
+    scheduler_actif: bool = True
+
 
 @lru_cache
 def get_settings() -> Settings:

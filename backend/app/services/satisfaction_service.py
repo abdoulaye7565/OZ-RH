@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 from app.models.enquete_satisfaction import EnqueteSatisfaction
 from app.models.reponse_satisfaction import ReponseSatisfaction
 from app.schemas.satisfaction import EnqueteCreation, ReponseEntree
+from app.services.notification_service import notifier_satisfaction_faible
 
 # Six critères réels de FOR-SHEQ-018, repris tels quels — le CDC ne les
 # déclare pas "paramétrables" (à la différence du quiz de sensibilisation ou
@@ -76,6 +77,13 @@ def repondre(db: Session, enquete: EnqueteSatisfaction, donnees: ReponseEntree) 
     db.add(reponse)
     db.commit()
     db.refresh(reponse)
+
+    # Tableau 3, chapitre 6.3 — prompt 4.4 : "Note de satisfaction faible" (à
+    # exécuter après le commit, l'id de la réponse doit exister pour la
+    # rattacher à la notification).
+    if necessite_analyse:
+        notifier_satisfaction_faible(db, reponse)
+
     return reponse
 
 

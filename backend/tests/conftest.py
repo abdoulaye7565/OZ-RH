@@ -5,6 +5,15 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import app.models  # noqa: F401 — enregistre les 14 entités (+ hors dictionnaire, voir models/__init__.py)
+from app.core.config import settings
+
+# Désactivé avant tout import de `app.main` (dont le cycle de vie démarrerait
+# le planificateur, prompt 4.4) : le job planifié ouvre sa propre session sur
+# la base RÉELLE (app.db.session.SessionLocal), jamais la base en mémoire
+# substituée par le fixture `client` ci-dessous — le laisser actif pendant les
+# tests risquerait d'écrire dans le fichier sheq.db du développeur.
+settings.scheduler_actif = False
+
 from app.core.security import hacher_mot_de_passe
 from app.db.base import Base
 from app.db.session import get_db

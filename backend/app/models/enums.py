@@ -239,3 +239,27 @@ class Recommandation(str, enum.Enum):
     OUI_CERTAINEMENT = "oui_certainement"
     PROBABLEMENT = "probablement"
     NON = "non"
+
+
+class TypeNotification(str, enum.Enum):
+    """Reprend une à une les huit lignes du tableau 3 (chapitre 6.3 du CDC,
+    "Règles de notification")."""
+
+    NOUVEAU_SIGNALEMENT = "nouveau_signalement"
+    PERMIS_EN_ATTENTE = "permis_en_attente"
+    DECISION_NO_GO = "decision_no_go"
+    ACTION_ECHEANCE = "action_echeance"
+    EPI_VERIFICATION = "epi_verification"
+    INSPECTION_PLANIFIEE = "inspection_planifiee"
+    SATISFACTION_FAIBLE = "satisfaction_faible"
+    DOCUMENT_REVUE = "document_revue"
+
+
+class CanalNotification(str, enum.Enum):
+    """Colonne "Canal" du tableau 3 : "Application", "Application et courriel"
+    ou "Courriel" (jamais "courriel seul" en dehors de la satisfaction faible,
+    mais la valeur existe pour rester fidèle à chaque ligne du tableau)."""
+
+    APPLICATION = "application"
+    COURRIEL = "courriel"
+    LES_DEUX = "les_deux"

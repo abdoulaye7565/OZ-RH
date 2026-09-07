@@ -1,4 +1,6 @@
 """Point d'entrée de l'API SHEQ Management."""
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -13,6 +15,7 @@ from app.api.v1.equipements import router as equipements_router
 from app.api.v1.evaluations_slam import router as slam_router
 from app.api.v1.formations import router as formations_router
 from app.api.v1.inspections import router as inspections_router
+from app.api.v1.notifications import router as notifications_router
 from app.api.v1.permis import router as permis_router
 from app.api.v1.points_checklist import router as points_checklist_router
 from app.api.v1.revues import router as revues_router
@@ -22,10 +25,20 @@ from app.api.v1.signalements import router as signalements_router
 from app.api.v1.tableau_bord import router as tableau_bord_router
 from app.api.v1.visiteurs import router as visiteurs_router
 from app.core.config import settings
+from app.core.scheduler import arreter_planificateur, demarrer_planificateur
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    demarrer_planificateur()
+    yield
+    arreter_planificateur()
+
 
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
+    lifespan=lifespan,
 )
 
 app.add_middleware(
@@ -55,6 +68,7 @@ app.include_router(documents_router, prefix="/api/v1")
 app.include_router(visiteurs_router, prefix="/api/v1")
 app.include_router(dechets_router, prefix="/api/v1")
 app.include_router(satisfaction_router, prefix="/api/v1")
+app.include_router(notifications_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])

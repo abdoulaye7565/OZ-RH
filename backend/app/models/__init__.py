@@ -21,6 +21,7 @@ from app.models.exigence_audit import ExigenceAudit
 from app.models.habilitation import Habilitation
 from app.models.inspection import Inspection
 from app.models.journal_acces import JournalAcces
+from app.models.notification import Notification
 from app.models.permis import Permis, permis_intervenants
 from app.models.point_checklist import PointChecklist
 from app.models.question_quiz import QuestionQuiz
@@ -54,6 +55,7 @@ __all__ = [
     "Habilitation",
     "Inspection",
     "JournalAcces",
+    "Notification",
     "Permis",
     "permis_intervenants",
     "PointChecklist",

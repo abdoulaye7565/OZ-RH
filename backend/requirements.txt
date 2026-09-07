@@ -33,6 +33,12 @@ openpyxl>=3.1,<4
 # compte sur l'environnement de développement Windows de ce projet.
 reportlab>=4.2,<5
 
+# Nouvelle dépendance (prompt 4.4, demandée explicitement par le prompt lui-même) :
+# planificateur de tâches pour les rappels d'échéance périodiques (chapitre 6.3
+# du CDC). APScheduler plutôt que Celery : la volumétrie du projet ne justifie
+# pas une file de tâches distribuée avec worker séparé.
+apscheduler>=3.10,<4
+
 # Tests
 pytest>=8.3,<9
 pytest-cov>=6,<7

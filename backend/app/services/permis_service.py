@@ -15,6 +15,7 @@ from app.models.enums import StatutPermis
 from app.models.permis import Permis
 from app.models.utilisateur import Utilisateur
 from app.schemas.permis import PermisCreation
+from app.services.notification_service import notifier_permis_en_attente
 from app.services.regle_blocage_permis import evaluer_controles
 
 logger = logging.getLogger("app.permis")
@@ -73,7 +74,8 @@ def creer_permis(db: Session, donnees: PermisCreation, cree_par_id: int) -> Perm
     if permis.statut == StatutPermis.BLOQUE:
         logger.warning("Permis %s bloqué à la création : %s", permis.reference, controles.motifs)
     else:
-        logger.info("Permis %s créé, en attente de validation — responsable à notifier", permis.reference)
+        notifier_permis_en_attente(db, permis)
+        logger.info("Permis %s créé, en attente de validation — responsable notifié", permis.reference)
 
     return permis
 

@@ -43,7 +43,7 @@ un prompt terminé, testé et commité.
 - [x] 4.1 — Risques
 - [x] 4.2 — Formations, audits et revues
 - [x] 4.3 — Documents, visiteurs, déchets, satisfaction
-- [ ] 4.4 — Notifications
+- [x] 4.4 — Notifications
 
 ## LOT 5 — Finalisation
 
@@ -1402,3 +1402,100 @@ satisfaction envoyée, questionnaire consulté et répondu **sans aucun en-tête
 d'autorisation** (vérifié explicitement : la route publique fonctionne bien
 sans jeton JWT), une note à 1/5 déclenchant correctement `necessite_analyse`,
 et une seconde tentative sur le même jeton rejetée en 404.
+
+### Détail — Prompt 4.4 (terminé le 2026-09-07)
+
+Source lue : chapitre 6.3 du CDC, tableau 3 (« Règles de notification ») —
+huit lignes reprises une à une, sans réinterprétation du canal, du délai ou
+du destinataire. Ce prompt **résout un écart assumé depuis le prompt 1.1**
+(voir point 4 du « Détail — Prompt 1.1 » ci-dessus) : la notification du
+référent SHEQ à un nouveau signalement n'était qu'une ligne de journal
+applicatif, faute d'entité NOTIFICATION et de service dédié — les deux
+existent maintenant. Même chose pour les commentaires similaires laissés
+dans `permis_service.py` (« responsable à notifier ») et
+`evaluation_slam_service.py` (« notifié au responsable ») depuis le prompt
+2.2 : les quatre événements immédiats du tableau 3 (signalement, permis en
+attente, décision NO GO, satisfaction faible) sont maintenant tous câblés à
+la création de leur événement respectif, pas seulement journalisés.
+
+**Nouvelle entité NOTIFICATION**, hors dictionnaire comme les précédentes
+(chapitre 7 n'en contient aucune). Clé de déduplication
+`(type, objet_type, objet_id, destinataire_id, declencheur)` : essentielle
+pour les quatre rappels périodiques (actions, EPI, inspections, documents),
+rejoués chaque jour par le planificateur sans jamais créer de doublon —
+`declencheur` inclut la date d'échéance en suffixe pour les objets réutilisés
+dans la durée (un EPI garde la même ligne à travers des années de cycles de
+vérification ; sans ce suffixe, la contrainte bloquerait tout rappel après
+le tout premier cycle).
+
+**APScheduler** (nouvelle dépendance, demandée explicitement par le prompt
+lui-même, pas une décision d'implémentation prise seul) : un
+`BackgroundScheduler` unique, exécuté chaque jour à 6h dans le même
+processus que l'API — le CDC ne précise pas d'heure, choisie tôt le matin
+pour que les rappels soient visibles à la prise de poste. Démarré/arrêté via
+le cycle de vie de FastAPI (`lifespan`). **Désactivé pendant les tests**
+(`settings.scheduler_actif = False`, posé dans `tests/conftest.py` avant
+même l'import de `app.main`) : le job ouvre sa propre session sur la base de
+données réelle (`SessionLocal`), jamais la base en mémoire substituée par
+les tests — le laisser actif aurait risqué d'écrire dans le fichier
+`sheq.db` du développeur à chaque exécution de la suite de tests.
+
+**Courriels** : `smtplib` de la bibliothèque standard (aucune nouvelle
+dépendance pour ce seul besoin) plutôt qu'un service tiers, le CDC n'en
+imposant aucun. Configuration SMTP entièrement optionnelle
+(`SMTP_HOTE` vide par défaut) : en son absence, l'envoi n'est pas tenté et
+la notification en application reste créée normalement — journalisé et
+enregistré sur la notification elle-même (`courriel_envoye=False`,
+`courriel_erreur` explicite), jamais une réussite supposée en silence
+(CLAUDE.md, point 9). Vérifié en conditions réelles : sans SMTP configuré,
+le message d'erreur exact apparaît sur la notification.
+
+**Compromis et écarts à signaler :**
+
+1. **Destinataires « de rôle » diffusés à tous les titulaires du rôle**,
+   jamais à un individu pré-assigné, sauf quand un champ le permet
+   réellement (Action.responsable_id, Epi.porteur_id) : le tableau 3 dit
+   "Responsable désigné" pour un permis en attente, mais PERMIS (dictionnaire
+   7.2.7) ne modélise aucun champ de responsable assigné à l'avance — diffusé
+   à tous les utilisateurs du rôle RESPONSABLE, même principe que pour les
+   alertes EPI/documents (référent SHEQ).
+2. **« Inspecteur désigné » (inspection planifiée) interprété comme le
+   dernier inspecteur ayant réalisé une inspection du même couple
+   (site, modèle)** : PLANIFICATION (section 5.3.1) n'est qu'une prévision
+   calculée à partir de la périodicité, sans affectation d'inspecteur pour
+   une inspection future non encore créée — aucun champ d'affectation
+   n'existe pour ce cas. Interprétation la plus proche du texte faute de
+   mieux, à confirmer avec le référent SHEQ.
+3. **Rappels déclenchés par seuil, pas par jour exact** : un rappel "J-7" se
+   déclenche dès que le nombre de jours restants passe sous sept (pas
+   exactement à sept), grâce à la déduplication qui garantit un envoi
+   unique par jalon. Plus robuste qu'une correspondance exacte : couvre les
+   cas où le planificateur n'a pas tourné exactement au bon jour (redémarrage,
+   objet créé avec moins de jours restants dès le départ).
+4. **« Puis en retard » (actions) traité comme un jalon supplémentaire
+   unique**, pas une répétition quotidienne tant que l'action reste en
+   retard : le tableau 3 ne précise pas de fréquence pour ce cas, un rappel
+   quotidien indéfini aurait été une interprétation extensive non demandée.
+5. **Administrateur non ajouté comme destinataire supplémentaire** des
+   alertes de rôle (référent SHEQ, responsable), contrairement au principe
+   "Tout" habituellement appliqué aux permissions d'accès dans ce projet :
+   une notification n'est pas un droit d'accès mais une charge de travail
+   assignée, l'ajouter systématiquement aurait rendu le compteur de
+   non-lues de l'administrateur artificiellement bruyant.
+6. **Aucun envoi réel testé** (pas de serveur SMTP en environnement de
+   développement) : le mécanisme d'envoi est vérifié par son échec
+   correctement journalisé et exposé, pas par une livraison réelle — cohérent
+   avec l'absence de spécification SMTP dans le CDC.
+7. **Hors connexion non traité** (même limite que tous les prompts
+   précédents).
+
+**Vérifié en conditions réelles :** 228 tests pytest passent (217 précédents
++ 11 nouveaux), 3 toujours skippés (1.4) ; suite complète toujours rapide
+(~83 s), confirmant que le planificateur ne s'exécute pas pendant les tests.
+Migration `90df54758db3` testée en upgrade/downgrade/upgrade. Sur le serveur
+de démo redémarré à neuf (avec un vrai utilisateur référent SHEQ créé pour
+l'occasion, le compte admin seul ne suffisant pas à vérifier un
+destinataire de rôle) : signalement créé via l'API réelle, notification
+immédiatement visible pour le référent SHEQ, avec l'échec d'envoi de
+courriel correctement enregistré (« SMTP non configuré... ») plutôt que
+silencieusement ignoré.
