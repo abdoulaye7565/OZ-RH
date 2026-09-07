@@ -1,16 +1,18 @@
 """Logique métier du module Audits (prompt 4.2, section 5.3.4 du CDC)."""
 from collections import defaultdict
-from datetime import date
+from datetime import date, datetime, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.campagne_audit import CampagneAudit
 from app.models.cotation_audit import CotationAudit
 from app.models.enums import StatutInspection
 from app.models.exigence_audit import ExigenceAudit
 from app.schemas.audit import CampagneCreation, CotationEntree
+from app.services.reference_service import obtenir_ou_generer_reference
 
 # Seuils repris littéralement de FOR-SHEQ-017 ("Interprétation indicative :
 # ≥ 80 % système mature | 50-79 % en construction | < 50 % prioriser les écarts").
@@ -182,3 +184,47 @@ def comparer_campagnes(db: Session, campagne_reference_id: int, campagne_compare
         "evolution_points": score_compare["taux_conformite_pourcent"] - score_reference["taux_conformite_pourcent"],
         "par_chapitre": par_chapitre,
     }
+
+
+def generer_pdf(db: Session, campagne: CampagneAudit, auditeur) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12) — reprend l'ordre de
+    FOR-SHEQ-017 (« Grille d'audit interne ») : cotation 0/1/2 par exigence,
+    regroupées par chapitre, puis score total et interprétation (mêmes seuils
+    que le classeur réel)."""
+    reference = obtenir_ou_generer_reference(db, campagne, CampagneAudit)
+    score = calculer_score(db, campagne.id)
+    cotations_avec_chapitre = _cotations_avec_chapitre(db, campagne.id)
+    exigences = {e.id: e for e in lister_exigences(db)}
+
+    pdf = DocumentPDF("RAPPORT D'AUDIT INTERNE DU SYSTÈME SHEQ", reference)
+    pdf.section(
+        "Audit",
+        [("Date", campagne.date.strftime("%d/%m/%Y")), ("Auditeur", f"{auditeur.prenom} {auditeur.nom}"), ("Statut", campagne.statut.value)],
+    )
+
+    par_chapitre: dict[str, list[tuple[CotationAudit, str]]] = defaultdict(list)
+    for cotation, chapitre in cotations_avec_chapitre:
+        libelle = exigences[cotation.exigence_id].libelle if cotation.exigence_id in exigences else "?"
+        par_chapitre[chapitre].append((cotation, libelle))
+
+    for chapitre, lignes in sorted(par_chapitre.items()):
+        pdf.tableau(
+            chapitre,
+            ["Exigence", "Cotation", "Constat", "Écart"],
+            [
+                [libelle, {0: "0 – Absent", 1: "1 – Partiel", 2: "2 – Conforme"}[c.cotation], c.constat or "—", c.ecart or "—"]
+                for c, libelle in lignes
+            ],
+        )
+
+    pdf.section(
+        "Score de maturité",
+        [
+            ("Score total", f"{score['score_total']} / {score['score_maximal']}"),
+            ("Taux de conformité", f"{score['taux_conformite_pourcent']:.0f} %"),
+            ("Interprétation", score["interpretation"]),
+        ],
+    )
+
+    pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{auditeur.prenom} {auditeur.nom}")
+    return pdf.construire()

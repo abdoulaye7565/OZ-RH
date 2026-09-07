@@ -36,6 +36,7 @@ class RevueSortie(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    reference: str | None
     date: date
     lieu: str | None
     redacteur_id: int

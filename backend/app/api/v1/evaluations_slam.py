@@ -1,5 +1,5 @@
 """Routes du module SLAM (prompt 2.2)."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
@@ -8,7 +8,7 @@ from app.models.evaluation_slam import EvaluationSlam
 from app.models.slam_referentiel import ETAPES_SLAM
 from app.models.utilisateur import Utilisateur
 from app.schemas.evaluation_slam import EvaluationSlamCreation, EvaluationSlamSortie
-from app.services.evaluation_slam_service import creer_evaluation
+from app.services.evaluation_slam_service import creer_evaluation, generer_pdf
 
 router = APIRouter(prefix="/slam", tags=["slam"])
 
@@ -56,3 +56,21 @@ def lire(
     if evaluation is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Évaluation SLAM introuvable")
     return evaluation
+
+
+@router.get("/{evaluation_id}/export-pdf")
+def exporter_pdf(
+    evaluation_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Response:
+    evaluation = db.get(EvaluationSlam, evaluation_id)
+    if evaluation is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Évaluation SLAM introuvable")
+    intervenant = db.get(Utilisateur, evaluation.utilisateur_id)
+    contenu = generer_pdf(db, evaluation, intervenant)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{evaluation.reference}.pdf"'},
+    )

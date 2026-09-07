@@ -1,5 +1,5 @@
 """Routes du module Inspections (prompt 2.4)."""
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -9,6 +9,7 @@ from app.db.session import get_db
 from app.models.action import Action
 from app.models.enums import StatutInspection, TypeInspection
 from app.models.inspection import Inspection
+from app.models.site import Site
 from app.models.utilisateur import Utilisateur
 from app.schemas.action import ActionSortie
 from app.schemas.inspection import (
@@ -21,6 +22,7 @@ from app.services.inspection_service import (
     ajouter_photo,
     cloturer,
     creer_inspection,
+    generer_pdf,
     mettre_a_jour_points,
     planification,
 )
@@ -78,6 +80,24 @@ def lire(
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
     return _recuperer(db, inspection_id)
+
+
+@router.get("/{inspection_id}/export-pdf")
+def exporter_pdf(
+    inspection_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Response:
+    inspection = _recuperer(db, inspection_id)
+    inspecteur = db.get(Utilisateur, inspection.inspecteur_id)
+    site = db.get(Site, inspection.site_id)
+    contenu = generer_pdf(db, inspection, inspecteur, site)
+    reference = inspection.reference or f"inspection-{inspection.id}"
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{reference}.pdf"'},
+    )
 
 
 @router.patch("/{inspection_id}/points", response_model=InspectionSortie)

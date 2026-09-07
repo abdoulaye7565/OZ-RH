@@ -1,5 +1,5 @@
 """Routes du module Audits (prompt 4.2, section 5.3.4 du CDC)."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_role
@@ -23,6 +23,7 @@ from app.services.audit_service import (
     comparer_campagnes,
     cotations_de_campagne,
     creer_campagne,
+    generer_pdf,
     lister_exigences,
     obtenir_campagne,
     soumettre_cotations,
@@ -87,6 +88,22 @@ def cloturer_campagne_route(
 ) -> CampagneAudit:
     campagne = obtenir_campagne(db, campagne_id)
     return cloturer_campagne(db, campagne, modifie_par_id=utilisateur.id)
+
+
+@router.get("/campagnes/{campagne_id}/export-pdf")
+def exporter_pdf(
+    campagne_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Response:
+    campagne = obtenir_campagne(db, campagne_id)
+    auditeur = db.get(Utilisateur, campagne.auditeur_id)
+    contenu = generer_pdf(db, campagne, auditeur)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{campagne.reference}.pdf"'},
+    )
 
 
 @router.get("/comparaison", response_model=ComparaisonCampagnes)

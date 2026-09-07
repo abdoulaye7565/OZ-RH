@@ -1,5 +1,5 @@
 """Routes du module Revues de direction (prompt 4.2, section 5.3.4 du CDC)."""
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.orm import Session
 
 from app.core.deps import require_role
@@ -13,6 +13,7 @@ from app.services.revue_service import (
     creer_decision,
     creer_revue,
     decisions_de,
+    generer_pdf,
     obtenir_decision,
     obtenir_revue,
     solder_decision,
@@ -46,6 +47,22 @@ def lire_revue_route(
     sortie = RevueSortie.model_validate(revue)
     return RevueDetailSortie(
         **sortie.model_dump(), decisions=[DecisionSortie.model_validate(d) for d in decisions]
+    )
+
+
+@router.get("/{revue_id}/export-pdf")
+def exporter_pdf(
+    revue_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_REVUES)),
+) -> Response:
+    revue = obtenir_revue(db, revue_id)
+    redacteur = db.get(Utilisateur, revue.redacteur_id)
+    contenu = generer_pdf(db, revue, redacteur)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{revue.reference}.pdf"'},
     )
 
 

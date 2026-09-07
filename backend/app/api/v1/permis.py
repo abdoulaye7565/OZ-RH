@@ -1,5 +1,5 @@
 """Routes du module Permis (prompt 2.2)."""
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Response, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -8,9 +8,10 @@ from app.core.permissions import Permissions
 from app.db.session import get_db
 from app.models.enums import StatutPermis
 from app.models.permis import Permis
+from app.models.site import Site
 from app.models.utilisateur import Utilisateur
 from app.schemas.permis import PermisCreation, PermisSortie, RefusEntree
-from app.services.permis_service import cloturer, creer_permis, refuser, valider
+from app.services.permis_service import cloturer, creer_permis, generer_pdf, refuser, valider
 
 router = APIRouter(prefix="/permis", tags=["permis"])
 
@@ -53,6 +54,24 @@ def lire(
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Permis:
     return _recuperer(db, permis_id)
+
+
+@router.get("/{permis_id}/export-pdf")
+def exporter_pdf(
+    permis_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Response:
+    permis = _recuperer(db, permis_id)
+    site = db.get(Site, permis.site_id)
+    surveillant = db.get(Utilisateur, permis.surveillant_id) if permis.surveillant_id else None
+    validateur = db.get(Utilisateur, permis.validateur_id) if permis.validateur_id else None
+    contenu = generer_pdf(permis, site, surveillant, validateur)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{permis.reference}.pdf"'},
+    )
 
 
 @router.post("/{permis_id}/valider", response_model=PermisSortie)

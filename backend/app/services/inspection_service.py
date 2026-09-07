@@ -1,16 +1,18 @@
 """Cycle de vie du module Inspections (prompt 2.4, section 5.3.1 du CDC)."""
 import logging
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.action import Action
 from app.models.enums import CotationPoint, StatutAction, StatutInspection, TypeInspection, TypeMesureAction
 from app.models.inspection import Inspection
 from app.models.point_checklist import PointChecklist
 from app.schemas.inspection import InspectionCreation, PointInspectionEntree
+from app.services.reference_service import obtenir_ou_generer_reference
 
 logger = logging.getLogger("app.inspections")
 
@@ -217,3 +219,33 @@ def planification(db: Session, horizon_jours: int = 7) -> list[dict]:
             }
         )
     return sorted(resultats, key=lambda r: r["jours_restants"])
+
+
+def generer_pdf(db: Session, inspection: Inspection, inspecteur, site) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12 ; FOR-SHEQ-005/010/011
+    selon le modèle)."""
+    reference = obtenir_ou_generer_reference(db, inspection, Inspection)
+    pdf = DocumentPDF(f"FICHE D'INSPECTION — {inspection.modele.value.upper()}", reference)
+
+    pdf.section(
+        "Inspection",
+        [
+            ("Date", inspection.date.strftime("%d/%m/%Y")),
+            ("Site", site.nom),
+            ("Inspecteur", f"{inspecteur.prenom} {inspecteur.nom}"),
+            ("Statut", inspection.statut.value),
+            ("Taux de conformité", f"{inspection.taux_conformite * 100:.0f} %" if inspection.taux_conformite is not None else "—"),
+        ],
+    )
+
+    pdf.tableau(
+        "Points contrôlés",
+        ["Point", "Cotation", "Observation"],
+        [
+            [p["libelle"], {"C": "Conforme", "NC": "Non conforme", "SO": "Sans objet"}.get(p["cotation"], p["cotation"]), p.get("observation") or "—"]
+            for p in inspection.points
+        ],
+    )
+
+    pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{inspecteur.prenom} {inspecteur.nom}")
+    return pdf.construire()

@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.cotation_risque import CotationRisque
 from app.models.decision_revue import DecisionRevue
 from app.models.enums import (
@@ -20,8 +21,10 @@ from app.models.revue_direction import RevueDirection
 from app.models.risque import Risque
 from app.models.seance import Seance
 from app.models.signalement import Signalement
+from app.models.utilisateur import Utilisateur
 from app.schemas.revue import DecisionCreation, RevueCreation
 from app.services import action_service
+from app.services.reference_service import obtenir_ou_generer_reference
 
 _TYPES_ACCIDENT = (TypeSignalement.INCIDENT, TypeSignalement.ACCIDENT)
 
@@ -180,3 +183,73 @@ def solder_decision(db: Session, decision: DecisionRevue, modifie_par_id: int) -
     db.commit()
     db.refresh(decision)
     return decision
+
+
+def generer_pdf(db: Session, revue: RevueDirection, redacteur: Utilisateur) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12 ; FOR-SHEQ-016 « Compte
+    rendu de revue de direction »). Reprend l'ordre des sections du formulaire
+    réel, limité aux données réellement assemblées à la création de la revue
+    (`donnees_entree`, jamais recalculées après coup — voir
+    app/models/revue_direction.py) ; les sections du papier sans équivalent
+    dans l'application (analyse des événements marquants, ressources et
+    moyens, opportunités d'amélioration) ne sont pas générées — rien à y
+    afficher sans inventer un contenu."""
+    reference = obtenir_ou_generer_reference(db, revue, RevueDirection)
+    pdf = DocumentPDF("COMPTE RENDU DE REVUE DE DIRECTION SHEQ", reference)
+
+    pdf.section(
+        "Revue",
+        [
+            ("Date", revue.date.strftime("%d/%m/%Y")),
+            ("Lieu", revue.lieu or "—"),
+            ("Rédacteur", f"{redacteur.prenom} {redacteur.nom}"),
+            ("Période couverte", f"{revue.periode_debut.strftime('%d/%m/%Y')} — {revue.periode_fin.strftime('%d/%m/%Y')}"),
+            ("Participants", revue.participants or "—"),
+        ],
+    )
+
+    decisions_reportees = revue.donnees_entree.get("decisions_reportees", [])
+    pdf.tableau(
+        "1. Suivi des décisions de la revue précédente",
+        ["Décision", "Échéance"],
+        [[d["libelle"], d["echeance"]] for d in decisions_reportees],
+    )
+
+    indicateurs = revue.donnees_entree.get("indicateurs", {})
+    avancement = indicateurs.get("avancement_plan_action", {})
+    pdf.section(
+        "2. Bilan des indicateurs",
+        [
+            ("Accidents / incidents", indicateurs.get("accidents_incidents")),
+            ("Signalements", indicateurs.get("signalements_total")),
+            ("Inspections réalisées", indicateurs.get("inspections_realisees")),
+            ("Taux d'avancement du plan d'action", f"{avancement.get('taux_avancement_global', 0) * 100:.0f} %"),
+        ],
+    )
+    pdf.section(
+        "4. État du registre des risques",
+        [
+            ("Risques nouveaux", indicateurs.get("risques_nouveaux")),
+            ("Réévaluations", indicateurs.get("reevaluations_risques")),
+        ],
+    )
+    pdf.section("5. Formations et sensibilisations", [("Séances réalisées", indicateurs.get("seances_realisees"))])
+
+    decisions_de_cette_revue = decisions_de(db, revue.id)
+    responsables = {u.id: u for u in db.scalars(select(Utilisateur))}
+    pdf.tableau(
+        "8. Décisions et plan d'action de la revue",
+        ["Décision", "Responsable", "Échéance", "Statut"],
+        [
+            [
+                d.libelle,
+                f"{responsables[d.responsable_id].prenom} {responsables[d.responsable_id].nom}" if d.responsable_id in responsables else "?",
+                d.echeance.strftime("%d/%m/%Y"),
+                d.statut.value,
+            ]
+            for d in decisions_de_cette_revue
+        ],
+    )
+
+    pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{redacteur.prenom} {redacteur.nom}")
+    return pdf.construire()

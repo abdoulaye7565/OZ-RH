@@ -47,7 +47,7 @@ un prompt terminé, testé et commité.
 
 ## LOT 5 — Finalisation
 
-- [ ] 5.1 — Génération des PDF
+- [x] 5.1 — Génération des PDF
 - [ ] 5.2 — Sécurité et revue finale
 - [ ] 5.3 — Documentation et déploiement
 
@@ -1499,3 +1499,78 @@ destinataire de rôle) : signalement créé via l'API réelle, notification
 immédiatement visible pour le référent SHEQ, avec l'échec d'envoi de
 courriel correctement enregistré (« SMTP non configuré... ») plutôt que
 silencieusement ignoré.
+
+### Détail — Prompt 5.1 (terminé le 2026-09-07)
+
+**Écart signalé avant de coder, tranché par l'utilisateur** : le prompt
+demande explicitement WeasyPrint. Vérification du CDC (chapitre 10.2,
+tableau du socle technologique) : la ligne "Génération PDF" ne cite
+WeasyPrint qu'à titre d'exemple parmi deux ("Bibliothèque Python, ex. :
+WeasyPrint / ReportLab") — rien n'impose l'un plutôt que l'autre. ReportLab
+déjà utilisé depuis le prompt 3.2 (fiches de configuration), retenu sans
+dépendance système (WeasyPrint exige GTK/Cairo, pénible sous Windows,
+l'environnement de développement de ce projet) — confirmé par l'utilisateur
+avant tout code.
+
+**Neuf types d'export** couverts, comme demandé : signalement (avec
+sélection du modèle FOR-SHEQ-001 ou 002 selon `type`), SLAM, permis,
+inspection, fiche de configuration (déjà livrée au prompt 3.2, seulement
+refactorée pour réutiliser la nouvelle infrastructure partagée), rapport
+d'audit, compte rendu de revue, tableau de bord. Nouvelle infrastructure
+`app/core/pdf.py` (classe `DocumentPDF`) : en-tête commun, tableaux clé/valeur
+et tableaux libres, pied de page avec date et auteur — un seul mécanisme
+réutilisé par les huit générateurs, plutôt que du code dupliqué huit fois.
+
+**Références ENR-SHEQ générées paresseusement pour quatre entités qui n'en
+avaient jamais eu besoin** : EvaluationSlam, Inspection, CampagneAudit,
+RevueDirection n'avaient aucune colonne `reference` avant ce prompt (Signalement,
+Permis et Configuration ont déjà la leur, assignée à la création — inchangés).
+Plutôt qu'une pseudo-référence dérivée de l'id technique (non conforme à
+l'esprit du point 7 de CLAUDE.md, qui décrit une séquence par année), une
+vraie séquence `ENR-SHEQ-AAAA-NNN` est attribuée et persistée au premier
+export PDF (`app/services/reference_service.py`, migration `8c5e991840c5`,
+`batch_alter_table`) — une séquence indépendante par table, comme celle déjà
+en place pour CONFIGURATION depuis le prompt 3.2, pas un compteur global
+partagé entre tous les types d'enregistrement.
+
+**Compromis et écarts à signaler :**
+
+1. **Le SLAM exporté reflète les 4×4=16 points réellement utilisés par
+   l'application** (référentiel simplifié posé au prompt 2.2), pas les
+   5+7+6+7=25 points du formulaire papier réel FOR-SHEQ-004 (extraction
+   complète effectuée pour ce prompt) — écart déjà existant depuis le
+   prompt 2.2/2.3, pas introduit par cet export : le PDF est fidèle aux
+   données réellement saisies dans l'application.
+2. **Tableau de bord sans référence ENR-SHEQ** : ce n'est pas un
+   enregistrement individuel mais un instantané calculé, rien à numéroter
+   — seuls la date de génération et l'auteur de la demande figurent, comme
+   l'exige la traçabilité (règle 3, CLAUDE.md).
+3. **Compte rendu de revue limité aux sections ayant un équivalent dans
+   l'application** : sur les 8 sections réelles de FOR-SHEQ-016, les
+   sections 3 (analyse des événements marquants), 6 (ressources et moyens)
+   et 7 (opportunités d'amélioration) ne sont pas générées — rien à y
+   afficher sans inventer un contenu, seules les sections 1, 2, 4, 5 et 8
+   (déjà assemblées dans `donnees_entree` à la création de la revue, prompt
+   4.2) sont exportées.
+4. **Bug trouvé par inspection visuelle, pas par les tests automatisés** :
+   les cellules de tableau contenant du texte long (ex. la liste des
+   modules indisponibles du tableau de bord) débordaient de leur colonne au
+   lieu de passer à la ligne — ReportLab ne retourne jamais une chaîne
+   brute à la ligne dans une cellule de tableau, seul un objet `Paragraph`
+   le permet. Corrigé dans `app/core/pdf.py` en enveloppant systématiquement
+   chaque valeur de cellule dans un `Paragraph` plutôt qu'une chaîne — même
+   catégorie de leçon que les chemins de fichiers Windows du prompt 1.3 :
+   certains défauts ne se voient qu'en regardant le résultat réel.
+5. **Hors connexion non traité** (même limite que tous les prompts
+   précédents).
+
+**Vérifié en conditions réelles :** 237 tests pytest passent (228 précédents
++ 9 nouveaux), 3 toujours skippés (1.4). Migration `8c5e991840c5` testée en
+upgrade/downgrade/upgrade. Sur le serveur de démo redémarré à neuf, quatre
+PDF générés et inspectés visuellement (pas seulement vérifiés par leur en-tête
+`%PDF`) : SLAM (16 points réels, décision, pied de page), rapport d'audit
+(22 exigences réelles réparties sur les 6 vrais chapitres, score 14/44 = 32 %
+correctement calculé et interprété « Prioriser les écarts »), compte rendu
+de revue (sections numérotées comme le formulaire réel, responsable de
+décision résolu par son nom plutôt que son identifiant), tableau de bord
+(bug de débordement de texte trouvé puis corrigé, revérifié après correction).

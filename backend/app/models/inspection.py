@@ -6,7 +6,7 @@ propriété calculée au prompt 2.4, cohérent avec Action.en_retard et
 Epi.est_conforme (jamais de valeur dérivée qui peut devenir périmée en base)."""
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, JSON
+from sqlalchemy import Date, ForeignKey, JSON, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel, enum_column
@@ -16,6 +16,8 @@ from app.models.enums import CotationPoint, StatutInspection, TypeInspection
 class Inspection(BaseModel):
     __tablename__ = "inspection"
 
+    # Nullable : généré paresseusement au premier export PDF (prompt 5.1).
+    reference: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     modele: Mapped[TypeInspection] = mapped_column(enum_column(TypeInspection, "type_inspection"), nullable=False)
     site_id: Mapped[int] = mapped_column(ForeignKey("site.id"), nullable=False)
     # Ajouté au prompt 3.1 : FOR-SHEQ-010 précise "une même fiche est remplie

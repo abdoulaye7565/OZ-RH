@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.enums import StatutPermis
 from app.models.permis import Permis
 from app.models.utilisateur import Utilisateur
@@ -144,3 +145,44 @@ def cloturer(db: Session, permis: Permis, modifie_par_id: int) -> Permis:
     db.commit()
     db.refresh(permis)
     return permis
+
+
+def generer_pdf(permis: Permis, site, surveillant, validateur) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12 ; FOR-SHEQ-012 « Permis de
+    travail en hauteur »)."""
+    pdf = DocumentPDF("PERMIS DE TRAVAIL EN HAUTEUR", permis.reference)
+
+    pdf.section(
+        "Description des travaux",
+        [
+            ("Date", permis.debut_validite.strftime("%d/%m/%Y")),
+            ("Validité", f"{permis.debut_validite.strftime('%H:%M')} à {permis.fin_validite.strftime('%H:%M')}"),
+            ("Site", site.nom),
+            ("Nature des travaux", permis.nature_travaux),
+            ("Support", permis.support.value),
+            ("Hauteur estimée", f"{permis.hauteur_estimee} m" if permis.hauteur_estimee else "—"),
+            ("Intervenant(s)", ", ".join(f"{i.prenom} {i.nom}" for i in permis.intervenants) or "—"),
+            ("Surveillant au sol", f"{surveillant.prenom} {surveillant.nom}" if surveillant else "Non désigné"),
+        ],
+    )
+
+    controles = permis.controles or {}
+    pdf.tableau(
+        "Vérifications automatiques",
+        ["Condition", "Résultat"],
+        [[d.get("libelle", d.get("cle", "?")), "Conforme" if d.get("conforme") else "Non conforme"] for d in controles.get("details", [])],
+    )
+
+    pdf.section(
+        "Autorisation",
+        [
+            ("Statut", permis.statut.value),
+            ("Validé par", f"{validateur.prenom} {validateur.nom}" if validateur else "—"),
+        ],
+    )
+
+    pdf.pied_de_page(
+        datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+        f"{validateur.prenom} {validateur.nom}" if validateur else "—",
+    )
+    return pdf.construire()

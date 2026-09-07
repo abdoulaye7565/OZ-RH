@@ -1,7 +1,7 @@
 """Routes du module Signalements (prompt 1.1)."""
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,10 +10,11 @@ from app.core.fichiers import enregistrer_photos
 from app.core.permissions import Permissions
 from app.db.session import get_db
 from app.models.enums import RoleUtilisateur, StatutSignalement, TypeSignalement
+from app.models.site import Site
 from app.models.signalement import Signalement
 from app.models.utilisateur import Utilisateur
 from app.schemas.signalement import SignalementSortie, StatutMiseAJour
-from app.services.signalement_service import archiver, changer_statut, creer_signalement
+from app.services.signalement_service import archiver, changer_statut, creer_signalement, generer_pdf
 
 router = APIRouter(prefix="/signalements", tags=["signalements"])
 
@@ -104,6 +105,25 @@ def lire(
         # l'appelant n'a pas le droit de consulter (a fortiori s'il est anonyme).
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
     return signalement
+
+
+@router.get("/{signalement_id}/export-pdf")
+def exporter_pdf(
+    signalement_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Response:
+    signalement = db.get(Signalement, signalement_id)
+    if signalement is None or not _visible_par(signalement, utilisateur):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
+    site = db.get(Site, signalement.site_id)
+    auteur = db.get(Utilisateur, signalement.auteur_id) if signalement.auteur_id else None
+    contenu = generer_pdf(signalement, site, auteur)
+    return Response(
+        content=contenu,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{signalement.reference}.pdf"'},
+    )
 
 
 @router.patch("/{signalement_id}/statut", response_model=SignalementSortie)

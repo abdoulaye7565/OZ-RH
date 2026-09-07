@@ -8,10 +8,17 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.enums import StatutSignalement, TypeSignalement
 from app.models.signalement import Signalement
 from app.models.utilisateur import Utilisateur
 from app.services.notification_service import notifier_nouveau_signalement
+
+# Section 5.2.1 du CDC : "Exporter un signalement au format PDF conforme au
+# modèle FOR-SHEQ-001 ou 002" — FOR-SHEQ-001 (situation dangereuse/presque-
+# accident/anomalie) et FOR-SHEQ-002 (incident/accident) partagent la même
+# entité SIGNALEMENT ; seul le modèle (titre, intitulés) diffère selon `type`.
+_TYPES_INCIDENT_ACCIDENT = (TypeSignalement.INCIDENT, TypeSignalement.ACCIDENT)
 
 logger = logging.getLogger("app.signalements")
 
@@ -132,3 +139,36 @@ def archiver(db: Session, signalement: Signalement, modifie_par_id: int) -> Sign
     db.commit()
     db.refresh(signalement)
     return signalement
+
+
+def generer_pdf(signalement: Signalement, site, auteur: Utilisateur | None) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12 ; section 5.2.1 : "modèle
+    FOR-SHEQ-001 ou 002"). `auteur` est None pour un signalement anonyme — son
+    identité ne doit alors apparaître nulle part, y compris sur ce PDF (règle 3,
+    CLAUDE.md), le pied de page se limite alors à la date de génération."""
+    modele_incident = signalement.type in _TYPES_INCIDENT_ACCIDENT
+    titre = (
+        "FICHE DE DÉCLARATION D'INCIDENT / ACCIDENT" if modele_incident else "FICHE DE SIGNALEMENT D'UNE SITUATION DANGEREUSE"
+    )
+    pdf = DocumentPDF(titre, signalement.reference)
+
+    pdf.section(
+        "Identification",
+        [
+            ("Type", signalement.type.value),
+            ("Date et heure du constat", signalement.date_constat.strftime("%d/%m/%Y %H:%M")),
+            ("Site", site.nom),
+            ("Lieu / Zone concernée", signalement.lieu),
+            ("Déclarant", f"{auteur.prenom} {auteur.nom}" if auteur else "Anonyme"),
+        ],
+    )
+    pdf.section("Description", [("Faits observés", signalement.description)])
+    if signalement.causes:
+        pdf.section("Analyse des causes", [("Causes identifiées", signalement.causes)])
+    pdf.section("Traitement", [("Statut", signalement.statut.value)])
+
+    pdf.pied_de_page(
+        datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"),
+        f"{auteur.prenom} {auteur.nom}" if auteur else "Anonyme",
+    )
+    return pdf.construire()

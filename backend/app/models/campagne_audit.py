@@ -15,6 +15,8 @@ from app.models.enums import StatutInspection
 class CampagneAudit(BaseModel):
     __tablename__ = "campagne_audit"
 
+    # Nullable : généré paresseusement au premier export PDF (prompt 5.1).
+    reference: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     auditeur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
     statut: Mapped[StatutInspection] = mapped_column(

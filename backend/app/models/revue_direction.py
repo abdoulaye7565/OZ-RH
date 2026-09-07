@@ -11,6 +11,8 @@ from app.db.base import BaseModel
 class RevueDirection(BaseModel):
     __tablename__ = "revue_direction"
 
+    # Nullable : généré paresseusement au premier export PDF (prompt 5.1).
+    reference: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     lieu: Mapped[str | None] = mapped_column(String(120), nullable=True)
     redacteur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)

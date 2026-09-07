@@ -8,11 +8,12 @@ inspections, formations, documents, déchets, satisfaction, coffre-fort). Plutô
 que d'inventer des valeurs, ces familles sont listées dans
 `modules_non_disponibles` — voir docs/JOURNAL.md pour le détail.
 """
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import extract, func, select
 from sqlalchemy.orm import Session
 
+from app.core.pdf import DocumentPDF
 from app.models.enums import StatutSignalement
 from app.models.signalement import Signalement
 from app.schemas.tableau_bord import Periode, SignalementParMois, SignalementsResume, TableauBordSortie
@@ -98,3 +99,46 @@ def construire_tableau_de_bord(
         echeances_proches=echeances,
         modules_non_disponibles=MODULES_NON_DISPONIBLES,
     )
+
+
+def generer_pdf(tableau: TableauBordSortie, auteur) -> bytes:
+    """Export PDF (chapitre 14 du CDC, cas de test 12). Le tableau de bord n'est
+    pas un enregistrement individuel comme les huit autres modules exportés
+    (prompt 5.1) mais un instantané calculé : pas de référence ENR-SHEQ (rien
+    à numéroter — aucune ligne de base ne correspond à "ce tableau de bord"),
+    seuls la date de génération et l'auteur de la demande sont portés, comme
+    l'exige la traçabilité (règle 3, CLAUDE.md)."""
+    pdf = DocumentPDF("TABLEAU DE BORD SHEQ")
+
+    pdf.section(
+        "Période",
+        [
+            ("Du", tableau.periode.debut.strftime("%d/%m/%Y") if tableau.periode.debut else "—"),
+            ("Au", tableau.periode.fin.strftime("%d/%m/%Y") if tableau.periode.fin else "—"),
+        ],
+    )
+    pdf.section(
+        "Signalements",
+        [
+            ("Total sur la période", tableau.signalements.total_periode),
+            ("À traiter", tableau.signalements.nombre_a_traiter),
+        ],
+    )
+    pdf.section(
+        "Actions",
+        [
+            ("Ouvertes", tableau.actions.par_statut.get("ouverte", 0)),
+            ("En cours", tableau.actions.par_statut.get("en_cours", 0)),
+            ("Clôturées", tableau.actions.par_statut.get("cloturee", 0)),
+            ("En retard", tableau.actions.nombre_en_retard),
+            ("Taux d'avancement global", f"{tableau.actions.taux_avancement_global * 100:.0f} %"),
+        ],
+    )
+    if tableau.modules_non_disponibles:
+        pdf.section(
+            "Modules sans indicateur disponible",
+            [("Modules", ", ".join(tableau.modules_non_disponibles))],
+        )
+
+    pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{auteur.prenom} {auteur.nom}")
+    return pdf.construire()

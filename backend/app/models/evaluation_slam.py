@@ -24,6 +24,11 @@ from app.models.enums import DecisionSlam
 class EvaluationSlam(BaseModel):
     __tablename__ = "evaluation_slam"
 
+    # Nullable : généré paresseusement au premier export PDF (prompt 5.1), pas
+    # à la création — le SLAM n'a jamais eu besoin de référence avant cet
+    # export, inutile d'en attribuer une à des évaluations qui ne seront
+    # jamais exportées.
+    reference: Mapped[str | None] = mapped_column(String(20), unique=True, nullable=True)
     utilisateur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
     # Liste de 4 listes de 4 booléens (une par étape/point) — voir
     # app/models/slam_referentiel.py pour le libellé de chaque point.

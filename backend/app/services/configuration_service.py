@@ -10,6 +10,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.fichiers import enregistrer_sauvegardes
+from app.core.pdf import DocumentPDF
 from app.models.configuration import Configuration
 from app.models.enums import MarqueEquipement
 from app.models.equipement import Equipement
@@ -214,45 +215,9 @@ def generer_pdf(configuration: Configuration, equipement: Equipement, technicien
     Mise en page simple (pas un fac-similé pixel du papier, aucun gabarit visuel
     exploitable n'étant disponible hors du fichier CONFIDENTIEL lui-même) mais
     fidèle à l'ordre et au contenu des sections."""
-    import io
+    pdf = DocumentPDF(f"FICHE DE CONFIGURATION {equipement.marque.value.upper()}", configuration.reference)
 
-    from reportlab.lib.pagesizes import A4
-    from reportlab.lib.units import cm
-    from reportlab.platypus import Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
-    from reportlab.lib import colors
-    from reportlab.lib.styles import getSampleStyleSheet
-
-    styles = getSampleStyleSheet()
-    tampon = io.BytesIO()
-    doc = SimpleDocTemplate(tampon, pagesize=A4, topMargin=1.5 * cm, bottomMargin=1.5 * cm)
-    elements = []
-
-    elements.append(Paragraph("HIRONDELLES IT LAB", styles["Heading2"]))
-    elements.append(Paragraph(f"FICHE DE CONFIGURATION {equipement.marque.value.upper()}", styles["Title"]))
-    elements.append(Paragraph(f"Référence : {configuration.reference}", styles["Normal"]))
-    elements.append(Spacer(1, 0.5 * cm))
-
-    def _section(titre: str, lignes: list[tuple[str, str]]) -> None:
-        elements.append(Paragraph(titre, styles["Heading3"]))
-        if lignes:
-            table = Table(
-                [[cle, ("—" if valeur is None else str(valeur))] for cle, valeur in lignes],
-                colWidths=[6 * cm, 10 * cm],
-            )
-            table.setStyle(
-                TableStyle(
-                    [
-                        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
-                        ("BACKGROUND", (0, 0), (0, -1), colors.whitesmoke),
-                        ("FONTSIZE", (0, 0), (-1, -1), 9),
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                    ]
-                )
-            )
-            elements.append(table)
-        elements.append(Spacer(1, 0.4 * cm))
-
-    _section(
+    pdf.section(
         "1. Intervention",
         [
             ("Date", configuration.date_intervention.strftime("%d/%m/%Y %H:%M")),
@@ -261,7 +226,7 @@ def generer_pdf(configuration: Configuration, equipement: Equipement, technicien
             ("Type", configuration.type_intervention.value),
         ],
     )
-    _section(
+    pdf.section(
         "2. Équipement",
         [
             ("Identity", equipement.identity),
@@ -273,13 +238,13 @@ def generer_pdf(configuration: Configuration, equipement: Equipement, technicien
             ("Version", configuration.version_logicielle or "—"),
         ],
     )
-    _section("3. Réseau", [(cle, valeur) for cle, valeur in (configuration.parametres_reseau or {}).items()])
+    pdf.section("3. Réseau", [(cle, valeur) for cle, valeur in (configuration.parametres_reseau or {}).items()])
     if configuration.parametres_sansfil:
-        _section("4. Sans fil / spécifique marque", list(configuration.parametres_sansfil.items()))
+        pdf.section("4. Sans fil / spécifique marque", list(configuration.parametres_sansfil.items()))
 
     signal_conforme, ccq_conforme = evaluer_conformite(configuration.signal_dbm, configuration.ccq_pourcent)
     if configuration.signal_dbm is not None or configuration.ccq_pourcent is not None:
-        _section(
+        pdf.section(
             "5. Mesures de liaison",
             [
                 (
@@ -297,12 +262,10 @@ def generer_pdf(configuration: Configuration, equipement: Equipement, technicien
             ],
         )
 
-    _section(
+    pdf.section(
         "6. Sauvegarde",
         [("Fichier(s)", ", ".join(Path(p).name for p in configuration.fichiers_sauvegarde) if configuration.fichiers_sauvegarde else "Aucune")],
     )
 
-    elements.append(Paragraph(f"Généré le {datetime.now(timezone.utc).strftime('%d/%m/%Y %H:%M')} UTC", styles["Normal"]))
-
-    doc.build(elements)
-    return tampon.getvalue()
+    pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{technicien.prenom} {technicien.nom}")
+    return pdf.construire()

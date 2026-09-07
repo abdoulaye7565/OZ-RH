@@ -45,6 +45,7 @@ class InspectionSortie(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    reference: str | None
     modele: TypeInspection
     site_id: int
     equipement_id: int | None

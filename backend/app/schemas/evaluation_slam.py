@@ -45,6 +45,7 @@ class EvaluationSlamSortie(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
+    reference: str | None
     utilisateur_id: int
     etapes_validees: list[list[bool]]
     decision: DecisionSlam
