@@ -43,6 +43,7 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_PARC)),
 ) -> Equipement:
+    """Ajoute un équipement au parc."""
     return creer_equipement(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -55,6 +56,8 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Equipement]:
+    """Recherche les équipements du parc, avec filtres optionnels par IDENTITY,
+    site, numéro de série et marque."""
     return rechercher_equipements(db, identity=identity, site_id=site_id, numero_serie=numero_serie, marque=marque)
 
 
@@ -64,6 +67,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Equipement:
+    """Récupère un équipement par son identifiant."""
     return _recuperer(db, equipement_id)
 
 
@@ -73,6 +77,8 @@ def fiche(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> dict:
+    """Renvoie la fiche complète d'un équipement (historique des configurations et
+    interventions associées)."""
     equipement = _recuperer(db, equipement_id)
     return obtenir_fiche(db, equipement)
 
@@ -84,6 +90,7 @@ def modifier(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_PARC)),
 ) -> Equipement:
+    """Met à jour les informations d'un équipement du parc."""
     equipement = _recuperer(db, equipement_id)
     return mettre_a_jour_equipement(db, equipement, payload, modifie_par_id=utilisateur.id)
 
@@ -94,6 +101,8 @@ async def importer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.IMPORTER_PARC)),
 ) -> RapportImport:
+    """Importe en masse un référentiel d'équipements depuis un fichier (5 Mo
+    maximum) et renvoie un rapport ligne par ligne des créations et rejets."""
     contenu = await fichier.read()
     if len(contenu) > TAILLE_MAX_IMPORT_OCTETS:
         raise HTTPException(

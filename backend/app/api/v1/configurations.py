@@ -62,6 +62,9 @@ async def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_PARC)),
 ) -> ConfigurationSortie:
+    """Enregistre une fiche de configuration d'équipement avec ses pièces jointes.
+    Une fiche enregistrée est immuable : toute correction se fait via une nouvelle
+    fiche, l'historique restant consultable."""
     donnees = ConfigurationCreation(
         equipement_id=equipement_id,
         type_intervention=type_intervention,
@@ -82,6 +85,8 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> ConfigurationSortie:
+    """Récupère une fiche de configuration par son identifiant, avec l'évaluation
+    de conformité du signal et du CCQ."""
     return _vers_sortie(_recuperer(db, configuration_id))
 
 
@@ -91,6 +96,7 @@ def exporter_pdf(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Response:
+    """Génère le PDF d'une fiche de configuration."""
     configuration = _recuperer(db, configuration_id)
     equipement = db.get(Equipement, configuration.equipement_id)
     technicien = db.get(Utilisateur, configuration.technicien_id)

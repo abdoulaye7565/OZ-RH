@@ -170,6 +170,116 @@ svg.i.xl {
   cursor: pointer;
 }
 
+/* Bouton "icône" du bandeau — cloche de notifications (mobile #s-home et
+   desktop .gestion-top), maquettes v2 lignes 50-52 et Desktop lignes 55-56.
+   Deux variantes selon le fond (bandeau navy en mobile, blanc en desktop). */
+.hd .ib {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+}
+.hd .ib .dot {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #f0c63e;
+  border: 1.5px solid var(--navy);
+}
+.gestion-top .ib {
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--ink2);
+  position: relative;
+}
+.gestion-top .ib .d {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 1.5px solid #fff;
+}
+
+/* Panneau déroulant des notifications, sous la cloche — absent des
+   maquettes (la cloche n'y est qu'un bouton d'en-tête statique) : construit
+   pour rester cohérent avec le reste du système visuel (.card). */
+.notif-panel {
+  position: absolute;
+  top: 44px;
+  right: 0;
+  width: 340px;
+  max-height: 420px;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, 0.16);
+  z-index: 40;
+  color: var(--ink);
+}
+.notif-panel .ph {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-weight: 700;
+  font-size: 13px;
+}
+.notif-panel .ph span:last-child {
+  font-weight: 600;
+  font-size: 11.5px;
+  color: var(--blue);
+  cursor: pointer;
+}
+.notif-item {
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.notif-item:last-child {
+  border-bottom: 0;
+}
+.notif-item.non-lue {
+  background: var(--navy-soft);
+}
+.notif-item .msg {
+  color: var(--ink);
+  line-height: 1.4;
+}
+.notif-item .meta {
+  color: var(--mut);
+  font-size: 11px;
+  margin-top: 3px;
+}
+.notif-empty {
+  padding: 20px 12px;
+  text-align: center;
+  color: var(--mut);
+  font-size: 12.5px;
+}
+
 .wrap {
   position: relative;
   flex: 1;
@@ -201,6 +311,25 @@ svg.i.xl {
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   box-shadow: var(--sh);
+}
+/* Matrice de criticité des risques (mobile et desktop) — maquette .mtx/.ax. */
+.mtx {
+  display: grid;
+  grid-template-columns: 14px repeat(5, 1fr);
+  gap: 3px;
+  align-items: center;
+}
+.mtx .ax {
+  font-size: 9px;
+  color: var(--mut);
+  text-align: center;
+}
+/* Deux .card empilées hors grille (.mets/.grid2, qui portent déjà leur propre
+   marge) n'avaient sinon aucun espacement entre elles. */
+.card + .card,
+.card + .banner,
+.banner + .card {
+  margin-top: 14px;
 }
 .row {
   display: flex;
@@ -238,6 +367,18 @@ svg.i.xl {
   background: var(--blue-soft);
   color: var(--blue);
 }
+.lead.or {
+  background: var(--orange-soft);
+  color: var(--orange);
+}
+.lead.nv {
+  background: var(--navy-soft);
+  color: var(--navy2);
+}
+.lead.gy {
+  background: #f1f3f7;
+  color: var(--mut);
+}
 .row .tx {
   flex: 1;
   min-width: 0;
@@ -255,6 +396,50 @@ svg.i.xl {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 10px;
+}
+/* Grille de raccourcis (accueil "actions rapides", écran menu des modules) —
+   reprise de docs/maquettes/Maquettes_SHEQ_Management_v2.html (.quick/.qa). */
+.quick,
+.modgrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.qa {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 11px 10px;
+  cursor: pointer;
+  text-align: left;
+  box-shadow: var(--sh);
+  font-family: inherit;
+}
+.qa .ic {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+.qa b {
+  font-size: 12.5px;
+  font-weight: 650;
+  display: block;
+  color: var(--ink);
+}
+.qa span {
+  font-size: 10.5px;
+  color: var(--mut);
+}
+.qa:focus-visible {
+  outline: 2px solid var(--navy2);
+  outline-offset: 1px;
 }
 .tag {
   display: inline-flex;
@@ -278,6 +463,10 @@ svg.i.xl {
 .t-gd {
   background: var(--gold-soft);
   color: var(--gold);
+}
+.t-or {
+  background: var(--orange-soft);
+  color: var(--orange);
 }
 .t-bl {
   background: var(--blue-soft);
@@ -649,6 +838,13 @@ textarea.inp {
 .met.g .v {
   color: var(--green);
 }
+.met.d .v {
+  color: var(--red);
+}
+.chev {
+  color: #c3cbd8;
+  align-self: center;
+}
 
 .bar {
   margin-bottom: 11px;
@@ -724,13 +920,17 @@ textarea.inp {
   color: var(--mut);
 }
 
-.bureau .mets {
+/* Dé-scopées de `.bureau` (ossature remplacée par GestionLayout.vue,
+   .gestion-shell) : rendues globales pour s'appliquer à tout écran desktop,
+   quel que soit son conteneur — plusieurs dizaines d'écrans à venir, un
+   scoping par ancêtre aurait fallu le répéter à chaque nouvel écran. */
+.mets {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 12px;
   margin-bottom: 16px;
 }
-.bureau .met {
+.met {
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 10px;
@@ -740,7 +940,7 @@ textarea.inp {
 /* .met-hd, pas .hd : cette dernière classe est déjà prise par l'en-tête plein
    écran des vues mobiles (fond navy) — même nom, composant totalement
    différent. Les réutiliser aurait fait hériter le fond navy ici. */
-.bureau .met .met-hd {
+.met .met-hd {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -748,7 +948,7 @@ textarea.inp {
   color: var(--mut);
   font-weight: 600;
 }
-.bureau .met .met-hd .ic {
+.met .met-hd .ic {
   width: 26px;
   height: 26px;
   border-radius: 7px;
@@ -756,25 +956,25 @@ textarea.inp {
   align-items: center;
   justify-content: center;
 }
-.bureau .met .v {
+.met .v {
   font-size: 27px;
   font-weight: 750;
   letter-spacing: -1px;
   margin-top: 9px;
   line-height: 1;
 }
-.bureau .met .t {
+.met .t {
   font-size: 11px;
   margin-top: 5px;
   font-weight: 600;
 }
-.bureau .up {
+.up {
   color: var(--green);
 }
-.bureau .down {
+.down {
   color: var(--red);
 }
-.bureau .flat {
+.flat {
   color: var(--mut);
 }
 
@@ -784,7 +984,12 @@ textarea.inp {
   gap: 14px;
   margin-bottom: 14px;
 }
-.bureau .card {
+.grid3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.card {
   overflow: hidden;
 }
 .card .ch {
@@ -811,12 +1016,12 @@ textarea.inp {
   padding: 14px;
 }
 
-.bureau table {
+table {
   width: 100%;
   border-collapse: collapse;
   font-size: 12.5px;
 }
-.bureau thead th {
+thead th {
   text-align: left;
   padding: 9px 12px;
   font-size: 10.5px;
@@ -827,21 +1032,21 @@ textarea.inp {
   border-bottom: 1px solid var(--line);
   white-space: nowrap;
 }
-.bureau tbody td {
+tbody td {
   padding: 10px 12px;
   border-bottom: 1px solid var(--line2);
   vertical-align: middle;
 }
-.bureau tbody tr:last-child td {
+tbody tr:last-child td {
   border-bottom: 0;
 }
-.bureau tbody tr:hover {
+tbody tr:hover {
   background: var(--surface2);
 }
-.bureau td b {
+td b {
   font-weight: 650;
 }
-.bureau td .sub {
+td .sub {
   font-size: 11px;
   color: var(--mut);
   margin-top: 1px;
@@ -1013,6 +1218,207 @@ textarea.inp {
   color: var(--red);
 }
 
+/* Cotation à 3 états (audit 0/1/2, checklists C/NC/SO) — maquette .tri. */
+.tri {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+.tri button {
+  width: 36px;
+  height: 32px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: 6px;
+  font: 700 11.5px Inter, sans-serif;
+  color: var(--mut);
+  cursor: pointer;
+  font-family: inherit;
+}
+.tri .c.on {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+.tri .n.on {
+  background: var(--red);
+  border-color: var(--red);
+  color: #fff;
+}
+.tri .s.on {
+  background: var(--mut);
+  border-color: var(--mut);
+  color: #fff;
+}
+.statbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r);
+  padding: 10px 12px;
+  margin-bottom: 11px;
+  box-shadow: var(--sh);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.statbar .v {
+  font-size: 17px;
+  font-weight: 750;
+  letter-spacing: -0.3px;
+}
+/* Notation par étoiles (satisfaction client) — maquette .stars/.star. */
+.stars {
+  display: flex;
+  gap: 5px;
+  margin: 5px 0;
+}
+.star {
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: #dce1e9;
+  padding: 1px;
+  line-height: 0;
+}
+.star svg {
+  width: 27px;
+  height: 27px;
+  stroke-width: 1.5;
+}
+.star.on {
+  color: var(--gold);
+}
+.star.on svg {
+  fill: var(--gold);
+}
+/* Filtres et pagination des tableaux desktop — maquette Desktop .filters/.pagin. */
+.filters {
+  display: flex;
+  gap: 7px;
+  margin-bottom: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.pagin {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 14px;
+  border-top: 1px solid var(--line2);
+  font-size: 11.5px;
+  color: var(--mut);
+}
+.pagin .pg {
+  display: flex;
+  gap: 4px;
+}
+.pagin .pg button {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  background: #fff;
+  border-radius: 6px;
+  font: 600 11.5px Inter, sans-serif;
+  cursor: pointer;
+  color: var(--ink2);
+}
+.pagin .pg button.on {
+  background: var(--navy);
+  border-color: var(--navy);
+  color: #fff;
+}
+
+/* Coffre-fort mobile (maquette v2, #s-vault) */
+.vault {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  padding: 12px;
+  margin-bottom: 8px;
+  box-shadow: var(--sh);
+}
+.secret {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+}
+.secret code {
+  flex: 1;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 9px 10px;
+  font: 600 13px ui-monospace, SFMono-Regular, monospace;
+  letter-spacing: 1.5px;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.eye {
+  width: 40px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ink2);
+}
+
+/* Coffre-fort desktop (maquette Desktop, #p-vault) */
+.split {
+  display: grid;
+  grid-template-columns: 1fr 330px;
+  gap: 14px;
+}
+.timeline {
+  position: relative;
+  padding-left: 18px;
+}
+.timeline::before {
+  content: "";
+  position: absolute;
+  left: 5px;
+  top: 6px;
+  bottom: 6px;
+  width: 1.5px;
+  background: var(--line);
+}
+.tl {
+  position: relative;
+  padding-bottom: 14px;
+}
+.tl::before {
+  content: "";
+  position: absolute;
+  left: -16px;
+  top: 4px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--navy2);
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1.5px var(--line);
+}
+.tl b {
+  font-size: 12.5px;
+  font-weight: 650;
+  display: block;
+}
+.tl span {
+  font-size: 11px;
+  color: var(--mut);
+}
+@media (max-width: 1100px) {
+  .split {
+    grid-template-columns: 1fr;
+  }
+}
+
 .cl {
   list-style: none;
   margin: 0;
@@ -1135,4 +1541,141 @@ textarea.inp {
 .kv b {
   font-weight: 650;
   text-align: right;
+}
+
+/* Ossature desktop (maquette Maquettes_SHEQ_Desktop.html : .side/.nv/.navsec) —
+   pleine fenêtre, pas le cadre "maquette" centré : c'est l'application réelle,
+   pas le prototype de démonstration. */
+.gestion-shell {
+  display: grid;
+  grid-template-columns: 216px 1fr;
+  min-height: 100vh;
+  background: var(--bg);
+}
+.side {
+  background: #12294f;
+  color: #c6d2e6;
+  display: flex;
+  flex-direction: column;
+  padding: 14px 10px;
+}
+.side .top {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 6px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+.side .top b {
+  color: #fff;
+  font-size: 13.5px;
+  display: block;
+  line-height: 1.2;
+}
+.side .top span {
+  font-size: 10.5px;
+  color: #8fa3c4;
+}
+.navsec {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #7c90b4;
+  letter-spacing: 0.7px;
+  padding: 10px 8px 5px;
+}
+.nv {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 8px 9px;
+  border-radius: 7px;
+  color: #c6d2e6;
+  font-size: 12.5px;
+  font-weight: 550;
+  cursor: pointer;
+  border: 0;
+  background: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.nv:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+.nv.on {
+  background: var(--navy2);
+  color: #fff;
+  font-weight: 650;
+}
+.nv .cnt {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.14);
+  padding: 2px 6px;
+  border-radius: 9px;
+}
+.nv .cnt.hot {
+  background: var(--red);
+  color: #fff;
+}
+.side .user {
+  margin-top: auto;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.av {
+  width: 31px;
+  height: 31px;
+  border-radius: 50%;
+  background: var(--navy2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11.5px;
+  font-weight: 700;
+  flex: 0 0 auto;
+}
+.side .user b {
+  color: #fff;
+  font-size: 12px;
+  display: block;
+}
+.side .user span {
+  font-size: 10.5px;
+  color: #8fa3c4;
+}
+.gestion-main {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  overflow: hidden;
+}
+.gestion-top {
+  background: var(--surface);
+  border-bottom: 1px solid var(--line);
+  padding: 12px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.gestion-top h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.3px;
+}
+.gestion-top .crumb {
+  font-size: 11.5px;
+  color: var(--mut);
+}
+.gestion-view {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px 20px;
 }

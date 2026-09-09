@@ -30,6 +30,9 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_ACTIONS)),
 ) -> Action:
+    """Crée une action corrective ou préventive. Doit être rattachée à exactement
+    une origine (risque, signalement, inspection, cotation d'audit ou réponse de
+    satisfaction) — validé côté serveur."""
     return creer_action(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -41,6 +44,9 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Action]:
+    """Liste les actions non archivées, avec filtres optionnels par statut,
+    responsable et retard. Consultation ouverte à tout le personnel, sans
+    restriction de visibilité par rôle, contrairement aux signalements."""
     # Consultation ouverte à tout le personnel (section 5.2.5, Acteurs) : aucune
     # restriction de visibilité par rôle, contrairement aux signalements.
     requete = select(Action).where(Action.archive.is_(False))
@@ -60,6 +66,8 @@ def synthese(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> SyntheseActions:
+    """Renvoie les indicateurs agrégés sur les actions (répartition par statut,
+    retards, etc.)."""
     return calculer_synthese(db)
 
 
@@ -69,6 +77,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Action:
+    """Récupère une action par son identifiant."""
     action = db.get(Action, action_id)
     if action is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action introuvable")
@@ -82,6 +91,8 @@ def mettre_a_jour(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Action:
+    """Met à jour l'avancement (pourcentage, indicateur) d'une action. Réservé au
+    responsable désigné de l'action ou à un rôle de gestion globale des actions."""
     action = db.get(Action, action_id)
     if action is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action introuvable")
@@ -97,6 +108,8 @@ def mettre_a_jour_statut(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Action:
+    """Change le statut d'une action (par exemple clôture). Réservé au responsable
+    désigné de l'action ou à un rôle de gestion globale des actions."""
     action = db.get(Action, action_id)
     if action is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Action introuvable")

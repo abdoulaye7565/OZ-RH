@@ -1,9 +1,12 @@
 """Routes du module Documents (prompt 4.3, section 5.3.5 du CDC)."""
 from datetime import date
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.deps import get_current_user, require_role
 from app.core.fichiers import enregistrer_documents
 from app.core.permissions import Permissions
@@ -48,6 +51,9 @@ async def creer_document_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DOCUMENTS)),
 ) -> Document:
+    """Crée un document en statut brouillon. Il suit le cycle brouillon ->
+    en_approbation -> en_vigueur et n'est visible des utilisateurs ordinaires
+    qu'une fois en vigueur."""
     donnees = DocumentCreation(
         reference=reference, intitule=intitule, niveau=niveau, confidentialite=confidentialite, date_revue=date_revue
     )
@@ -60,6 +66,8 @@ def lister_documents_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Document]:
+    """Liste les documents visibles par l'utilisateur connecté — un document non
+    encore en vigueur n'apparaît que pour son rédacteur et ses approbateurs."""
     return lister_documents(db, utilisateur)
 
 
@@ -69,6 +77,8 @@ def alertes_revue_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DOCUMENTS)),
 ) -> list[dict]:
+    """Liste les documents dont la date de revue arrive à échéance dans
+    l'horizon donné."""
     return alertes_revue(db, horizon_jours)
 
 
@@ -78,7 +88,28 @@ def lire_document_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Document:
+    """Récupère un document par son identifiant. Renvoie 404 (pas 403) si le
+    document n'est pas encore en vigueur et que l'appelant n'est ni rédacteur ni
+    approbateur, pour ne pas révéler son existence."""
     return _recuperer_visible(db, document_id, utilisateur)
+
+
+@router.get("/{document_id}/fichier")
+def telecharger_fichier_route(
+    document_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> FileResponse:
+    """Télécharge le fichier joint au document (prompt 6.2 : sert de cible aux
+    références cliquables de l'assistant documentaire). Mêmes règles de
+    visibilité que la lecture du document — 404 si aucun fichier n'est joint."""
+    document = _recuperer_visible(db, document_id, utilisateur)
+    if not document.fichier:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucun fichier joint à ce document")
+    chemin = Path(settings.storage_dir) / document.fichier
+    if not chemin.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Fichier introuvable")
+    return FileResponse(chemin, filename=f"{document.reference}-v{document.version}{chemin.suffix}")
 
 
 @router.post("/{document_id}/soumettre-approbation", response_model=DocumentSortie)
@@ -87,6 +118,7 @@ def soumettre_approbation_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DOCUMENTS)),
 ) -> Document:
+    """Fait passer un document du statut brouillon au statut en_approbation."""
     document = obtenir_document(db, document_id)
     return soumettre_approbation(db, document, modifie_par_id=utilisateur.id)
 
@@ -97,6 +129,8 @@ def approuver_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.APPROUVER_DOCUMENTS)),
 ) -> Document:
+    """Approuve un document en attente : il passe en vigueur et devient visible
+    de l'ensemble des utilisateurs autorisés. Réservé aux approbateurs."""
     document = obtenir_document(db, document_id)
     return approuver(db, document, approbateur_id=utilisateur.id)
 
@@ -108,6 +142,8 @@ async def nouvelle_version_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DOCUMENTS)),
 ) -> Document:
+    """Crée une nouvelle version d'un document existant, qui repart en
+    brouillon."""
     document = obtenir_document(db, document_id)
     chemin = (await enregistrer_documents([fichier], sous_dossier="documents"))[0] if fichier else None
     return nouvelle_version(db, document, chemin, redacteur_id=utilisateur.id)
@@ -119,6 +155,8 @@ def accuser_lecture_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Document:
+    """Enregistre l'accusé de lecture de l'appelant sur un document en vigueur —
+    chacun accuse lecture pour lui-même, ouvert à tout utilisateur authentifié."""
     # Ouvert à tout utilisateur authentifié, pour SA PROPRE lecture — section
     # 5.3.5, "ensemble du personnel" en consultation, chacun accuse pour lui.
     document = _recuperer_visible(db, document_id, utilisateur)

@@ -91,6 +91,13 @@ def lister_enquetes(db: Session) -> list[EnqueteSatisfaction]:
     return list(db.scalars(select(EnqueteSatisfaction).order_by(EnqueteSatisfaction.envoyee_le.desc())))
 
 
+def lister_reponses(db: Session) -> list[ReponseSatisfaction]:
+    """Toutes les réponses reçues, pas seulement celles nécessitant une
+    analyse — sert au calcul de la moyenne de satisfaction (écran de
+    pilotage), distinct de `reponses_a_traiter` (file de traitement)."""
+    return list(db.scalars(select(ReponseSatisfaction).order_by(ReponseSatisfaction.date_reponse.desc())))
+
+
 def reponses_a_traiter(db: Session) -> list[ReponseSatisfaction]:
     return list(
         db.scalars(

@@ -2,7 +2,7 @@
 à l'application."""
 from datetime import datetime
 
-from sqlalchemy import Boolean, DateTime, ForeignKey, String
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel, enum_column
@@ -21,3 +21,8 @@ class Utilisateur(BaseModel):
     courriel: Mapped[str | None] = mapped_column(String(120), nullable=True)
     actif: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
     derniere_connexion: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Protection contre le brute-force sur /auth/connexion (revue de sécurité
+    # du 2026-09-08, CLAUDE.md point 10) : jamais exposés par UtilisateurSortie
+    # (schemas/auth.py, liste explicite de champs) — état interne uniquement.
+    tentatives_echouees: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    verrouille_jusqua: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

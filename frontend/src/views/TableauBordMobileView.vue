@@ -2,13 +2,15 @@
 /**
  * Tableau de bord — vue mobile simplifiée (maquette #s-tdb, figure A.10 du CDC).
  *
- * Écart assumé : la maquette affiche 4 indicateurs (accident avec arrêt,
- * signalements, EPI à vérifier, conformité) dont 3 dépendent de modules qui
- * n'existent pas encore (EPI : lot 2.1, inspections : lot 2.4 ; les accidents
- * du travail avec arrêt ne sont pas non plus suivis comme tels). Plutôt que
- * d'afficher un chiffre inventé, les 4 tuiles montrent les indicateurs
- * réellement calculables aujourd'hui (signalements de la période, à traiter,
- * avancement du plan d'action, actions en retard) — voir docs/JOURNAL.md.
+ * Mis à jour le 2026-09-08 (synchronisation aux données réelles) : les 4
+ * tuiles reprennent maintenant celles de la maquette (accidents,
+ * signalements, EPI à vérifier, conformité inspections) — EPI et
+ * Inspections existent depuis le chantier du 2026-09-07 et alimentent des
+ * indicateurs réels côté API (`tableau_bord_service.py`). Seul l'écart
+ * "avec arrêt" reste assumé : aucun champ ne distingue un accident avec
+ * arrêt de travail d'un accident sans arrêt dans le dictionnaire de données
+ * du signalement — la tuile montre les accidents enregistrés, sans cette
+ * distinction non modélisée.
  */
 import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
@@ -40,6 +42,15 @@ const plan = computed(() => {
 function pourcent(n, total) {
   return total ? Math.round((n / total) * 100) : 0;
 }
+
+const epiAVerifier = computed(() => {
+  const e = tdb.donnees?.epi;
+  return e ? e.a_verifier_bientot + e.verifications_depassees : 0;
+});
+const conformiteInspections = computed(() => {
+  const taux = tdb.donnees?.inspections?.taux_conformite_moyen;
+  return taux === null || taux === undefined ? null : Math.round(taux * 100);
+});
 </script>
 
 <template>
@@ -61,10 +72,16 @@ function pourcent(n, total) {
 
           <template v-else-if="tdb.donnees">
             <div class="metrics four">
+              <div class="met" :class="tdb.donnees.securite.accidents_periode > 0 ? 'd' : 'g'">
+                <div class="v">{{ tdb.donnees.securite.accidents_periode }}</div><div class="l">accidents</div>
+              </div>
               <div class="met"><div class="v">{{ tdb.donnees.signalements.total_periode }}</div><div class="l">signalements</div></div>
-              <div class="met a"><div class="v">{{ tdb.donnees.signalements.nombre_a_traiter }}</div><div class="l">à traiter</div></div>
-              <div class="met g"><div class="v">{{ Math.round(tdb.donnees.actions.taux_avancement_global * 100) }}%</div><div class="l">actions réalisées</div></div>
-              <div class="met a"><div class="v">{{ tdb.donnees.actions.nombre_en_retard }}</div><div class="l">actions en retard</div></div>
+              <div class="met" :class="epiAVerifier > 0 ? 'a' : 'g'">
+                <div class="v">{{ epiAVerifier }}</div><div class="l">EPI à vérifier</div>
+              </div>
+              <div class="met" :class="conformiteInspections !== null && conformiteInspections < 90 ? 'a' : 'g'">
+                <div class="v">{{ conformiteInspections !== null ? `${conformiteInspections}%` : "—" }}</div><div class="l">conformité</div>
+              </div>
             </div>
 
             <div style="height: 14px"></div>
@@ -97,15 +114,6 @@ function pourcent(n, total) {
               </div>
               <p v-if="!histogramme.length" style="font-size: 12px; color: var(--mut)">Aucun signalement sur la période.</p>
             </div>
-
-            <div style="height: 10px"></div>
-            <div class="banner info">
-              <div>
-                Certains indicateurs du cahier des charges (EPI à vérifier, conformité des
-                inspections, formations, documents à réviser…) ne sont pas encore disponibles :
-                leurs modules ne sont pas encore construits.
-              </div>
-            </div>
           </template>
 
           <div style="height: 56px"></div>
@@ -118,6 +126,8 @@ function pourcent(n, total) {
       <button class="tb" @click="router.push({ name: 'signalements' })"><Icone nom="alert" />Signaux</button>
       <button class="tb" @click="router.push({ name: 'slam' })"><Icone nom="climb" />SLAM</button>
       <button class="tb on"><Icone nom="chart" />Tableau</button>
+      <button class="tb" @click="router.push({ name: 'assistant-documentaire' })"><Icone nom="chat" />Assistant</button>
+      <button class="tb" @click="router.push({ name: 'menu' })"><Icone nom="grid" />Menu</button>
     </nav>
   </div>
 </template>

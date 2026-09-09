@@ -28,6 +28,7 @@ def enregistrer_visiteur_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Visiteur:
+    """Enregistre l'arrivée d'un visiteur sur site."""
     return enregistrer_visiteur(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -36,6 +37,7 @@ def lister_visiteurs_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Visiteur]:
+    """Liste l'ensemble des visiteurs enregistrés, présents et partis."""
     return lister_visiteurs(db)
 
 
@@ -44,6 +46,8 @@ def visiteurs_presents_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Visiteur]:
+    """Liste les visiteurs actuellement présents sur site, sans départ enregistré
+    — utilisable en cas d'évacuation."""
     # Section 5.3.6 : "liste des personnes présentes sur le site, utilisable
     # en cas d'évacuation" — déclarée avant "/{visiteur_id}" pour ne pas être
     # capturée par cette route paramétrée.
@@ -56,5 +60,6 @@ def enregistrer_depart_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Visiteur:
+    """Enregistre le départ d'un visiteur."""
     visiteur = obtenir_visiteur(db, visiteur_id)
     return enregistrer_depart(db, visiteur, modifie_par_id=utilisateur.id)

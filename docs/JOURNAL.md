@@ -33,10 +33,9 @@ un prompt terminé, testé et commité.
 
 - [x] 3.1 — Parc d'équipements
 - [x] 3.2 — Fiches de configuration par marque
-- [ ] 3.3 — Coffre-fort d'identifiants (conception présentée le 2026-09-06,
-      en attente de validation avant codage — comme convenu pour un module
-      aussi sensible ; le 4.1 a été traité entre-temps à la demande explicite
-      de l'utilisateur)
+- [x] 3.3 — Coffre-fort d'identifiants (conception présentée le 2026-09-06,
+      validée par l'utilisateur le 2026-09-08 — voir détail dans "Chantier
+      ouvert" plus bas)
 
 ## LOT 4 — Pilotage et modules complémentaires
 
@@ -48,8 +47,92 @@ un prompt terminé, testé et commité.
 ## LOT 5 — Finalisation
 
 - [x] 5.1 — Génération des PDF
-- [ ] 5.2 — Sécurité et revue finale
-- [ ] 5.3 — Documentation et déploiement
+- [~] 5.2 — Sécurité et revue finale (rapport livré le 2026-09-07, classé par
+      gravité ; consigne explicite « ne corrige rien avant validation » — les
+      corrections listées restent en attente de l'accord de l'utilisateur)
+- [x] 5.3 — Documentation et déploiement (terminé le 2026-09-07 ; a mis au jour
+      un écart important entre backend et frontend, documenté plutôt que masqué
+      — voir le détail ci-dessous)
+
+## LOT 6 — Intelligence artificielle
+
+> Gate du lot (chapitre 16.6 du CDC) explicitement non remplie : les lots 1-4 ne
+> sont pas "en service" au sens propre (écart frontend/backend, prompt 5.3), et
+> aucune validation budgétaire de la direction n'a eu lieu. Poursuite décidée
+> explicitement par l'utilisateur le 2026-09-07, en connaissance de cause.
+
+- [x] 6.1 — Socle technique de l'assistance (terminé le 2026-09-07 ; conception
+      présentée et validée avant codage, comme demandé par le prompt)
+- [x] 6.2 — Assistant documentaire (terminé le 2026-09-07 ; les 4 questions de
+      test du prompt n'ont pas pu être posées à un vrai fournisseur — aucune
+      clé API réelle dans cet environnement, voir le détail ci-dessous)
+- [x] 6.4 — Pré-rédaction des rapports (terminé le 2026-09-07 ; 6.3 sauté une
+      seconde fois par sélection directe de l'utilisateur, jugement propre
+      cette fois — pas de dépendance technique identifiée entre 6.4 et 6.3,
+      contrairement au premier saut 6.1→6.3 ; démonstration réelle sur les
+      données de démonstration, voir le détail ci-dessous)
+
+## Chantier ouvert — écrans manquants (hors plan initial)
+
+> Constaté par l'utilisateur en testant l'application réellement (2026-09-07) :
+> l'écart frontend/backend documenté au prompt 5.3 signifie concrètement que la
+> plupart des modules n'ont aucun écran. Décision explicite de l'utilisateur :
+> construire les écrans manquants, module par module, plutôt que de continuer
+> la séquence de prompts. Référence visuelle : `docs/maquettes/` (les deux
+> fichiers contiennent bien un écran, mobile et desktop, pour chacun des 14
+> modules restants — jamais utilisés jusqu'ici).
+
+- [x] EPI (mobile `/epi`, desktop `/gestion/epi`) — terminé le 2026-09-07
+- [x] Risques (mobile `/risques`, desktop `/gestion/risques`) — terminé le
+      2026-09-07
+- [x] Actions (mobile `/actions`, desktop `/gestion/actions`) — terminé le
+      2026-09-07 ; création limitée à une origine "risque" pour l'instant
+      (voir compromis ci-dessous)
+- [x] Ossature desktop refaite (`GestionLayout.vue`, barre latérale) —
+      terminé le 2026-09-07, voir le détail ci-dessous
+- [x] Parc d'équipements et fiches de configuration (mobile `/parc` +
+      `/parc/:id`, desktop `/gestion/parc`, fiche desktop réutilise l'écran
+      mobile) — terminé le 2026-09-07 ; formulaire de configuration limité à
+      MikroTik pour l'instant (seule marque détaillée dans la maquette de
+      référence)
+- [x] Formations (mobile `/formations`, desktop `/gestion/formations`) —
+      terminé le 2026-09-07 ; passage de quiz mobile uniquement (action
+      individuelle, pas une vue de pilotage), testé avec les 10 vraies
+      questions du référentiel FOR-SHEQ-015
+- [x] Audits et revues de direction (mobile `/audits`, desktop
+      `/gestion/audits`) — terminé le 2026-09-07 ; les deux modules
+      regroupés en un seul écran (comme dans la barre latérale), testé avec
+      les 22 vraies exigences FOR-SHEQ-017 réparties sur 6 chapitres
+- [x] Documents (mobile `/documents`, desktop `/gestion/documents`) —
+      terminé le 2026-09-07 ; cycle complet brouillon → approbation →
+      vigueur → accusé de lecture testé en direct
+- [x] Visiteurs (mobile `/visiteurs`, desktop `/gestion/visiteurs`) — terminé
+      le 2026-09-07 ; a aussi révélé et corrigé un bug transverse
+      d'affichage des erreurs de validation (voir détail ci-dessous)
+- [x] Déchets (mobile `/dechets`, desktop `/gestion/dechets`) — terminé le
+      2026-09-07 ; "Incidents environnement" (4e indicateur de la maquette
+      desktop) affiché à 0 fixe, aucune entité dédiée côté backend
+- [x] Satisfaction (questionnaire public `/satisfaction/:jeton` sans compte,
+      pilotage desktop `/gestion/satisfaction`) — terminé le 2026-09-07 ;
+      nouvelle route `GET /satisfaction/reponses` ajoutée (agrégation moyenne
+      absente de l'API existante) ; a aussi révélé et corrigé un vrai bug
+      Pinia (voir détail ci-dessous)
+- [x] Notifications (cloche + panneau, composant transverse
+      `NotificationsCloche.vue`, monté dans l'en-tête mobile de Signalements
+      et dans l'en-tête desktop `GestionLayout.vue`) — terminé le 2026-09-07 ;
+      voir détail ci-dessous (aucune des deux maquettes ne contient d'écran
+      dédié, seulement le bouton d'en-tête)
+- [x] Permis / SLAM & permis (mobile `/permis`, desktop `/gestion/permis`) —
+      terminé le 2026-09-07 ; nouvelle route `GET /slam` (liste complète,
+      réservée aux rôles de pilotage) ajoutée — voir détail ci-dessous
+- [x] Coffre-fort (mobile `/coffre-fort`, desktop `/gestion/coffre-fort`) —
+      terminé le 2026-09-08, conception validée par l'utilisateur avant
+      codage (module sensible, chiffrement) — voir détail ci-dessous
+- [x] Gestion des utilisateurs (écran admin desktop `/gestion/utilisateurs`,
+      réservé au rôle administrateur) — terminé le 2026-09-07 ; nouvelles
+      routes `POST /auth/utilisateurs/{id}/desactiver` et `.../activer`
+      ajoutées (lacune signalée au prompt 5.2, comblée ici) — voir détail
+      ci-dessous
 
 ---
 
@@ -1574,3 +1657,1510 @@ correctement calculé et interprété « Prioriser les écarts »), compte rendu
 de revue (sections numérotées comme le formulaire réel, responsable de
 décision résolu par son nom plutôt que son identifiant), tableau de bord
 (bug de débordement de texte trouvé puis corrigé, revérifié après correction).
+
+### Détail — Prompt 5.2 (rapport livré le 2026-09-07)
+
+Revue de sécurité en mode critique, par investigation directe (greps de
+couverture des dépendances d'authentification route par route, `pip list` +
+recherche des CVE réelles par version exacte installée, test empirique du
+comportement de ReportLab face à des entrées malformées plutôt que théorisé,
+lecture complète de `app/core/deps.py`, `app/core/security.py`,
+`frontend/src/stores/auth.js` et `frontend/src/services/api.js`). Consigne
+explicite du prompt : **« ne corrige rien avant que je valide la liste »** —
+strictement respectée, aucune modification de code pendant cette revue.
+
+**Constats classés par gravité (rapport complet transmis à l'utilisateur en
+conversation, non dupliqué ici in extenso) :**
+
+- **Élevé** : CVE-2026-48710 (« BadHost », Starlette 0.8.3–1.0.0, version
+  installée 0.46.2 dans la plage vulnérable, correctif 1.0.1) ; aucune route
+  ne permet de désactiver un utilisateur existant (le contrôle `actif`/`archive`
+  dans `get_current_user` est réel mais rien ne peut jamais le faire basculer
+  via l'API) ; aucune limitation de tentatives sur `/auth/connexion`.
+- **Moyen** : injection de balisage ReportLab dans les 8 générateurs PDF
+  (confirmé empiriquement : `<b>` non fermé ou `&` brut font planter
+  `Paragraph`) ; aucune validation de robustesse sur le mot de passe à la
+  création d'un compte ; upload de fichiers validé sur des métadonnées
+  fournies par le client (`Content-Type`, extension), pas sur le contenu réel.
+- **Faible/informationnel** : `GET /slam/referentiel` sans authentification
+  (seule route de toute l'API dans ce cas) ; jeton stocké en `localStorage`
+  côté frontend (aucun vecteur XSS trouvé à ce jour) ; `refresh_token` émis
+  mais jamais utilisé par le frontend ; CORS sain par défaut, à vérifier au
+  déploiement ; coffre-fort non construit (3.3 toujours en attente de
+  validation), revue possible seulement sur la conception.
+- **Positif** : aucune injection SQL trouvée (requêtes paramétrées SQLAlchemy
+  partout) ; couverture des droits cohérente sur 19 des 20 fichiers de routes ;
+  pas de `debug=True` ; secrets jamais journalisés ; `.env` correctement
+  exclu du dépôt ; `python-multipart` et `PyJWT` vérifiés sains contre leurs
+  CVE connues.
+
+**Aucune correction appliquée.** En attente de la validation de l'utilisateur
+sur la liste avant toute intervention.
+
+### Détail — Prompt 5.3 (terminé le 2026-09-07)
+
+**Écart majeur découvert en cours de route, signalé avant de poursuivre** :
+le routeur frontend (`frontend/src/router/index.js`) ne compte que 8 vues
+pour 6 écrans réels (accueil, connexion, signalements, nouveau signalement,
+SLAM, tableau de bord mobile/desktop, validation de permis), alors que 14
+modules métier ont une API complète et testée côté serveur (risques, EPI,
+équipements, configurations, inspections, formations, audits, revues,
+documents, visiteurs, déchets, satisfaction, actions, notifications) sans
+aucun écran correspondant. Question posée explicitement à l'utilisateur avant
+de rédiger le manuel utilisateur plutôt que de deviner : réponse — documenter
+l'existant réellement construit, avec captures d'écran réelles, et consigner
+l'écart clairement plutôt que produire un manuel qui laisserait croire à une
+couverture plus large que la réalité.
+
+**Livré :**
+
+1. **`README.md` complété** : sections installation/développement/tests déjà
+   présentes, ajout des sections données de démonstration, manuel utilisateur,
+   sauvegarde/restauration, déploiement en production.
+2. **Documentation d'API** : vérification empirique que les descriptions
+   générées par FastAPI étaient inexistantes (aucun docstring sur les 118
+   fonctions de route à travers les 20 fichiers, résumés auto-générés
+   inexploitables du type « Creer Utilisateur Route »— vérifié sur
+   `/openapi.json` réel, pas supposé). Un docstring French concis a été ajouté
+   à chaque route (118 fonctions, 20 fichiers), avec mention des règles
+   métier non triviales là où c'est utile (règle de blocage des permis,
+   rattachement unique d'une action à une origine, anonymat des signalements,
+   workflow des documents, seuils de criticité des risques, etc.), plus une
+   description globale sur `FastAPI(...)` (flux d'authentification JWT,
+   matrice des rôles). Suite de tests repassée intégralement après coup :
+   237 passés, 3 ignorés (1.4), aucune régression — travail délégué à un
+   agent en arrière-plan avec un brief détaillé (règles métier fournies
+   explicitement, pas laissées à sa charge de les redécouvrir), vérifié
+   ensuite par relecture du diff.
+3. **Manuel utilisateur** (`docs/MANUEL_UTILISATEUR.md`) : captures d'écran
+   réelles (8 images, `docs/manuel/captures/`) prises sur l'application
+   réellement démarrée (backend + frontend, jeu de données de démonstration),
+   organisées par profil, avec la section « modules sans interface » en
+   évidence plutôt qu'en fin de document noyée. Deux textes obsolètes trouvés
+   en cours de capture et corrigés à cette occasion (voir point 6).
+4. **Script de données de démonstration** (`backend/scripts/donnees_demo.py`) :
+   peuple une base vide via l'API réelle (pas d'insertion SQL directe, sauf
+   les 2 sites et le premier compte administrateur — aucune route `/sites`
+   n'existe, et l'amorçage du premier administrateur n'a pas d'autre chemin
+   possible). Refuse de s'exécuter si des utilisateurs existent déjà (garde-fou
+   contre un lancement accidentel sur une base en service). Couvre la
+   majorité des modules, y compris une démonstration délibérée de la règle
+   de blocage des permis (un permis demandé sans évaluation SLAM préalable
+   est effectivement bloqué). Testé de bout en bout sur une base SQLite
+   vierge (migrations réelles + script), pas seulement écrit puis supposé
+   correct.
+5. **Sauvegarde et restauration** (`backend/scripts/sauvegarde.py`,
+   `restaurer.py`) : sauvegarde la base (copie sûre SQLite via l'API backup
+   de `sqlite3`, ou `pg_dump --format=custom` selon `DATABASE_URL`) et
+   `storage/`, jamais `.env` (règle 4, CLAUDE.md — les secrets se conservent
+   séparément). **Procédure testée de bout en bout** : base vivante peuplée,
+   sauvegarde, incident simulé (ligne supprimée en base, fichier de storage
+   effacé), restauration, vérification que les deux sont revenus à l'état
+   sauvegardé. Le chemin PostgreSQL suit la même logique mais n'a pas pu être
+   exercé : ni Docker ni PostgreSQL ne sont disponibles dans cet environnement
+   de développement — signalé plutôt que tu par silence.
+6. **Deux textes obsolètes corrigés dans le frontend**, trouvés en prenant les
+   captures d'écran, pas cherchés a priori : l'écran d'accueil affichait
+   encore « Squelette d'application initialisé — aucun module métier encore
+   implémenté » (vrai au prompt 0.1, faux depuis) sans aucun lien vers la
+   connexion ; l'écran de connexion affirmait « Vos saisies fonctionnent sans
+   réseau et se synchronisent automatiquement » alors que le mode hors
+   connexion n'est toujours pas implémenté (1.4) — un message contradictoire
+   avec les avertissements honnêtes déjà présents sur les écrans SLAM et
+   nouveau signalement. Les deux corrigés pour refléter l'état réel.
+7. **`docker-compose.prod.yml` + `backend/Dockerfile.prod` +
+   `frontend/Dockerfile`/`nginx.conf`** : images construites une fois (pas de
+   montage du code source, pas de rechargement à chaud), frontend compilé et
+   servi par Nginx avec repli SPA (`try_files`), aucune valeur par défaut pour
+   les identifiants PostgreSQL (`${VAR:?message}` — échec explicite plutôt que
+   mot de passe faible silencieux), port PostgreSQL non publié sur l'hôte.
+   `.env.prod.example` documente chaque variable. **Non exécuté de bout en
+   bout** : ni Docker ni PostgreSQL disponibles dans cet environnement — les
+   Dockerfiles et le compose suivent les pratiques standard mais n'ont pas pu
+   être testés par un `docker compose up` réel, contrairement au reste de ce
+   prompt.
+8. **`.gitignore` corrigé** : `.env.prod.example` aurait été silencieusement
+   ignoré par le motif `.env.*` (seule l'exception `!.env.example` existait) —
+   trouvé avant le premier commit, pas après coup.
+
+**Compromis et écarts à signaler :**
+
+1. **Le manuel utilisateur documente un tiers de l'application seulement**
+   (6 écrans sur 20 modules) — décision explicite de l'utilisateur plutôt
+   que supposée : documenter l'existant fidèlement plutôt que produire une
+   spec fonctionnelle du reste.
+2. **Aucun test frontend n'existe** (Vitest prévu par la pile technique,
+   jamais utilisé) — signalé dans le manuel et le README, pas corrigé ici
+   (hors périmètre de ce prompt, chantier à part entière).
+3. **`docker-compose.prod.yml` non exécuté réellement** (environnement sans
+   Docker) — voir point 7 ci-dessus.
+4. **Identifiants bruts affichés côté écran** (`Utilisateur #4`, `Site #2`
+   au lieu des noms) sur plusieurs vues — trouvé en prenant les captures,
+   signalé dans le manuel, non corrigé (portée : résolution des identifiants
+   en libellés, pas une simple faute de copie comme les deux textes du point
+   6 — jugé hors périmètre de « documentation et déploiement »).
+5. **Hors connexion (1.4) et coffre-fort (3.3) toujours non traités**, comme
+   à chaque prompt précédent.
+
+**Vérifié en conditions réelles :** 237 tests pytest passent (aucune
+régression après l'ajout des docstrings). Backend et frontend démarrés
+ensemble contre une base de démonstration dédiée (script testé), 8 écrans
+visités et capturés dans un vrai navigateur (Playwright/patchright, pas une
+simulation). Procédure de sauvegarde/restauration SQLite exécutée
+intégralement avec vérification du contenu avant/après incident simulé.
+
+## LOT 6 — Intelligence artificielle
+
+### Détail — Prompt 6.1 (terminé le 2026-09-07)
+
+**Écart de documentation découvert et tranché avant de coder** : le chapitre 16
+du CDC (principes, tableau 10, architecture 16.3) n'existe que dans le CDC du
+projet SMI-HIRONDELLE (`...-17.docx`), pas dans celui de sheq-management
+(`docs/CDC-SHEQ-001.docx`, `...-19.docx`) — vérifié par extraction et
+comparaison directe des deux documents (zipfile + regex sur `word/document.xml`,
+pas une supposition). Les deux CDC ont divergé. Décision explicite de
+l'utilisateur : utiliser le chapitre 16 de SMI-HIRONDELLE comme base de
+conception pour sheq-management, sans le copier formellement dans le CDC de ce
+projet. Fournisseur retenu pour les appels externes : **Anthropic** (décision
+explicite, le CDC n'imposant aucun fournisseur — nouvelle dépendance signalée
+avant d'écrire du code, conformément à CLAUDE.md).
+
+**Conception présentée et validée avant codage** (comme le prompt l'exige
+explicitement — "Attends ma validation") : module `backend/app/services/assistance/`
+isolé (`client.py`/`journal.py`/`configuration.py`/`garde_fous.py`, point
+d'entrée unique `__init__.py`), client HTTP avec délai maximal, réessai limité
+à une fois, repli silencieux vers l'appelant (jamais d'exception) mais toujours
+journalisé, journal d'appels sur le modèle de `JournalAcces` (écriture seule),
+interrupteur général + mécanisme d'activation par fonction (aucune fonction
+métier n'existe encore pour en tester la valeur réelle), plafond mensuel
+optionnel, masquage déterministe des noms d'utilisateurs connus, refus
+structurel de tout contenu `bytes` (seule donnée binaire de cette base : les
+secrets chiffrés du coffre-fort).
+
+**Deux bugs trouvés en écrivant les tests, pas supposés corrects** :
+
+1. **Le CHECK constraint que je pensais devoir migrer n'existe pas.** Après
+   avoir écrit une migration `batch_alter_table` pour étendre la contrainte
+   CHECK de `notification.type` (nouvelle valeur `PLAFOND_ASSISTANCE`), une
+   inspection directe du schéma SQLite réel (`sqlite_master`) a montré que la
+   colonne `type` est un simple `VARCHAR` sans aucun CHECK — `enum_column()`
+   (app/db/base.py) construit un `sa.Enum` sans `create_constraint=True`, et
+   SQLAlchemy 2.x a `create_constraint=False` par défaut pour un type non
+   natif. La migration inutile (elle ne cassait rien, mais reconstruisait la
+   table sans raison, avec un commentaire qui aurait été faux) a été
+   simplifiée : ajouter une valeur à `TypeNotification` ne nécessite aucun
+   changement de schéma dans ce projet, seulement au niveau Python.
+2. **La déduplication des notifications par contrainte unique ne fonctionnait
+   pas pour l'alerte de plafond**, découvert par le test dédié
+   (`test_plafond_depasse_alerte_les_administrateurs`), pas en le supposant
+   acquis parce que le mécanisme existe déjà pour d'autres notifications. En
+   SQL, une valeur NULL n'est jamais égale à une autre valeur NULL, y compris
+   dans une contrainte UNIQUE multi-colonnes : laisser `objet_id` (ou
+   `declencheur`) à `None` — ce que ma première version faisait, faute
+   d'identifiant d'objet naturel pour une alerte mensuelle sans objet précis —
+   désactive silencieusement toute déduplication pour CETTE notification
+   précise (les huit notifications existantes du tableau 3 passent toutes un
+   `objet_id` réel, ce bug ne les concerne pas). Corrigé en encodant le mois
+   dans `objet_id` (ex. 202609) et en renseignant `declencheur` en plus.
+
+**Compromis et écarts à signaler :**
+
+1. **Le mécanisme d'activation par fonction ne peut pas encore être vérifié
+   avec une vraie fonction** : `Settings` (Pydantic) refuse tout champ non
+   déclaré, donc `fonction_activee("assistant_documentaire")` renvoie
+   toujours `False` en pratique tant que le prompt 6.2 n'ajoute pas son
+   propre champ `assistance_assistant_documentaire_active` — comportement
+   voulu, testé avec un objet `settings` de substitution plutôt qu'avec le
+   singleton réel (qui ne peut pas être étendu dynamiquement).
+2. **Coûts estimés approximatifs** : les tarifs par million de jetons
+   (`app/services/assistance/client.py`) sont des valeurs de départ, à
+   vérifier une fois un usage réel facturé disponible — le CDC lui-même ne
+   demande qu'un "coût estimé", pas une facturation exacte.
+3. **Masquage des noms limité aux utilisateurs de l'application** : ne
+   masque ni un visiteur, ni un tiers cité en texte libre, ni une variante
+   orthographique — limite documentée dans le docstring de `masquer_noms`,
+   pas cachée.
+4. **Aucune route API** : ce prompt est un socle pur, sans aucune fonction
+   métier ni endpoint exposé — conforme à la demande explicite du prompt
+   ("sans aucune fonction métier pour l'instant").
+5. **Gate du lot 6 non remplie** (voir l'avertissement en tête de section) —
+   poursuite décidée explicitement par l'utilisateur.
+
+**Vérifié en conditions réelles :** 256 tests pytest passent (237 précédents
++ 19 nouveaux), 3 toujours skippés (1.4), aucune régression. Migration
+simplifiée testée en upgrade/downgrade/upgrade sur une base SQLite vierge.
+Suite de tests dédiée couvrant explicitement les deux garanties demandées par
+le prompt : le service indisponible (délai dépassé, erreur réseau, absence de
+clé API) ne lève jamais d'exception et reste journalisé ; un contenu `bytes`
+est refusé avant tout appel réseau, même transmis directement à la fonction
+`appeler()`, sans jamais atteindre `httpx.post`.
+
+### Détail — Prompt 6.2 (terminé le 2026-09-07)
+
+Ordre du lot respecté cette fois (chapitre 16.6 : "assistant documentaire" en
+premier) — voir la décision de l'utilisateur en réponse à la sélection directe
+du prompt 6.3, qui sautait celui-ci.
+
+**Blocage réel signalé avant de concevoir quoi que ce soit** : Anthropic
+(fournisseur retenu au prompt 6.1) n'expose aucune API d'embeddings publique,
+alors que 16.3.2 exige des "représentations vectorielles". Décision explicite
+avec l'utilisateur : **Voyage AI**, partenaire d'embeddings recommandé par
+Anthropic elle-même — deuxième clé API distincte (`ASSISTANCE_VOYAGE_API_CLE`),
+deuxième fournisseur externe à isoler derrière le même principe du prompt 6.1
+(aucun autre composant n'appelle directement le service).
+
+**Conception présentée avant codage** (CLAUDE.md, "explique avant de coder
+quand tu introduis un mécanisme nouveau" — le prompt 6.2 ne l'exige pas
+explicitement comme le faisait 6.1, mais l'ampleur du mécanisme le justifiait
+tout autant) : extraction de texte par format (python-docx/openpyxl/pypdf,
+deux nouvelles dépendances signalées et justifiées), découpage en segments
+par paragraphes groupés sous ~1500 caractères, recherche par similarité
+cosinus calculée en Python (pas d'extension vectorielle SQLite/PostgreSQL —
+36 documents ne le justifient pas), indexation déclenchée dans
+`document_service.approuver()` (point d'accroche déjà identifié dans le code
+existant : c'est exactement là que la version précédente passe en ARCHIVE).
+
+**La garantie de non-réponse fiable ne dépend pas du modèle de génération** :
+si aucun segment ne dépasse le seuil de similarité (0.3), la réponse
+"la documentation en vigueur ne permet pas de répondre" est renvoyée
+directement, sans même appeler Anthropic — testé explicitement
+(`test_repondre_sans_segment_pertinent_ne_genere_pas_de_reponse`, qui vérifie
+que le modèle de génération n'est jamais sollicité). Le CDC qualifie cette
+garantie de "critère d'acceptation, pas un détail" (16.2.1) : une réponse
+fiable à 100 % dans ce cas vaut mieux qu'une réponse probable selon la
+docilité du modèle.
+
+**Route ajoutée hors périmètre initial mais nécessaire** : `GET
+/documents/{id}/fichier` n'existait pas — sans elle, "références cliquables"
+(exigence explicite du prompt) n'avait aucune cible. Mêmes règles de
+visibilité que la lecture du document (404, pas 403, pour un document non
+visible).
+
+**Interface mobile ET desktop**, comme demandé : nouvel onglet "Assistant"
+ajouté aux trois écrans mobiles qui portent déjà la barre d'onglets
+(Signalements, SLAM, Tableau de bord), nouveau lien dans l'en-tête du tableau
+de bord desktop. Nouvelle icône SVG "bulle de discussion" ajoutée au sprite
+(aucune icône de ce type n'existait). Les deux vues confirmées fonctionnelles
+dans un vrai navigateur : formulaire soumis, réponse "indisponible" affichée
+correctement (aucune clé configurée dans cet environnement) — zéro erreur
+console, zéro requête en échec.
+
+**Compromis et écarts à signaler :**
+
+1. **Les 4 questions de test demandées par le prompt n'ont pas été posées à
+   un vrai fournisseur.** Cet environnement de développement n'a ni
+   `ASSISTANCE_API_CLE` ni `ASSISTANCE_VOYAGE_API_CLE` réelles (CLAUDE.md,
+   point 10 : "aucun secret réel... dans le code, les tests ou les
+   exemples") : la démonstration a été faite avec des appels externes
+   simulés (`monkeypatch`), sur une logique de récupération et de découpage
+   entièrement réelle. Pour poser réellement les 4 questions, renseigner les
+   deux clés dans `backend/.env`, activer `ASSISTANCE_ACTIVEE` et
+   `ASSISTANCE_ASSISTANT_DOCUMENTAIRE_ACTIVE`, approuver au moins un document
+   réel avec un fichier joint, puis interroger `/assistant` ou
+   `/api/v1/assistance/question-documentaire`.
+2. **"Section" reste une approximation selon le format** : titre `Heading`
+   pour un `.docx`, numéro de page pour un PDF, nom de feuille pour un
+   `.xlsx` — pas une vraie structure sémantique du document, faute de
+   modélisation de cette structure dans DOCUMENT.
+3. **Tarifs Voyage/Anthropic approximatifs**, même réserve qu'au prompt 6.1 —
+   à ajuster une fois une facturation réelle observée.
+4. **Aucun mécanisme de retour utilisateur** ("signaler une suggestion
+   inexacte", 16.4) — non demandé explicitement par le prompt 6.2 lui-même
+   (contrairement à 16.4, qui couvre l'ensemble du lot), reporté à un prompt
+   ultérieur si le besoin se confirme à l'usage.
+
+**Vérifié en conditions réelles :** 275 tests pytest passent (256 précédents
++ 19 nouveaux), 3 toujours skippés (1.4), aucune régression. Migration
+testée en upgrade/downgrade/upgrade. Extraction testée sur de vrais fichiers
+`.docx`/`.xlsx` générés par python-docx/openpyxl dans les tests (pas des
+fixtures binaires committées). Indexation testée de bout en bout via le vrai
+cycle de vie d'un document (création → soumission → approbation → nouvelle
+version → approbation), vérifiant que les segments de la version archivée
+disparaissent réellement. Les deux écrans (mobile et desktop) visités dans un
+vrai navigateur après démarrage réel des deux serveurs.
+
+### Détail — Prompt 6.4 (terminé le 2026-09-07)
+
+Sélection directe de l'utilisateur, sautant à nouveau le prompt 6.3 (analyse
+assistée des causes). Décision cette fois assumée sans nouvelle question à
+l'utilisateur (contrairement au saut 6.1→6.3) : contrairement à 6.3, qui
+réutilise un patron d'interface "suggestion" que 6.2 aurait établi, 6.4 ne
+dépend techniquement de rien qui serait apporté par 6.3 — il réutilise
+uniquement le socle du prompt 6.1 (client Anthropic) et le workflow
+brouillon/validation déjà présent dans DOCUMENT (prompt 4.3), sans lien avec
+l'analyse des causes d'un signalement.
+
+**Décision de conception** (pas de nouveau fournisseur ni dépendance, donc
+pas de blocage à signaler comme aux prompts 6.1/6.2) : plutôt que de
+construire un système de brouillon parallèle (calqué sur DOCUMENT), le
+commentaire pré-rédigé est un champ texte directement sur REVUE_DIRECTION et
+CAMPAGNE_AUDIT (`commentaire_ia`, `commentaire_valide`), avec sa propre
+traçabilité en réutilisant simplement `modifie_par_id`/`modifie_le` déjà
+fournis par BaseModel — plus proportionné qu'un artefact séparé pour "un
+paragraphe de synthèse".
+
+**Effet de bord positif** : la section 3 de FOR-SHEQ-016 ("analyse des
+événements marquants"), explicitement laissée vide dans l'export PDF depuis
+le prompt 5.1 ("rien à y afficher sans inventer un contenu" — compromis n°3
+de ce prompt), est désormais remplie — par le commentaire validé, jamais
+avant. Section "Synthèse" équivalente ajoutée au rapport d'audit (pas de gap
+préexistant à combler côté FOR-SHEQ-017, section nouvelle).
+
+**Vérifié directement, pas supposé** : le PDF exporté AVANT validation
+n'inclut ni le titre de section ni le texte du commentaire (vérifié par
+extraction réelle du texte du PDF via `pypdf`, pas seulement par lecture du
+code) ; APRÈS validation, les deux apparaissent. Testé dans les deux sens
+pour la revue, et pour l'inclusion côté audit.
+
+**Démonstration demandée par le prompt, réalisée sur les données de
+démonstration** (revue et campagne d'audit créées par
+`backend/scripts/donnees_demo.py`, prompt 5.3) : commentaire généré (avec un
+appel simulé — aucune clé API réelle disponible, même réserve qu'au prompt
+6.2 — mais un texte plausible construit à partir des VRAIES données de la
+base, jamais inventées), validé, puis exporté. Le PDF réel produit a été lu
+et vérifié (section 3 "Analyse des événements marquants" pour la revue,
+citant correctement les 4 réévaluations de risques et le taux d'avancement à
+0 % réellement présents en base ; section "Synthèse" pour l'audit, citant le
+score réel 2/4 = 50 %, interprétation "En construction").
+
+**Compromis et écarts à signaler :**
+
+1. **Démonstration avec un fournisseur simulé**, même réserve que le prompt
+   6.2 : aucune clé Anthropic réelle dans cet environnement de
+   développement (CLAUDE.md, point 10). Le mécanisme démontré (génération →
+   brouillon → validation → apparition conditionnelle dans le PDF) est
+   entièrement réel ; seul le texte du commentaire lui-même provient d'un
+   appel simulé plutôt que d'un vrai modèle.
+2. **Aucune interface (mobile/desktop) pour ce prompt** — non demandé
+   explicitement par le texte du prompt 6.4 (contrairement à 6.2, qui exigeait
+   "interface : champ de question sur mobile et desktop") : seules les routes
+   API existent (`POST .../commentaire/generer`, `PATCH .../commentaire`,
+   `POST .../commentaire/valider`, sur revues et audits). À construire si
+   l'usage réel le justifie.
+3. **`assistance_pre_redaction_active`** suit le même principe que les
+   indicateurs par fonction précédents : désactivé par défaut, à activer
+   explicitement une fois le budget arbitré (16.6).
+
+**Vérifié en conditions réelles :** 285 tests pytest passent (275 précédents
++ 10 nouveaux), 3 toujours skippés (1.4), aucune régression. Migration
+testée en upgrade/downgrade/upgrade sur base vierge, ET appliquée avec succès
+sur la base de démonstration déjà peuplée (ligne de revue et de campagne
+existantes — vérifie que l'ajout d'une colonne NOT NULL avec
+`server_default` fonctionne réellement sur des lignes préexistantes, pas
+seulement sur une table vide). Rapport de démonstration généré, lu et vérifié
+page par page (texte extrait du PDF réel).
+
+### Détail — Écrans EPI, prérequis de résolution de noms, écran Menu (terminé le 2026-09-07)
+
+**Prérequis ajoutés avant l'écran lui-même** : aucune route ne permettait de
+résoudre un `porteur_id`/`site_id` en nom affichable (lacune déjà signalée au
+prompt 5.3, "Utilisateur #4"). Ajout de `GET /auth/utilisateurs` (ouvert à
+tout authentifié — ces informations sont déjà visibles de tous dans
+l'organisation papier) et `GET /sites` (nouveau fichier `app/schemas/site.py`,
+`app/api/v1/sites.py` — aucune route SITE n'existait avant). Nécessaire pour
+que l'écran EPI affiche un nom de porteur plutôt qu'un identifiant brut, et
+pour tous les écrans à venir (permis, équipements, inspections référencent
+tous un site ou un utilisateur).
+
+**Écran Menu ajouté** (`/menu`, maquette `#s-menu`) : nécessaire dès ce
+premier écran additionnel — la barre d'onglets fixe (5 destinations) ne peut
+pas accueillir les 13 modules restants un par un. Sert de hub, un onglet
+"Menu" (6ᵉ, icône grille) ajouté à tous les écrans mobiles existants. Seuls
+les modules ayant réellement un écran y figurent (même principe que
+SignalementsView.vue depuis le prompt 1.3 : "mieux vaut les omettre que
+proposer des boutons qui ne mènent nulle part").
+
+**EPI mobile (`/epi`, maquette `#s-epi`) et desktop (`/gestion/epi`, maquette
+`#p-epi`)** : liste avec code couleur (rouge = vérification dépassée, orange
+= J-7, vert = en service, gris = réformé/retiré), bannière d'alerte si des
+EPI bloquent la délivrance d'un permis, action de vérification directement
+sur chaque ligne (écart assumé face à la maquette, qui montre un bouton
+unique en pied d'écran sans préciser l'écran suivant — une action directe par
+ligne est plus rapide sur le terrain).
+
+**Bug réel trouvé et corrigé en testant, pas en le supposant correct** :
+`auth.utilisateur` (store Pinia) ne survit jamais à un rechargement de page —
+seul `jeton` est persisté en `localStorage`. Avant ce prompt, aucun écran ne
+lisait `auth.utilisateur.role` ou `.nom` de façon qui aurait révélé le
+problème visuellement (TableauBordDesktopView affiche juste un nom vide sans
+casser l'écran). L'écran Menu, qui masque conditionnellement "Tableau de
+bord" selon le rôle, l'a rendu visible immédiatement (rôle affiché vide,
+tuile manquante) — trouvé par une capture d'écran réelle après rechargement,
+pas en relisant le code. Corrigé par `auth.chargerProfil()`, appelée depuis
+le garde de navigation (`router.beforeEach`) chaque fois qu'un jeton existe
+sans profil chargé ; un jeton devenu invalide déconnecte proprement plutôt
+que de laisser un état incohérent indéfiniment.
+
+**Accessibilité** : la ligne EPI cliquable (ouverture de l'action de
+vérification) était un `<div>` sans `role`/`tabindex`, invisible à la navigation
+clavier et aux lecteurs d'écran — trouvé en testant avec l'outil
+d'accessibilité du navigateur automatisé (la ligne n'apparaissait pas dans
+l'arbre des éléments interactifs), pas supposé correct. Corrigé
+(`role="button"`, `tabindex`, gestion de la touche Entrée).
+
+**Vérifié en conditions réelles**, pas seulement par lecture du code : les
+deux serveurs réels démarrés (base de développement réelle de l'utilisateur,
+pas une base de test), un EPI créé via l'API, testé dans un vrai navigateur —
+navigation Menu → EPI, action "Conforme" cliquée réellement, vérifiée que la
+règle "prochaine vérification = dernière + 12 mois" (règle 6, CLAUDE.md)
+s'applique correctement (14/01/2026 dépassé → 06/09/2027 après vérification),
+que la bannière d'alerte disparaît, que le porteur affiche "Démo Admin" et
+non "Utilisateur #1". Aucune erreur console, aucune requête en échec, sur
+les deux vues (mobile et desktop).
+
+**Compromis à signaler** : l'action de vérification par ligne (plutôt que le
+bouton unique de la maquette) est une interprétation, à confirmer avec
+l'utilisateur si un écran de sélection dédié est finalement préféré. Pas de
+pagination côté desktop (classe `.pagin` de la maquette non portée) — sans
+conséquence à la volumétrie actuelle, à revoir si le parc d'EPI grossit.
+
+### Détail — Écrans Risques, Actions, refonte desktop (terminé le 2026-09-07)
+
+Décision explicite de l'utilisateur ("tu dois me construire tous les écrans") :
+construction sans pause de confirmation entre modules, avec points d'étape
+réguliers plutôt que des questions bloquantes.
+
+**Refonte de l'ossature desktop, décidée en cours de route** : après EPI et
+avant Risques, le constat que chaque écran desktop accumulait ses propres
+boutons de navigation ad hoc (4 déjà après seulement 2 écrans) a conduit à
+construire `GestionLayout.vue` — la vraie barre latérale de la maquette
+(`.side`/`.nv`/`.navsec`), en pleine fenêtre plutôt que le cadre "prototype"
+centré de la maquette (qui n'a de sens que pour la présenter, pas pour
+l'usage réel). Toutes les routes `/gestion/*` sont maintenant des enfants de
+ce layout (routes imbriquées Vue Router), avec un titre de page porté par
+`meta.titre` plutôt que dupliqué dans chaque vue. Plusieurs classes CSS
+`.bureau X` (scopées à l'ancien conteneur) ont été dé-scopées pour devenir
+globales — sans quoi elles auraient cessé de s'appliquer aux écrans déjà
+construits une fois `.bureau` retiré.
+
+**Écrans Risques** (mobile `#s-risques`, desktop `#p-risk`) : matrice de
+criticité 5×5 reconstruite à partir de `GET /risques/matrice` (la maquette la
+peuple par script, sans markup de référence), formulaire de création avec les
+12 catégories réelles, réutilisé tel quel entre mobile et desktop plutôt que
+dupliqué avec un style distinct.
+
+**Écran Actions** (mobile `#s-actions`, desktop `#p-act`) : filtres
+Toutes/En retard/Les miennes, avancement modifiable en ligne, clôture directe.
+Création limitée à une origine "risque" (`ActionCreation` exige exactement
+une origine parmi risque/signalement/inspection/écart d'audit/réponse de
+satisfaction — seul "risque" a un écran assez avancé pour y accrocher un
+sélecteur pour l'instant).
+
+**Deux bugs réels trouvés en testant, pas supposés corrects :**
+
+1. **La matrice de criticité ne s'affichait pas en grille** : `.mtx`/`.ax`
+   avaient été utilisées dans le template sans jamais être portées dans
+   `style.css` — les 25 cases s'alignaient sur une seule ligne. Trouvé par
+   capture d'écran réelle (le texte seul, extrait sans mise en page, ne
+   l'aurait pas révélé), pas par relecture du code.
+2. **Décalage d'un jour sur toute date civile affichée** (échéances
+   d'action, dates de vérification EPI) : `new Date("2026-10-15")` est
+   interprété comme un instant UTC minuit par le constructeur `Date`, puis
+   reformaté dans le fuseau local par `toLocaleDateString()` — un décalage
+   d'un jour selon le fuseau du navigateur. Trouvé en créant une vraie action
+   avec une échéance réelle (15/10 saisi, 14/10 affiché), pas en relisant le
+   code. Ce bug touchait potentiellement tous les écrans avec une date de
+   type `date` (pas `datetime`) : `EpiView`/`EpiDesktopView`
+   (vérifications), `TableauBordDesktopView` (échéances proches), en plus
+   d'`ActionsView`/`ActionsDesktopView`. Corrigé partout avec un utilitaire
+   partagé (`frontend/src/utils/dates.js`, `formaterDateCivile`/
+   `joursRestantsCivil`) plutôt que patché au cas par cas — à réutiliser pour
+   tout futur champ `date` plutôt que réintroduire le bug.
+
+**Compromis à signaler :**
+
+1. Formulaire de création d'action limité à l'origine "risque" (voir
+   ci-dessus).
+2. Tableau de bord toujours honnête sur ses limites, mais son message
+   "Indisponibles pour l'instant, faute de module : epi..." est désormais
+   partiellement obsolète (EPI a un écran) — c'est un indicateur backend
+   (`tableau_bord_service.py`) distinct de la présence d'un écran, non
+   corrigé ici (hors périmètre de "construire les écrans", plutôt "étendre
+   les indicateurs du tableau de bord").
+
+**Vérifié en conditions réelles** sur la vraie base de développement de
+l'utilisateur (pas une base de test) : un risque créé (P4×G5, criticité 20
+calculée côté serveur), une action créée et rattachée, avancement mis à
+jour, échéance affichée correctement après correction du bug de fuseau,
+navigation complète testée dans un vrai navigateur (Menu → Risques → Actions,
+sidebar desktop entre les 4 écrans). 289 tests pytest toujours au vert
+(aucune régression backend, ce chantier est entièrement frontend).
+
+### Détail — Écran Visiteurs (terminé le 2026-09-07)
+
+**Écrans Visiteurs** (mobile `/visiteurs`, desktop `/gestion/visiteurs`) :
+enregistrement d'arrivée (nom, motif, société facultative, personne visitée,
+case obligatoire "consignes lues"), liste des personnes présentes sur site,
+enregistrement de départ. Ajoutés à `MenuView.vue` et à la barre latérale de
+`GestionLayout.vue`.
+
+**Bug réel trouvé en testant, pas supposé correct :** en soumettant le
+formulaire sans cocher la case des consignes, le serveur rejette bien la
+création (`HTTP 422`, le validateur Pydantic `_consignes_obligatoires` de
+`VisiteurCreation` l'exige) — c'est le comportement attendu côté serveur.
+Mais le message d'erreur affiché à l'écran était le texte littéral
+`[object Object]` au lieu du message. Cause : FastAPI renvoie le détail
+d'une erreur de validation Pydantic sous forme de liste d'objets
+(`{"detail": [{"loc":..., "msg":..., "type":...}]}`), pas une chaîne — et
+`ErreurApi` (`frontend/src/services/api.js`) passait ce détail tel quel à
+`Error.message`, qui n'est censé être qu'une chaîne. Corrigé à la source
+(nouvelle fonction `extraireMessage()` dans `api.js`, appelée par `requete()`)
+plutôt que dans chaque écran : gère les 3 formes possibles de `detail`
+renvoyées par FastAPI (chaîne, liste d'erreurs de validation, objet unique).
+Ce bug touchait potentiellement tout formulaire pouvant déclencher un 422 de
+validation Pydantic (pas seulement Visiteurs) — corrigé une fois pour toutes
+au niveau du client API commun. Vérifié en conditions réelles : le message
+affiché est maintenant "Value error, les consignes de sécurité doivent être
+lues et validées avant tout enregistrement".
+
+**Vérifié en conditions réelles** sur la vraie base de développement : un
+visiteur enregistré avec succès une fois la case cochée (affiché en liste
+"présents sur site" avec heure d'arrivée), rejet propre et lisible sans la
+case. 289 tests pytest toujours au vert (aucune régression backend, ce
+chantier est entièrement frontend).
+
+### Détail — Écran Déchets (terminé le 2026-09-07)
+
+**Écrans Déchets** (mobile `/dechets`, desktop `/gestion/dechets`) : registre
+des lots de déchets (date, type, description, quantité, site, filière —
+tous des champs texte libre côté backend, le registre réel n'impose pas de
+liste fermée), enregistrement d'un enlèvement (date + justificatif optionnel
+côté desktop admin plus tard si besoin, non exposé dans ce formulaire).
+
+**Compromis à signaler :** le 4e indicateur de la maquette desktop
+("Incidents environnement") n'a aucune entité backend dédiée — affiché figé à
+0 avec une note explicite plutôt qu'une fausse donnée dynamique.
+
+**Vérifié en conditions réelles** : un lot DEEE créé (2 routeurs HS, câbles,
+1 onduleur, 14 kg, Siège Bamako), passage "en stock" → "tracé" via
+l'enregistrement d'un enlèvement, date d'enlèvement affichée sans décalage de
+fuseau (07/09/2026, correspondant au jour réel du test), cohérence entre
+écran mobile et desktop (même lot visible des deux côtés, mêmes totaux).
+289 tests pytest toujours au vert (aucune régression backend, ce chantier
+reste entièrement frontend — seules les routes déjà existantes `GET/POST
+/dechets` et `POST /dechets/{id}/enlevement` ont été consommées).
+
+### Détail — Écran Satisfaction (terminé le 2026-09-07)
+
+**Deux écrans, pas un seul**, reflet direct de la distinction CDC 11.1
+"deux interfaces, deux usages" : le questionnaire (`#s-satis`) est un écran
+**public**, sans authentification, accessible par lien/QR code envoyé au
+client (`/satisfaction/:jeton` — route ajoutée hors du préfixe `/gestion` et
+sans `meta.necessiteAuth`) ; le pilotage (`#p-satis`, moyenne, retours à
+analyser, enquêtes envoyées, création d'enquête) est un écran de gestion
+desktop (`/gestion/satisfaction`), réservé au personnel. Aucun écran mobile
+interne : la maquette n'en prévoit pas, cohérent avec le reste de l'app
+(le pilotage est desktop, la saisie terrain est mobile — la satisfaction
+n'est ni l'un ni l'autre côté staff, c'est un envoi + un traitement).
+
+**Écarts assumés :**
+1. Le vrai référentiel (`CRITERES`, satisfaction_service.py) a 6 critères,
+   pas 3 comme dans le fragment de maquette — rendus dynamiquement à partir
+   de `GET /questionnaire/{jeton}`.
+2. `ReponseEntree` exige une `recommandation` (3 valeurs FOR-SHEQ-018) que le
+   fragment de maquette ne montre pas explicitement — ajoutée comme un choix
+   à 3 boutons, seule façon de satisfaire ce champ obligatoire du vrai schéma.
+3. **Nouvelle route backend** `GET /satisfaction/reponses` (+ service
+   `lister_reponses`, + 2 tests) : aucune route existante ne renvoie
+   l'ensemble des réponses (seulement `/a-traiter`, filtrée aux notes ≤ 2) —
+   sans elle, la moyenne de satisfaction affichée sur l'écran de pilotage
+   n'aurait pu être calculée qu'à partir d'un sous-ensemble biaisé (que les
+   mauvaises notes), ce qui aurait été trompeur plutôt qu'un vrai compromis.
+   Moyennes (globale et par critère) calculées côté client, aucune agrégation
+   de ce type n'existant côté serveur.
+
+**Bug réel trouvé en testant, pas supposé correct :** l'écran desktop
+restait entièrement blanc (aucune erreur console, aucune requête en échec —
+silence total), alors que Visiteurs et Déchets, construits juste avant avec
+le même patron, s'affichaient normalement. Cause : le getter Pinia
+`moyenneGlobale` était écrit `(state, getters) => …` en supposant, par
+réflexe Vuex, qu'un second paramètre `getters` est passé aux getters —
+**Pinia ne fait pas ça** : un getter accède aux autres getters via `this`, ce
+qui exige une fonction normale (pas fléchée, `this` ne s'y lie pas). Le
+getter plantait donc silencieusement (`Cannot read properties of undefined`)
+à chaque rendu, et Vue n'a rien signalé sur la console dans ce cas précis —
+trouvé uniquement en comparant le rendu réel de trois écrans construits côté
+à côté avec le même patron, pas par relecture du code seul. Corrigé en
+`moyenneGlobale() { return …this.moyenneParCritere… }`.
+
+**Deuxième bug, plus mineur, trouvé au même endroit :** les bascules
+"Nouvelle enquête" (Satisfaction) et "Nouvel enregistrement" (Déchets) sont
+des `<span>` avec `@click`, sans `role="button"`/`tabindex` — invisibles à
+l'arbre d'accessibilité (et donc au clavier/lecteur d'écran), même défaut que
+la ligne EPI cliquable corrigée plus tôt dans ce chantier. Corrigé sur les
+deux écrans, plus la puce "À planifier" de Déchets (même défaut, oubliée
+lors de la première passe).
+
+**Vérifié en conditions réelles**, bout en bout, sur la vraie base de
+développement : une enquête créée depuis l'écran desktop (client "Client
+Test Satisfaction", intervention "Maintenance PtP"), lien public généré et
+ouvert dans un navigateur sans session authentifiée, questionnaire rempli
+(5 critères à des notes hautes, 1 à 2/5 — "Respect des délais annoncés"),
+recommandation "Probablement" et un commentaire, soumis avec succès
+("Merci pour votre retour"). Revenu sur l'écran desktop : moyenne globale
+4,3/5 recalculée correctement (moyenne de 5,2,5,5,4,5), barre par critère
+juste, alerte "1 réponse à 2 étoiles ou moins" déclenchée (seuil réel
+`SEUIL_ALERTE_NOTE = 2` du backend), ligne de la table à jour ("Répondu",
+"4,3 / 5", "Analyse requise"). 291 tests pytest au vert (289 + 2 nouveaux
+pour `GET /satisfaction/reponses`), aucune régression.
+
+### Détail — Cloche de notifications (terminé le 2026-09-07)
+
+Ni la maquette mobile ni la desktop ne contiennent d'écran dédié aux
+notifications (aucun `id="s-notif"`/`id="p-notif"` dans les 41 écrans) —
+seulement un bouton d'en-tête (icône cloche + point) : `.hd .act .ib` en
+mobile (maquette v2, ligne 299, écran `#s-home`), `.gestion-top .ib` en
+desktop (maquette Desktop, ligne 244, présent sur toutes les pages). Ce
+n'est donc pas un "écran manquant" au même titre que les modules précédents,
+mais un élément transverse resté inutilisé jusqu'ici (icône `i-bell` présente
+dans le sprite depuis un prompt antérieur, jamais montée nulle part).
+
+**Construit :** `NotificationsCloche.vue`, un composant unique monté aux deux
+endroits où la maquette montre le bouton — l'en-tête de Signalements (écran
+d'atterrissage mobile réel de l'app, `#s-home` avec son "Bonjour, {prénom}"
+n'ayant jamais été construit, voir lot 1) et l'en-tête de `GestionLayout.vue`
+(présent sur les 13 écrans desktop d'un coup, une seule insertion). Un clic
+ouvre un panneau déroulant listant `GET /notifications` — absent des deux
+maquettes (qui ne montrent que le bouton statique) mais nécessaire pour que
+la cloche serve à quelque chose plutôt que d'être décorative ; construit dans
+le langage visuel existant (`.card`-like) plutôt qu'improvisé. Clic sur une
+notification → `POST /{id}/lue` ; "Tout marquer comme lu" → `POST
+/toutes-lues`. Aucune route backend n'a été ajoutée : les 5 existantes
+(prompt 4.4) couvraient déjà exactement ce besoin.
+
+**Vérifié en conditions réelles**, avec un compromis assumé pour y parvenir :
+la base de développement ne contenait qu'un seul compte (`admin`), et les
+notifications réelles (ex. `notifier_satisfaction_faible`) ne ciblent que
+`referent_sheq`/`responsable` — impossible à observer avec un seul compte
+administrateur. Un compte fictif `referent.test` / `Referent-Test-2026!` a
+été créé via `POST /auth/utilisateurs` (même principe que le compte `admin`
+déjà documenté pour les tests manuels — voir plus haut dans ce journal),
+uniquement pour cette vérification. Une enquête de satisfaction notée 1/5 sur
+tous les critères a bien généré la notification attendue, visible dans la
+cloche de ce compte : badge rouge sur le bouton, message "Note de
+satisfaction client faible (≤ 2/5) : une analyse est requise" avec date/heure
+correcte, bascule vers l'état "lu" au clic (disparition du fond navy-soft,
+disparition du badge), testé en mobile et en desktop. 291 tests pytest
+toujours au vert (aucune modification backend pour ce module).
+
+### Détail — Permis / SLAM & permis (terminé le 2026-09-07)
+
+**Aucune des deux maquettes n'a d'écran de "liste" ou de "demande" de
+permis** — seul `#s-permis` existe, et c'est la vue responsable de
+validation (déjà construite au prompt 2.3, `PermisValidationView.vue`). Le
+seul point d'entrée maquette est la tuile "SLAM & permis" du menu mobile, qui
+ne menait qu'au stepper SLAM (`SlamView.vue`) : sans écran de demande,
+`POST /permis` — avec sa vraie règle de blocage (EPI conforme, SLAM GO par
+intervenant, surveillant désigné et distinct des intervenants) — restait
+inatteignable depuis l'interface, alors que la route existe depuis le
+prompt 2.2. Construits ici, en reprenant le langage visuel déjà établi
+(métriques + liste + formulaire repliable, comme Risques/Déchets) plutôt
+qu'inventés sans référence :
+- mobile `/permis` (`PermisView.vue`) : compteurs "en cours"/"en attente",
+  liste des permis (clic → l'écran de validation existant, inchangé),
+  formulaire de demande (site, nature des travaux, support, hauteur
+  estimée, créneau, intervenants à cocher, surveillant facultatif) ;
+- desktop `/gestion/permis` (`PermisDesktopView.vue`), calqué sur
+  `#p-hauteur` : 4 métriques, table des permis, table "Décisions SLAM
+  récentes" (absente d'API jusqu'ici, voir ci-dessous), même formulaire de
+  demande que côté mobile.
+
+La tuile mobile "SLAM & permis" est repartie en deux tuiles distinctes
+("SLAM" → stepper, "Permis" → ce nouvel écran) : la conserver unique aurait
+laissé la moitié de son intitulé sans destination.
+
+**Nouvelle route backend** `GET /slam` (+ service `lister_toutes`, + 2
+tests) : seule `/slam/mes-evaluations` existait (scopée à l'appelant) — la
+table "Décisions SLAM récentes" de `#p-hauteur` montre les décisions de
+*tous* les intervenants, impossible à construire sans une vue d'ensemble.
+Réservée aux rôles de pilotage (`CONSULTER_TABLEAU_BORD`, identiques au
+tableau de bord), par cohérence avec le reste de l'écran plutôt qu'ouverte à
+tout utilisateur comme `/mes-evaluations`.
+
+**Bug réel trouvé en testant, pas supposé correct :** l'écran desktop a
+d'abord affiché "Method Not Allowed" à la place des métriques (`GET /slam`
+renvoyait 405). Cause : le serveur de développement tournait avec
+`--reload`, qui a bien rechargé après la modification de
+`evaluation_slam_service.py` (nouvelle fonction `lister_toutes`) mais n'a
+**jamais rechargé** après la modification suivante de
+`app/api/v1/evaluations_slam.py` (l'enregistrement de la route elle-même) —
+confirmé en relisant le journal du serveur (`WatchFiles detected changes`
+apparaît une seule fois pour toute la session, pas deux). La suite de tests
+pytest, elle, importe l'application à chaque exécution et ne pouvait pas
+révéler ce décalage — seul un test contre le vrai serveur de développement,
+déjà démarré, l'a montré. Corrigé en arrêtant et relançant uvicorn
+proprement plutôt qu'en comptant sur le rechargement automatique.
+
+**Vérifié en conditions réelles**, bout en bout : une demande de permis
+créée depuis le mobile (référence réelle générée par le serveur, "2026-001"),
+visible immédiatement avec le bon site, le bon créneau et le tag "À
+valider" ; clic sur la ligne → ouverture de l'écran de validation existant,
+qui affiche correctement les 4 contrôles automatiques à partir des
+véritables données du compte utilisé pour le test. Revérifié côté desktop :
+mêmes données, plus le panneau "Décisions SLAM récentes" peuplé par la
+nouvelle route. 293 tests pytest au vert (291 + 2 nouveaux pour `GET
+/slam`), aucune régression.
+
+### Détail — Gestion des utilisateurs (terminé le 2026-09-07)
+
+Dernier écran de ce chantier, hors Coffre-fort (toujours bloqué, aucun
+service backend). Desktop uniquement (`/gestion/utilisateurs`) — aucun
+équivalent mobile, l'administration des comptes n'étant un usage ni terrain
+ni "deux minutes suffisent" ; l'écran n'apparaît dans la barre latérale que
+pour le rôle `administrateur` (nouvelle section `roles` sur `GestionLayout.vue`,
+généralisable aux futurs écrans à accès restreint).
+
+**Deux nouvelles routes backend**, seule vraie lacune structurelle de ce
+chantier (signalée dès le début, avant même de commencer à construire des
+écrans) : `POST /auth/utilisateurs/{id}/desactiver` et `.../activer` (+
+service `desactiver_utilisateur`/`activer_utilisateur`, + 5 tests). Aucune
+suppression physique (point 2, CLAUDE.md) : bascule du seul champ `actif`,
+le compte et son historique restent en base. Règle ajoutée et testée : un
+administrateur ne peut pas désactiver son propre compte (sans quoi un admin
+seul en base se verrouillerait lui-même dehors).
+
+**Écart assumé sur la "Matrice des droits par rôle"** : la maquette en
+montre une version fine, par module (illustrative — ni lue depuis
+`core/permissions.py`, qui n'est exposé par aucune route, ni garantie de
+correspondre exactement aux permissions réelles). Remplacée par le tableau
+"Rôles et périmètres" de CLAUDE.md (section 6), moins granulaire mais tiré
+d'une source de vérité réelle plutôt que d'un exemple de maquette. Colonne
+"Appareil" (Web/Mobile) également omise : rien ne trace ça côté backend.
+
+**Bug réel trouvé en testant, pas supposé correct :** la colonne "Dernière
+connexion" affichait "Jamais connecté" pour un compte qui venait de se
+connecter à l'instant. Cause : `derniere_connexion` existe bien sur le
+modèle `Utilisateur` et se met à jour à chaque connexion (`auth.py`), mais
+`UtilisateurSortie` (le schéma de sortie de `GET /auth/utilisateurs`) ne
+l'exposait tout simplement pas — la donnée existait, seule sa sortie API
+manquait. Corrigé en l'ajoutant au schéma (+ 1 test vérifiant qu'elle n'est
+plus `null` juste après une connexion). Trouvé en lisant l'écran réellement
+peuplé de vraies données (le compte `admin`, connecté des dizaines de fois
+au cours de ce chantier, affichant pourtant "Jamais connecté"), pas en
+relisant le schéma seul.
+
+**Vérifié en conditions réelles**, bout en bout, avec le compte fictif
+`referent.test` créé plus tôt (voir "Détail — Cloche de notifications") :
+désactivation refusée sur son propre compte ("Vous ne pouvez pas désactiver
+votre propre compte", lisible grâce à la correction `[object Object]` de
+Visiteurs — un bug corrigé une fois profite à tous les écrans qui l'auraient
+sinon reproduit), désactivation réussie sur l'autre compte (bascule
+immédiate "Actifs · 1 / Désactivés · 1"), compte désactivé retrouvé dans
+l'onglet "Désactivés" avec un bouton "Réactiver", réactivation réussie
+("Actifs · 2 / Désactivés · 0"), dates de dernière connexion réelles et
+correctement affichées pour les deux comptes. 298 tests pytest au vert (293
++ 4 pour désactiver/activer/refus/404 + 1 pour `derniere_connexion`
+exposée), aucune régression.
+
+---
+
+**Bilan de ce chantier** ("construire tous les écrans") : Visiteurs, Déchets,
+Satisfaction, Notifications, Permis / SLAM & permis, Utilisateurs — tous
+terminés le 2026-09-07, en plus d'EPI, Risques, Actions, Parc, Formations,
+Audits/Revues et Documents construits plus tôt dans la même journée (voir
+détails plus haut). Seul Coffre-fort reste hors périmètre, explicitement
+bloqué depuis le début (aucun service backend, prompt 3.3 toujours en
+attente de validation). Chaque écran a été vérifié en conditions réelles,
+sur la vraie base de développement, dans un vrai navigateur — pas seulement
+relu : cette discipline a permis de trouver et corriger, en cours de route,
+7 bugs réels indépendants du simple manque d'écran (matrice de criticité non
+grillée, décalage d'un jour sur les dates civiles, `[object Object]` sur les
+erreurs 422, un getter Pinia mal écrit qui plantait un écran en silence,
+plusieurs éléments cliquables invisibles à l'accessibilité, un rechargement
+automatique du serveur de dev resté incomplet, et une donnée réelle absente
+d'un schéma de sortie). 298 tests pytest au vert, aucune régression.
+
+---
+
+## Module Documents — catalogue réel du SMI (2026-09-07)
+
+Demande explicite de l'utilisateur, après consultation de l'écran Documents
+fraîchement construit : "je voudrais que ce module reflète l'architecture
+réelle de mon système SMI de Hirondelle avec les documents qu'il faut". Le
+seul document présent jusqu'ici était un test fictif créé pendant la
+vérification du module (`POL-SHEQ-002 Politique environnementale`, un code
+qui n'existe même pas dans le vrai système).
+
+**Sources consultées** : `docs/CDC-SHEQ-001.docx` (§1.1, tableau §5.3.5) —
+insuffisant seul (regroupe plusieurs codes par ligne, ex. "FOR-SHEQ-006 à
+009", sans détailler chaque titre) — puis, sur indication de l'utilisateur,
+l'archive `SMI-HIRONDELLE/SMI-SHEQ_Hirondelles_IT_Lab-20.zip` : le vrai
+classeur SMI (01-Politique_et_engagement, 02-Pilotage, 03-Procédures,
+04-Formulaires_vierges dont un sous-dossier CONFIDENTIEL, 09-Archives), avec
+en particulier `LM-SHEQ-001_Liste_Maitresse_Documents.xlsx` — la vraie liste
+maîtresse elle-même, table faisant autorité avec les 36 lignes exactes
+(code, intitulé, niveau, format, version, rédacteur, approbateur,
+emplacement, confidentialité, prochaine revue). A permis de combler tous les
+trous laissés par le seul CDC : PLA-SHEQ-002 (Plan de sauvetage en hauteur,
+classé niveau 3 malgré son préfixe PLA), PRO-SHEQ-001/003/005 (Gestion des
+signalements, Sauvegarde des configurations, Achat et réception du
+matériel), REG-SHEQ-003 (Registre EPI antichute, confirmé), FOR-SHEQ-003
+(Fiche d'accueil sécurité — code qui n'apparaît nulle part dans le CDC lui-
+même), FOR-SHEQ-010/011 (Inspection équipements / Checklists locaux-
+incendie-électricité) et FOR-SHEQ-013 (Vérification harnais/EPI, distinct du
+permis FOR-SHEQ-012).
+
+**Seed via l'API réelle, pas d'insertion directe en base** (script
+`seed_smi_reel.py`, one-off, non versionné) : chaque document suit le vrai
+cycle `POST /documents` (brouillon) → `soumettre-approbation` →
+`approuver`, avec les vrais rôles habilités — `GERER_DOCUMENTS` (créer,
+soumettre) et `APPROUVER_DOCUMENTS` (approuver) ne sont pas les mêmes rôles.
+
+**Comptes réels créés** (`POST /auth/utilisateurs`, mots de passe fictifs de
+développement) : Oumou DIARRA (`o.diarra`, référent SHEQ — rédactrice/
+soumissionnaire des 36 documents, rôle habilité à `GERER_DOCUMENTS`),
+Alassane TRAORÉ (`a.traore`, administrateur — approbateur des 36, rôle
+habilité à `APPROUVER_DOCUMENTS`), Abdoulaye KONÉ (`a.kone`, technicien).
+**Compromis assumé** : la liste maîtresse crédite Abdoulaye KONÉ comme
+co-rédacteur de chaque document, à égalité avec Oumou Diarra ; mais son rôle
+réel (technicien) n'a pas le droit `GERER_DOCUMENTS`, et `Document.
+redacteur_id` n'accepte qu'un seul auteur — impossible de représenter fidèlement
+une corédaction dans ce modèle. Oumou Diarra a été retenue comme rédactrice
+de tous les documents (seule des deux dont le rôle le permet), la
+co-rédaction réelle de M. Koné n'étant pas représentable sans changement de
+modèle (hors périmètre de cette demande).
+
+**Vrais fichiers joints**, pas seulement les métadonnées : chaque document a
+reçu son vrai fichier `.docx`/`.xlsx` du classeur SMI comme pièce jointe
+(`POST /documents` accepte un fichier, formats et taille max déjà prévus
+pour "Word/Excel/PDF, formats réels du SMI documentaire" — commentaire déjà
+présent dans `core/fichiers.py` avant ce chantier). Les 4 fiches de
+configuration confidentielles (FOR-SHEQ-006 à 009) sont de vrais formulaires
+vierges (aucun identifiant réel dedans, juste la structure — dossier nommé
+"04-Formulaires_vierges" à raison) : sans risque à joindre, `backend/
+storage/` est déjà exclu de Git.
+
+**Historique de versions réel pour FOR-SHEQ-006** (seul document dont la
+liste maîtresse indique une version autre que 01) : les 3 vrais fichiers du
+dossier `09-Archives` et `CONFIDENTIEL` ont servi à reconstituer l'historique
+exact via `nouvelle-version` (v01 générique → v02 détaillée → v03,
+confidentielle, en vigueur), chaque étape passant par le vrai workflow
+d'approbation. La règle "l'ancienne version part en archive à l'approbation
+de la nouvelle" (5.3.5, déjà implémentée) a fait le travail : v01 et v02
+sont automatiquement repassées en `archive`, sans intervention manuelle sur
+leur statut.
+
+**Nettoyage** : l'ancien document de test (`POL-SHEQ-002`) est repassé en
+`archive` directement en base (script one-off de maintenance, pas une
+fonctionnalité de suppression ajoutée à l'application — aucune route de
+suppression physique n'existe ni ne doit exister, point 2 de CLAUDE.md).
+
+**Vérifié en conditions réelles** : les deux écrans (mobile `/documents`,
+desktop `/gestion/documents`) affichent maintenant les 36 documents réels
+(39 lignes avec l'historique FOR-SHEQ-006 et l'archive de test), codes et
+intitulés exacts, bon niveau (1 Politique, 2 Pilotage — dont les 5 registres,
+3 Procédure — dont PLA-SHEQ-002, 4 Formulaire), bonne version, bon statut.
+Téléchargement d'un fichier réel confirmé : `GET /documents/{id}/fichier`
+renvoie exactement 10226 octets pour POL-SHEQ-001, taille identique à
+l'original du zip, type MIME Word correct. 298 tests pytest toujours au
+vert (aucune modification du code applicatif, seed de données uniquement).
+
+---
+
+## Documents en sous-dossiers réels + module Inspections (2026-09-07)
+
+Deux demandes explicites de l'utilisateur dans le même message : "le module
+Document doit avoir des sous dossier comme dans le SMI et chaque fichier
+serait dans son dossier" et "les écrans pour les inspections aussi doit
+être réalisé" — Inspections avait un backend complet depuis le prompt 2.4
+(`/inspections`, `/points-checklist`) mais aucun écran, jamais signalé dans
+le chantier "construire tous les écrans" (oubli de ma part : ni Risques ni
+Inspections n'étaient dans la liste initiale du chantier, seul Risques avait
+été rattrapé).
+
+### Documents — classement par dossier réel
+
+Aucun champ "dossier" sur `Document` (backend) — le classement dérive
+entièrement de trois champs déjà là (`niveau`, `confidentialite`, `statut`),
+exactement comme le fait le classeur réel (`SMI-SHEQ_Hirondelles_IT_Lab/
+LISEZ-MOI.txt` : niveau 1 → 01-Politique, niveau 4 confidentiel → 04.../
+CONFIDENTIEL, une version retirée → 09-Archives). Nouveau fichier
+`utils/dossiersDocuments.js` (`DOSSIERS`, `dossierDe()`) partagé par les
+deux écrans, pas de nouveau champ en base à tenir synchronisé.
+
+Les 4 dossiers du classeur réel sans registre applicatif (05-Enregistrements,
+06-Formations, 07-Revues, 08-Réglementation — confirmés vides par
+`LISEZ-MOI.txt` de chacun) sont listés quand même, à 0, avec une note
+explicative : la structure réelle complète doit être visible, pas seulement
+les dossiers qui ont des lignes en base aujourd'hui.
+
+**Mobile** : nouvel écran `DocumentsView.vue` transformé en navigateur de
+dossiers (dix lignes, une par dossier, avec compteur) ; nouvel écran
+`DocumentsDossierView.vue` (route `/documents/:dossier`) reprenant le rendu
+par ligne de l'ancien écran plat, désormais filtré. **Desktop** : dix
+filtres segmentés (`.seg`, déjà utilisé par Parc/Utilisateurs) plutôt qu'une
+arborescence à ouvrir/fermer — plus cohérent avec le paradigme "tableaux
+denses, filtres" déjà établi côté gestion.
+
+**Vérifié en conditions réelles** sur les 39 documents déjà seedés (chantier
+précédent) : répartition exacte 01→1, 02→11, 03→6, 04→14, 04/CONFIDENTIEL→4,
+05-08→0, 09→3 (somme = 39, cohérent). Filtre "04 · CONFIDENTIEL" du desktop
+vérifié : montre exactement FOR-SHEQ-006 à 009, rien d'autre.
+
+**Bug réel trouvé en testant, pas supposé correct :** les onglets desktop
+utilisaient `d.nom.split(" · ")[0]` pour un libellé court — "04 ·
+Formulaires vierges" et "04 · Formulaires vierges / CONFIDENTIEL"
+devenaient tous deux "04", indiscernables. Corrigé en ajoutant un champ
+`abrege` dédié à chaque dossier plutôt qu'en découpant un libellé long à
+l'affichage.
+
+### Inspections — nouveau module (mobile + desktop)
+
+Aucune maquette de "liste" ou de "démarrage" (seul `#s-insp` existe : la
+fiche de saisie d'une inspection déjà en cours, "Incendie & extincteurs").
+Construits en reprenant le langage déjà établi (métriques + liste +
+formulaire, comme Permis/Déchets) : sans ces écrans, `POST /inspections`
+restait inatteignable depuis l'interface malgré un backend complet et
+5 vrais référentiels de checklist déjà seedés (locaux 15 points, incendie 14,
+électricité 13, installations 25, équipements 26 — prompt 2.4).
+
+**Écart de conception notable** : `InspectionCreation.points` exige au moins
+un point coté — impossible de créer l'inspection avant la première réponse
+(contrairement à Audits, où "ouvrir une campagne" ne demande aucune
+cotation). Résolu par une création paresseuse : l'écran de saisie
+(`InspectionDetailView.vue`) affiche la checklist complète, non cotée,
+dès l'arrivée sur `/inspections/nouvelle?modele=...&site_id=...` ; le
+premier clic sur un point déclenche `POST /inspections` (avec seulement ce
+point), puis `router.replace` vers `/inspections/:id` (l'URL réelle) ; les
+clics suivants envoient `PATCH /points` avec l'état complet des réponses —
+ce endpoint remplace le tableau entier, ne fusionne pas (service
+`mettre_a_jour_points`), point déjà découvert en lisant le code avant
+d'écrire l'écran plutôt qu'en le devinant à l'usage.
+
+**Deux écrans mobiles** : `InspectionsView.vue` (liste + "à planifier" +
+démarrage) et `InspectionDetailView.vue` (checklist tri-état C/NC/SO,
+photo sur un point NC, "Terminer et signer"). **Desktop**
+`InspectionsDesktopView.vue` (maquette `#p-insp` : conformité par type en
+barres, planification, table "Inspections réalisées") — le clic sur une
+ligne réutilise l'écran mobile de saisie, même compromis que Parc.
+
+**Bug réel trouvé en testant, pas supposé correct (le plus sérieux de ce
+tour) :** l'upload de photo sur un point non conforme renvoyait 200 avec
+`photo` toujours à `null` — vérifié faux jusqu'au niveau de la table SQLite
+elle-même, pas une illusion de cache ORM. Cause : `ajouter_photo`
+(`inspection_service.py`) faisait `points = list(inspection.points)` avant
+de muter un point en place puis réassigner — `list()` ne copie que la liste
+externe, les dictionnaires internes restent des références PARTAGÉES avec
+l'objet suivi par la session SQLAlchemy. Les muter en place corrompt l'état
+"avant" que SQLAlchemy compare à l'état "après" à la réassignation : les
+deux deviennent identiques (mêmes dictionnaires, déjà mutés), donc perçus
+comme "rien n'a changé" — aucun `UPDATE` n'est jamais émis, confirmé en
+activant l'écho SQL (`BEGIN` puis `SELECT` puis `COMMIT`, sans `UPDATE`
+entre les deux). `mettre_a_jour_points` n'a pas ce défaut : il reconstruit
+des dictionnaires neufs via `_construire_points_json`, jamais de référence
+partagée avec l'ancienne valeur — c'est justement pourquoi le reste du
+module (cotation, clôture, calcul du taux) fonctionnait correctement
+pendant que la photo, seule, échouait silencieusement. Corrigé en
+reconstruisant des dictionnaires neufs (`[dict(p) for p in
+inspection.points]`) avant toute mutation. Aucun autre endroit du code ne
+reproduit ce motif (`grep` sur `= list(\w+\.\w+)` dans tout `app/` : un seul
+résultat, déjà corrigé) ; `Document.accuses_lecture` utilise le même style
+`list(...)` mais seulement pour *ajouter* un élément neuf, jamais pour
+muter un élément existant — non affecté, vérifié par le raisonnement plutôt
+que supposé sans preuve. Test de non-régression ajouté
+(`test_photo_deposee_sur_un_point_est_persistee`), qui relit l'inspection
+par une requête séparée après l'upload plutôt que de se fier à la seule
+réponse HTTP — exactement le doute qui aurait détecté le bug plus tôt.
+
+**Deuxième bug réel, plus mineur** : `Inspection.taux_conformite` (API) est
+une fraction 0-1 (`conformes / total`), pas un pourcentage — utilisé tel
+quel dans les nouveaux écrans (`${taux}%`), ce qui affichait "1 %" au lieu
+de "50 %". Trouvé en lisant l'écran desktop rempli de vraies données, pas
+en relisant le code (la valeur "1 %" est plausible en apparence, seule la
+comparaison avec le calcul manuel — 1 conforme sur 2 cotés — la révèle
+fausse). Corrigé par un helper `pourcent()` local à chaque écran
+(`stores/inspections.js` pour l'agrégat par type, `InspectionsView.vue` et
+`InspectionsDesktopView.vue` pour l'affichage ligne par ligne) — même
+défaut que le sprite d'onglets desktop tronqués (voir Documents ci-dessus,
+"04" × 2) : construit et testé le même jour, retrouvé deux fois de suite.
+
+**Vérifié en conditions réelles**, bout en bout : une inspection "Incendie
+et extincteurs" démarrée depuis le mobile (site réel), 3 points cotés
+(C, NC, SO) sur les 14 réels de FOR-SHEQ-011, conformité 50 % correcte
+(1 conforme / 2 cotés, SO exclu du dénominateur — règle 6, CLAUDE.md),
+photo réelle jointe au point NC (confirmée par une lecture séparée après
+l'upload, pas seulement la réponse HTTP), clôture réussie avec génération
+automatique d'une action corrective portant le bon libellé. Revérifié côté
+desktop : mêmes données, filtres par type fonctionnels, plus de doublon
+"Installations" dans les onglets après correction. 299 tests pytest au vert
+(298 + 1 nouveau pour la persistance de la photo), aucune régression.
+
+---
+
+## Tableau de bord synchronisé + retrait des traces de développement (2026-09-08)
+
+Retour direct de l'utilisateur après usage réel de l'application : "le
+tableau de bord n'est pas synchronisé aux données réelles et dans certains
+écrans de l'application on sent que l'application a été développée par
+l'IA — j'aimerais que nous soyons beaucoup plus professionnelle". Deux
+problèmes concrets, tous deux confirmés en relisant le code AVANT de coder
+quoi que ce soit :
+
+### Tableau de bord — indicateurs réels au lieu de "module indisponible"
+
+`tableau_bord_service.py` datait du prompt 1.5 (lot 1, avant même EPI) :
+`MODULES_NON_DISPONIBLES` listait encore `epi, inspections, formations,
+documents, environnement, satisfaction, coffre_fort` — six de ces sept
+modules ont un écran et des données réelles depuis le chantier du
+2026-09-07 (Documents/Inspections) et le chantier précédent, mais le
+service n'avait jamais été mis à jour pour les exploiter. Les deux écrans
+affichaient donc, en direct, un bandeau lisant "Indisponibles pour
+l'instant, faute de module : epi, inspections, formations, documents..." —
+une affirmation fausse pour six modules sur sept, visible de tout
+utilisateur du tableau de bord.
+
+**Nouveaux indicateurs réels**, calculés sur les mêmes données que l'écran
+de chaque module (jamais une valeur recalculée séparément qui pourrait
+diverger) : `securite` (accidents et presque-accidents de la période,
+jours sans accident — depuis Signalement.type), `inspections` (réalisées
+sur la période, taux de conformité moyen — depuis Inspection, réutilise le
+calcul déjà existant), `epi` (à vérifier bientôt / dépassées — réutilise
+`epi_service.verifications_dues`), `formations` (personnel formé sur
+total, séances à venir — depuis Habilitation), `documents` (à réviser
+bientôt / en attente d'approbation — réutilise `document_service.
+alertes_revue`), `satisfaction` (réclamations = notes ≤ 2 sur la période,
+note moyenne). `echeances_proches` n'est plus une simple liste d'actions :
+fusion de quatre sources (actions, vérifications EPI, révisions
+documentaires, séances à venir) triée par proximité, comme le montre
+réellement la maquette `#p-dash` ("Échéances proches" y mélange EPI,
+formation et document, jamais seulement des actions).
+
+**Seuls deux indicateurs restent sans module source**, réellement cette
+fois : incidents environnementaux (aucune entité de suivi dédiée) et
+sécurité des données (coffre-fort, toujours bloqué). `MODULES_NON_
+DISPONIBLES` réduit à ces deux-là — et n'est plus jamais montré à
+l'utilisateur (voir section suivante).
+
+**Bug réel trouvé en écrivant le test, avant même de tester dans le
+navigateur** : `_securite()` plantait avec `TypeError: can't subtract
+offset-naive and offset-aware datetimes` dès qu'un accident existait en
+base. Cause : SQLite renvoie un datetime naïf même pour une colonne
+`DateTime(timezone=True)` (contrairement à PostgreSQL) — `datetime.now
+(timezone.utc) - dernier_accident` échouait dès que `dernier_accident`
+provenait d'une lecture SQLite. Corrigé en ajoutant `tzinfo=timezone.utc`
+à la valeur lue si elle est naïve (toutes les dates de l'application sont
+écrites en UTC, donc naïve signifie UTC, jamais l'heure locale du serveur).
+Un test dédié aurait immédiatement révélé ce bug en production sur
+PostgreSQL vs silencieusement fonctionné en développement sur SQLite —
+exactement le genre d'écart entre les deux moteurs que l'ORM est censé
+lisser, ici pris en défaut.
+
+**Sept nouveaux tests** couvrant chaque indicateur individuellement plus le
+mélange des échéances par proximité (pas par type ni par ordre
+d'insertion) ; le test existant sur `modules_non_disponibles` corrigé pour
+refléter la nouvelle réalité (2 modules, pas 7).
+
+### Retrait des traces de développement visibles par l'utilisateur
+
+En cherchant d'autres écrans avec le même défaut que le bandeau du tableau
+de bord (un message qui parle du développement de l'application plutôt que
+de l'application elle-même), quatre autres bannières se sont révélées bien
+pires — des références explicites au processus de développement, montrées
+telles quelles à l'utilisateur final :
+
+- `SlamView.vue` : "Le mode hors connexion n'est pas encore actif pour le
+  SLAM **(prompt 1.4 non implémenté)**..." — un numéro de prompt de
+  développement affiché dans l'application en production.
+- `NouveauSignalementView.vue` : "...n'est pas encore actif **— il arrive
+  au prompt suivant**." — une référence directe à la feuille de route de
+  développement.
+- `ParcView.vue` : "...ils vont au coffre-fort **(non disponible pour
+  l'instant)**." — reformulé en une affirmation simple sur l'architecture
+  ("sont conservés dans le coffre-fort chiffré"), sans commentaire sur
+  l'état d'avancement.
+- `MenuView.vue` : "Le coffre-fort **a une API fonctionnelle** mais pas
+  encore d'écran." — du jargon backend (API) exposé à un utilisateur final,
+  reformulé en "n'est pas encore accessible depuis l'application".
+
+Ces quatre bannières ont été écrites au fil des prompts précédents pour
+documenter honnêtement, À DESTINATION DE L'UTILISATEUR DU PROJET (l'auteur
+des prompts), les écarts et le calendrier restant — une habitude saine
+pendant le développement, mais qui n'a pas sa place dans l'interface une
+fois l'application utilisée en conditions réelles : ce niveau de détail
+appartient à `docs/JOURNAL.md`, pas à une bannière visible de tout
+utilisateur final. Recherche systématique (`grep` sur "prompt [0-9]",
+"compromis", "écart assumé", "JOURNAL.md" dans tous les fichiers `.vue`) :
+aucune autre occurrence trouvée en dehors des commentaires de code
+(invisibles, légitimes — c'est là qu'ils doivent rester).
+
+**Vérifié en conditions réelles** : les deux tableaux de bord affichent
+maintenant des valeurs réelles et cohérentes avec les autres écrans (50 %
+de conformité inspections, correspondant à l'inspection réellement clôturée
+plus tôt ; 2 réclamations à note moyenne 2,7/5, correspondant aux réponses
+de satisfaction déjà enregistrées) ; export PDF revérifié (200, contenu
+réel) ; les quatre bannières corrigées affichent un texte propre, sans
+jargon ni référence interne, en conditions réelles dans le navigateur.
+306 tests pytest au vert (299 + 7 nouveaux pour le tableau de bord), aucune
+régression.
+
+---
+
+## Coffre-fort d'identifiants (2026-09-08)
+
+Dernier module resté en pause depuis le 2026-09-06 ("conception présentée,
+en attente de validation avant codage — comme convenu pour un module aussi
+sensible"). L'utilisateur a explicitement redemandé à en discuter ("selon
+toi comment on doit procéder") : plan présenté à nouveau (chiffrement,
+visibilité par secret, masquage à la demande, génération de mot de passe,
+deux points tranchés avec sa confirmation — voir ci-dessous), validé
+("Alors on fait cela") avant d'écrire la moindre ligne de code, conformément
+au point 9 de CLAUDE.md ("explique avant de coder... un mécanisme
+nouveau : chiffrement").
+
+**Beaucoup de fondations existaient déjà**, retrouvées en relisant le code
+avant de commencer : le modèle `Secret` (chapitre 7.2.8), le modèle
+`JournalAcces` — délibérément privé de la classe de base commune pour
+qu'aucune route de modification ne puisse jamais lui être ajoutée par
+erreur —, `FERNET_MASTER_KEY` déjà prévue dans `.env.example` avec sa
+commande de génération, et les tables `secret`/`journal_acces` déjà
+présentes dans la base de développement. Le service de chiffrement, la
+logique métier et les écrans restaient entièrement à construire.
+
+**Chiffrement** (`app/core/chiffrement.py`) : Fernet (`cryptography`),
+authentifié (AES-128-CBC + HMAC-SHA256). Échoue au chargement du module si
+`FERNET_MASTER_KEY` est absente ou mal formée — jamais de mode dégradé
+silencieux sur un module sensible (`Settings.fernet_master_key` était déjà
+un champ obligatoire sans valeur par défaut, donc l'absence totale de clé
+faisait déjà échouer le démarrage de l'API ; l'erreur explicite ajoutée ici
+couvre le cas d'une clé présente mais invalide).
+
+**Visibilité par secret, pas par permission globale**
+(`secret_service.py`, `NIVEAU_ROLE_SECRET`) : chaque secret porte un
+`role_requis` (technicien/responsable/administrateur, seuls rôles que le
+CDC mentionne pour ce module) comparé au rôle de l'appelant via une
+hiérarchie propre à ce module — jamais `RoleUtilisateur.__members__` tel
+quel, pour que le référent SHEQ et le collaborateur restent exclus même si
+l'ordre de déclaration de l'énuméré changeait. `peut_consulter()` renvoie
+`False` pour tout rôle absent de cette hiérarchie : un secret dont
+`role_requis` serait mal renseigné n'est visible de personne plutôt que de
+tout le monde par défaut (fail-safe). `role_requis` est validé côté schéma
+(`ROLES_SECRET_VALIDES`) : impossible de créer un secret réservé au
+référent SHEQ ou au collaborateur, qui serait alors invisible de tous.
+
+**Consultation = déchiffrement + journalisation, jamais l'un sans l'autre**
+(`consulter_secret()`) : les deux opérations sont dans la même fonction,
+qui ne renvoie la valeur qu'après avoir ajouté la ligne au journal — aucun
+chemin de code ne peut renvoyer un secret en clair sans laisser de trace.
+Idem pour la création et la modification (`ActionJournal.CREATION` /
+`MODIFICATION`), au-delà de la seule exigence du CDC ("toute consultation
+est enregistrée") : traçabilité complète plutôt que le minimum demandé,
+cohérent avec le point 3 de CLAUDE.md.
+
+**Deux points tranchés avec l'utilisateur avant de coder, confirmés tels
+quels** :
+1. Seule la valeur du secret est chiffrée, pas le champ `identifiant`
+   (login) — le CDC les liste comme deux champs distincts ("identifiant,
+   secret chiffré"), l'identifiant seul n'étant pas sensible.
+2. Le journal des accès à un secret est réservé aux mêmes rôles que sa
+   gestion (responsable + administrateur, nouvelle permission
+   `CONSULTER_JOURNAL_SECRETS`) — le CDC ne précise pas qui peut le
+   consulter, seulement qu'il existe.
+
+**Écart assumé, différent de la maquette** : `#p-vault` montre un journal
+global (tous secrets confondus). Le CDC (5.2.4, "Fonctionnalités
+attendues") est plus précis : "Consulter le journal des accès **à un
+secret donné**" — singulier. La route backend suit ce texte
+(`GET /secrets/{id}/journal`, pas de route d'agrégation) ; le panneau de
+droite du desktop affiche donc le journal du secret sélectionné (clic sur
+une ligne), pas un flux global — fidèle au texte du CDC plutôt qu'à
+l'aspect exact de la maquette sur ce point précis.
+
+**22 tests** couvrant : création (responsable/administrateur autorisés,
+technicien et référent SHEQ refusés), validation de `role_requis`, la
+liste qui ne renvoie jamais la valeur, consultation qui déchiffre ET
+journalise, visibilité par secret dans les deux sens (un technicien ne voit
+ni la fiche ni ne peut consulter un secret réservé au responsable ; il voit
+et consulte normalement un secret qui lui est ouvert), l'exclusion totale
+du référent SHEQ et du collaborateur (même sur le secret le moins
+restrictif), modification, archivage (jamais de suppression — le journal
+survit à l'archivage du secret), rattachement à un équipement réel,
+génération de mot de passe (longueur, présence de lettres/chiffres/
+symboles), absence de toute route DELETE (sur les secrets et sur le
+journal), et — vérification directe en base — que la valeur chiffrée ne
+contient jamais le texte en clair.
+
+**Écrans** : mobile `/coffre-fort` (liste masquée par défaut, affichage à
+la demande avec masquage automatique après 15 secondes — cohérent avec la
+maquette et la valeur par défaut du service ; formulaire d'ajout avec
+génération de mot de passe intégrée) ; desktop `/gestion/coffre-fort`
+(table + panneau "Journal des accès" au clic sur une ligne). Le lien
+"Coffre-fort" est masqué du menu mobile et de la barre latérale desktop
+pour le référent SHEQ et le collaborateur — pas montré puis vide, cohérent
+avec le principe déjà appliqué à "Utilisateurs & rôles" (visible du seul
+administrateur). Le bandeau du Parc, qui renvoyait vers un coffre-fort
+inexistant depuis le début du chantier "construire tous les écrans", pointe
+maintenant réellement vers l'écran (lien "Ouvrir" de la maquette mobile,
+jamais câblé jusqu'ici) — masqué lui aussi pour le référent SHEQ.
+
+**Vérifié en conditions réelles**, bout en bout, avec les comptes déjà
+créés durant ce chantier (admin/administrateur, o.diarra/référent SHEQ) :
+un secret créé avec un mot de passe généré par le bouton "Générer"
+(20 caractères, lettres/chiffres/symboles réels) ; affiché à la demande —
+la valeur exacte générée à la création réapparaît, confirmant le
+chiffrement/déchiffrement réel, pas une simulation ; masquage automatique
+confirmé après une attente réelle de 15 secondes dans le navigateur (pas
+supposé, chronométré) ; journal desktop affichant les 3 vraies entrées
+(création, 2 consultations) avec le nom résolu de l'utilisateur et
+l'horodatage exact ; connecté ensuite en référent SHEQ : tuile absente du
+menu, accès direct par URL renvoyant une liste vide sans erreur (pas de
+fuite d'existence), bandeau Parc sans lien "Ouvrir". 328 tests pytest au
+vert (306 + 22 nouveaux), aucune régression.
+
+## Type de signalement incomplet — écran "accidents" introuvable (2026-09-08)
+
+**Retour direct de l'utilisateur** : "je ne vois pas l'écran des
+accidents". Il n'existe pas d'écran séparé pour les accidents dans le
+modèle de données (`SIGNALEMENT` couvre les 5 valeurs du CDC — situation
+dangereuse, presque-accident, anomalie matérielle, incident, accident —
+chapitre 7.2.3), mais le formulaire "Nouveau signalement" n'exposait que
+les 3 premières, recopiées de la maquette (`#s-newsig`) sans plus : un
+écart déjà noté en commentaire ("à trancher") lors de la construction
+initiale de l'écran, jamais réglé depuis. Résultat concret : aucun
+signalement de type incident ou accident ne pouvait jamais être créé nulle
+part dans l'application, alors même que l'API et la base les acceptaient
+depuis le début — et que le nouveau tableau de bord (entrée précédente,
+même journée) calcule désormais un indicateur "accidents" à partir de ce
+même champ, resté bloqué à 0 sans aucun moyen de le tester.
+
+**Décision** : la maquette était incomplète sur ce point, pas
+l'application — les 5 valeurs réelles du dictionnaire de données sont
+maintenant toutes proposées dans le sélecteur "Type" du formulaire.
+Ajouté dans la foulée, ce qui manquait pour que ce champ serve à quelque
+chose une fois saisi :
+- **Liste des signalements** : le type était invisible (seul le statut
+  l'était) — ajouté en première position de chaque ligne, en rouge gras
+  pour "Accident" afin qu'il ressorte visuellement dans une liste souvent
+  longue.
+- **Filtre par type** : une deuxième rangée d'onglets (Tous les types /
+  Situation dangereuse / Presque-accident / Anomalie / Incident /
+  Accident), combinée au filtre par statut déjà existant. La route
+  `GET /signalements` acceptait déjà `type` en paramètre côté API depuis
+  le lot 1 — jamais exploité côté écran jusqu'ici.
+
+**Bug introduit puis corrigé pendant ce correctif** : l'édition du
+commentaire d'en-tête de `NouveauSignalementView.vue` a supprimé par
+erreur le `*/` fermant le bloc JSDoc, cassant la compilation Vite
+(`Unterminated comment`, erreur 500 sur l'écran). Repéré immédiatement au
+test navigateur (page blanche, log Vite explicite) et corrigé avant toute
+vérification fonctionnelle.
+
+**Vérifié en conditions réelles**, bout en bout, connecté en admin : les 5
+boutons de type s'affichent sur `/signalements/nouveau` ; un signalement
+de type Accident créé (lieu "Pylône P-12, secteur nord") obtient sa
+référence réelle (`SIG-2026-001`, attribuée par le serveur) et apparaît
+dans `/signalements` avec le badge "Accident" en rouge ; le filtre
+"Situation dangereuse" appliqué ensuite renvoie bien 0 résultat (exclusion
+correcte, pas un simple masquage visuel) ; le tableau de bord affiche
+"1 accidents" immédiatement après création, confirmant que l'indicateur
+lit réellement ce champ. 328 tests pytest au vert, aucune régression (le
+correctif est entièrement frontend, aucun fichier backend modifié).
+
+## Mode hors connexion — file d'attente et synchronisation automatique (2026-09-08)
+
+**Contexte** : contrainte fondatrice n°1 du CLAUDE.md ("le mode hors
+connexion est une exigence, pas une option"), jamais construite jusqu'ici —
+`BandeauReseau.vue` le disait lui-même en commentaire ("ce mécanisme est le
+prompt 1.4, pas celui-ci"), et le formulaire de signalement affichait un
+avertissement explicite ("une connexion est nécessaire pour envoyer ce
+signalement"). Demande directe de l'utilisateur ("comment connecter le
+mobile au desktop et synchroniser les données"), clarifiée en échange avant
+de coder : les écrans mobile et desktop sont déjà une seule application
+connectée à la même API et à la même base — rien à "connecter" de ce
+côté-là — mais le vrai mode hors connexion terrain, lui, restait à
+construire. Discuté puis confirmé avant tout code, comme pour le
+coffre-fort.
+
+**Mécanisme, générique dès le départ** (pas seulement pour les
+signalements — pensé pour être réutilisé par SLAM et Inspections, mêmes
+besoins terrain) :
+- `services/filesync.js` (nouveau) : file d'attente dans IndexedDB (aucune
+  dépendance ajoutée, API native du navigateur). `ajouterEnAttente(type,
+  champs, fichiers)` range un élément avec référence provisoire locale ;
+  `synchroniser(gestionnaires)` rejoue chaque élément en attente dans
+  l'ordre de saisie, un `gestionnaire` par type métier (`executer`,
+  `onSucces`).
+- `stores/horsConnexion.js` (nouveau) : orchestration Pinia — compteur
+  d'éléments en attente, écoute de l'événement `online` pour synchroniser
+  automatiquement, registre de gestionnaires rempli une seule fois dans
+  `main.js` (pour qu'aucun store métier n'ait besoin d'importer un autre
+  store métier).
+- `stores/signalements.js` : `creer()` extrait désormais l'envoi réel dans
+  `envoyerVersServeur()` (rejouable tel quel par la file) ; si l'échec est
+  une erreur réseau (`TypeError` de fetch, pas un refus serveur), l'élément
+  part en file au lieu de faire échouer la saisie. Un vrai refus serveur
+  (422, 401…) continue de remonter normalement — une nouvelle tentative
+  donnerait le même résultat, la file ne doit pas les avaler.
+- `SignalementsView.vue` : un signalement en attente affiche un statut
+  dédié "EN ATTENTE DE RÉSEAU" (icône `sync`), distinct des vrais statuts
+  serveur, et ne compte dans aucun onglet de statut (`nombreParStatut`)
+  tant qu'il n'est pas confirmé.
+- `BandeauReseau.vue` : le sous-texte de droite (`.sp` dans la maquette,
+  jusqu'ici jamais rempli) affiche maintenant réellement "N élément(s) en
+  attente" hors ligne, et "Synchronisé à l'instant / il y a N min" en
+  ligne — vocabulaire repris tel quel de la maquette.
+- Écran pilote : Signalements — cas d'usage le plus critique du CDC
+  (technicien sur un pylône, zéro réseau) et l'écran où l'avertissement
+  existait déjà.
+
+**Bug réel trouvé et corrigé pendant la vérification** (pas seulement une
+supposition — repéré par un test en coupure réseau simulée réelle, pas une
+simple lecture de code) : la mise en file échouait systématiquement avec
+`DataCloneError: [object Array] could not be cloned`. Cause : `photos`
+transmis à `ajouterEnAttente` est un tableau réactif Vue (`ref([])`, donc
+un Proxy) — la valeur de retour de `photos.value` reste un Proxy même
+vide, et l'algorithme de clonage structuré d'IndexedDB ne sait pas cloner
+un Proxy (les fichiers qu'il contient ne sont pas concernés, Vue ne les
+rend pas réactifs). Corrigé dans `filesync.js` en copiant `champs` et
+`fichiers` en objets/tableaux plats (`{ ...champs }`,
+`Array.from(fichiers)`) avant de les ranger — centralisé une fois pour
+toutes les futures files d'attente, pas seulement celle des signalements.
+
+**Vérifié en conditions réelles**, coupure réseau simulée au niveau du
+navigateur (`context.setOffline`, pas une simple lecture de
+`navigator.onLine`) : signalement saisi hors ligne → apparaît
+immédiatement dans la liste avec réf. provisoire et statut "EN ATTENTE DE
+RÉSEAU", bandeau affichant "Hors connexion · 1 élément en attente" ;
+retour du réseau (événement `online` réel) → synchronisation automatique
+sans action de l'utilisateur, référence réelle attribuée par le serveur
+(`SIG-2026-00x`), statut redevenu "NOUVEAU", bandeau "En ligne ·
+Synchronisé à l'instant". Répété trois fois de suite (y compris après
+redémarrage à froid du serveur de développement), résultat identique à
+chaque fois.
+
+**Ce que ça ne couvre pas encore** : SLAM et Inspections ont le même
+besoin terrain mais ne sont pas encore branchés sur `horsConnexion.js` —
+le mécanisme est prêt à les recevoir (même registre de gestionnaires),
+mais chaque module a sa propre forme de données à adapter, donc un chantier
+séparé plutôt qu'un embarquement silencieux ici. Pas de gestion de conflit
+au-delà de l'ordre de saisie (non nécessaire ici : chaque élément en file
+est une création indépendante, jamais une modification d'un enregistrement
+existant). Pas de test Vitest ajouté : le projet n'a jamais eu de suite
+Vitest jusqu'ici (aucun fichier `*.test.js` dans `frontend/`) — introduire
+IndexedDB en environnement de test (nécessiterait `fake-indexeddb`, une
+dépendance non demandée) pour un premier test isolé aurait été disproportionné ;
+la vérification s'est donc faite en conditions réelles, comme pour tous les
+écrans de ce chantier jusqu'ici.
+
+## Points critiques relevés le 2026-09-08 — traitement en cours
+
+Retour direct de l'utilisateur ("quels sont les points critiques de cette
+application", puis "on corrige tous ces points") après un état des lieux
+honnête, six points classés par gravité : (1) jeton d'accès sans
+rafraîchissement, (2) coffre-fort/authentification jamais revus en
+sécurité malgré l'exigence explicite du CLAUDE.md point 10, (3) jamais
+testé sur PostgreSQL malgré une divergence déjà connue avec SQLite
+(datetime naïf), (4) mode hors connexion limité aux signalements, (5)
+aucun test frontend automatisé, (6) aucune sauvegarde de base de données.
+Traités un par un, dans cet ordre.
+
+### Point 1 — rafraîchissement automatique du jeton d'accès
+
+**Constat** : `jwt_access_token_expire_minutes = 15` (config.py). Le
+backend générait déjà un couple access/refresh token et exposait
+`POST /auth/rafraichissement` (prompt 0.3) — jamais utilisés côté
+frontend, qui stockait uniquement l'access token et laissait n'importe
+quel écran échouer sur un 401 générique après 15 minutes. Aggravant
+concret découvert en construisant le mode hors connexion la veille : un
+401 sur un signalement (session expirée) n'est PAS une erreur réseau —
+avec la logique alors en place (`e instanceof TypeError`), il ne partait
+pas en file, il échouait juste avec "Envoi impossible, réessayez",
+trompeur puisque ce n'était pas vraiment le problème.
+
+**Corrigé, entièrement côté frontend** (le backend avait déjà tout) :
+- `services/api.js` : stockage du refresh token à côté de l'access token ;
+  `requete()` intercepte un 401 sur une requête qui portait un jeton,
+  tente un rafraîchissement silencieux via `/auth/rafraichissement`
+  (dédoublonné — une seule vraie tentative même si plusieurs requêtes
+  échouent en même temps), puis rejoue la requête d'origine une fois
+  (`_relance`, jamais deux fois : pas de boucle). Si le rafraîchissement
+  échoue aussi (refresh token expiré/absent), les deux jetons sont
+  effacés et `gestionnaireSessionExpiree()` est appelé — injecté depuis
+  `main.js`, pas importé directement, pour qu'un service générique n'ait
+  pas à connaître le store d'authentification ni le routeur.
+- `stores/auth.js` : stocke le refresh token à la connexion, nettoie les
+  deux jetons à la déconnexion.
+- `main.js` : câble `gestionnaireSessionExpiree` sur une vraie
+  déconnexion + redirection vers `/connexion`.
+
+**Vérifié en conditions réelles**, deux cas simulés en corrompant
+directement les jetons stockés dans le navigateur (pas juste en attendant
+15 minutes) : (1) access token invalide, refresh token valide → requête
+vers `/signalements` réussit quand même, la liste s'affiche normalement,
+et l'access token en `localStorage` a effectivement changé (nouveaux
+`iat`/`exp` dans le JWT décodé) — preuve d'un rafraîchissement réel, pas
+d'une coïncidence ; (2) access ET refresh invalides → 401 sur
+`/auth/rafraichissement`, jetons effacés, redirection propre vers
+`/connexion` avec le formulaire de connexion affiché.
+
+### Point 2 — revue de sécurité coffre-fort et authentification
+
+Lecture ciblée de tout le module Coffre-fort (`chiffrement.py`,
+`secret_service.py`, `api/v1/secrets.py`) et de l'authentification
+(`security.py`, `deps.py`, `auth_service.py`, `main.py` pour le CORS,
+`core/fichiers.py` pour l'upload). Pas une simple relecture : deux
+défauts réels trouvés et corrigés, avec test de non-régression pour
+chacun.
+
+**Défaut réel n°1 — `GET /secrets/{id}/journal` contournait la règle de
+visibilité par secret.** Toutes les autres routes du module (fiche,
+liste, consultation) appliquent `role_requis` du secret en plus du rôle
+global de l'appelant — sauf celle-ci, qui ne vérifiait que le rôle global
+(responsable/administrateur gèrent le coffre-fort). Un responsable
+pouvait donc lire qui a consulté un secret réservé à l'administrateur, et
+quand, en devinant simplement son id — alors que la fiche et la liste le
+lui masquent déjà. Corrigé (`obtenir_secret_pour_journal()`, nouvelle
+fonction — pas `obtenir_secret_visible()` réutilisée telle quelle, parce
+que celle-ci exclut aussi les secrets archivés, ce que le journal ne doit
+justement pas faire : cassé une première fois en corrigeant trop vite,
+repéré immédiatement par `test_archivage_retire_le_secret_de_la_liste_
+mais_garde_le_journal`, déjà existant). Testé : un responsable reçoit 404
+sur la fiche ET sur le journal d'un secret administrateur ; l'administrateur
+voit toujours les deux.
+
+**Défaut réel n°2 — aucune limite de tentatives sur `/auth/connexion`.**
+Un mot de passe pouvait être essayé sans fin, aucun verrouillage, aucun
+throttling. Corrigé par verrouillage de compte après 5 échecs consécutifs
+(15 minutes), champs `tentatives_echouees`/`verrouille_jusqua` sur
+`UTILISATEUR` (migration Alembic `129412013be2`, `server_default='0'`
+nécessaire pour ne pas casser l'ajout de colonne NOT NULL sur une table
+déjà peuplée). Ne distingue jamais "compte verrouillé" de "mot de passe
+incorrect" dans la réponse (même 401 générique déjà utilisé pour un
+compte désactivé) — pas de nouveau canal d'énumération. **Compromis
+assumé, à noter** : verrouillage par compte, pas par IP (pas de nouvelle
+dépendance ni de nouvelle table de suivi par adresse) — un tiers qui
+connaît un identifiant réel peut délibérément verrouiller ce compte
+15 minutes en enchaînant des mots de passe faux (déni de service ciblé,
+pas un vol d'accès). Acceptable pour un nombre restreint de comptes
+nommés internes à l'entreprise, pas un système à inscription publique ;
+à revoir si le profil d'utilisation change.
+
+**Vérifié sans trouver de défaut** (pas seulement supposé sain — lu et
+vérifié explicitement) :
+- Chiffrement Fernet : clé jamais en base ni en dur, aucune valeur par
+  défaut (`config.py`, l'API refuse de démarrer sans elle), déchiffrement
+  qui ne masque jamais une erreur (`InvalidToken` remonte explicitement).
+- Upload de fichiers (`core/fichiers.py`) : nom de fichier original
+  jamais réutilisé tel quel sur disque (uniquement son extension,
+  vérifiée contre une liste autorisée), le nom réel est un UUID généré
+  côté serveur — aucun chemin de traversée de répertoire possible.
+- CORS (`main.py`) : origines explicites (`cors_origins`), pas de
+  joker `*`.
+- Mot de passe de démonstration du script d'amorçage (`db/seed.py`,
+  `admin` / `ChangezMoi!2026`) : déjà transparent sur son propre risque —
+  averti par nom ("changez-moi"), documenté comme réservé à la démo dans
+  le docstring et dans son propre message affiché à la création. Pas un
+  défaut caché ; à ne pas oublier de changer ou supprimer avant toute
+  mise en production réelle.
+
+**Non traité dans cette passe, à signaler plutôt qu'à ignorer** : les
+jetons vivent dans `localStorage`, pas dans un cookie `httpOnly` — un XSS
+réussi ailleurs dans l'application pourrait donc exfiltrer un jeton actif.
+C'est un choix d'architecture déjà fait dès le prompt 0.3 (SPA + API REST
+séparées, pas de rendu serveur), pas une régression de cette revue ; le
+changer impliquerait de revoir tout le mécanisme d'authentification, hors
+périmètre d'un correctif ponctuel.
+
+**331 tests pytest au vert, 3 ignorés (pré-existants, sans rapport), 0
+régression** — suite complète relancée après les deux correctifs de ce
+point (328 précédents + 3 nouveaux : 1 régression coffre-fort +
+2 verrouillage de connexion).

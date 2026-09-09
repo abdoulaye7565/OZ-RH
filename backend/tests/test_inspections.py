@@ -221,6 +221,43 @@ def test_mise_a_jour_points_avant_cloture_autorisee(client, db_session, technici
     assert reponse.json()["points"][0]["cotation"] == "NC"
 
 
+def test_photo_deposee_sur_un_point_est_persistee(client, db_session, technicien, site):
+    """Bug réel trouvé en testant en conditions réelles (pas seulement en
+    relisant le code) : la route renvoyait 200 avec `photo` toujours à
+    `null`. Cause : `list(inspection.points)` ne copie que la liste externe
+    — les dictionnaires internes restaient partagés avec l'objet suivi par
+    la session, et les muter en place avant réassignation corrompait la
+    comparaison avant/après de SQLAlchemy sur la colonne JSON, qui n'émettait
+    alors aucun UPDATE. Corrigé dans `ajouter_photo` (inspection_service.py)
+    en reconstruisant des dictionnaires neufs, sans référence partagée."""
+    import io
+
+    points_ref = _points_pour(db_session, "locaux", 1)
+    inspection = client.post(
+        "/api/v1/inspections",
+        headers=_entete(technicien),
+        json={
+            "modele": "locaux",
+            "site_id": site.id,
+            "points": [{"point_checklist_id": points_ref[0].id, "cotation": "NC", "observation": "À corriger"}],
+        },
+    ).json()
+
+    fichier = io.BytesIO(b"contenu factice")
+    reponse = client.post(
+        f"/api/v1/inspections/{inspection['id']}/points/{points_ref[0].id}/photo",
+        headers=_entete(technicien),
+        files={"photo": ("ecart.jpg", fichier, "image/jpeg")},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["points"][0]["photo"] is not None
+
+    # Persistance réelle en base, pas seulement dans la réponse HTTP —
+    # exactement ce qui manquait avant la correction.
+    relue = client.get(f"/api/v1/inspections/{inspection['id']}", headers=_entete(technicien))
+    assert relue.json()["points"][0]["photo"] is not None
+
+
 def test_point_archive_ne_peut_plus_etre_utilise(client, db_session, referent_sheq, technicien, site):
     point = PointChecklist(type_inspection="locaux", ordre=999, libelle="Point de test à archiver")
     db_session.add(point)

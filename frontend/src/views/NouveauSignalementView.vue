@@ -14,13 +14,19 @@
  * - `date_constat` : pas de sélecteur de date/heure non plus ; fixée à l'instant
  *   de l'envoi.
  *
- * Le type n'affiche que les 3 valeurs de la maquette (situation dangereuse,
- * presque-accident, anomalie matérielle), alors que l'API en accepte 5
- * (dictionnaire du CDC, chapitre 7.2.3, ajoute incident et accident). Respecté
- * ici à la lettre de la maquette ("respecte-les : contenu…") — mais cela
- * signifie qu'un accident ne peut pas être déclaré depuis cet écran. À trancher :
- * la maquette est-elle incomplète, ou ces déclarations passent-elles par un
- * autre circuit ?
+ * Écart tranché le 2026-09-08 (retour direct de l'utilisateur, "je ne vois
+ * pas l'écran des accidents") : la maquette n'affiche que 3 valeurs
+ * (situation dangereuse, presque-accident, anomalie matérielle), alors que
+ * l'API en accepte 5 (dictionnaire du CDC, chapitre 7.2.3, ajoute incident
+ * et accident) — et que le tableau de bord calcule désormais un indicateur
+ * "accidents" (2026-09-08) à partir de ce même champ `type`. Sans ces deux
+ * valeurs ici, aucun accident ne pouvait jamais être déclaré nulle part
+ * dans l'application : la maquette était incomplète sur ce point, pas
+ * l'app — les 5 valeurs réelles sont maintenant toutes proposées.
+ *
+ * Écran pilote du mode hors connexion (2026-09-08, voir stores/horsConnexion.js
+ * et services/filesync.js) : envoyer() ne distingue plus lui-même le cas
+ * hors ligne, c'est signalements.creer() qui met en file au besoin.
  */
 import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -38,6 +44,8 @@ const TYPES = [
   { valeur: "situation_dangereuse", libelle: "Situation dangereuse" },
   { valeur: "presque_accident", libelle: "Presque-accident" },
   { valeur: "anomalie", libelle: "Anomalie matérielle" },
+  { valeur: "incident", libelle: "Incident" },
+  { valeur: "accident", libelle: "Accident" },
 ];
 const NOMBRE_MAX_PHOTOS = 5;
 
@@ -197,12 +205,12 @@ async function envoyer() {
           {{ signalements.envoiEnCours ? "Envoi…" : "Envoyer le signalement" }}
         </button>
 
-        <div class="banner warn" style="margin-top: 12px">
-          <Icone nom="wifioff" taille="sm" style="margin-top: 1px" />
+        <div class="banner info" style="margin-top: 12px">
+          <Icone nom="sync" taille="sm" style="margin-top: 1px" />
           <div>
-            Le mode hors connexion complet (conservation sur l'appareil et envoi automatique au
-            retour du réseau) n'est pas encore actif — il arrive au prompt suivant. Pour l'instant,
-            une connexion est nécessaire pour envoyer ce signalement.
+            En cas de coupure réseau, ce signalement reste sur l'appareil et part
+            automatiquement dès le retour de la connexion — inutile de le ressaisir. Il
+            apparaît dans la liste avec le statut « en attente de réseau » en attendant.
           </div>
         </div>
       </div>

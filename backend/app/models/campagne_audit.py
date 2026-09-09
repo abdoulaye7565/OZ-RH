@@ -1,7 +1,7 @@
 """Entité CAMPAGNE_AUDIT — hors dictionnaire (section 5.3.4)."""
 from datetime import date
 
-from sqlalchemy import Date, ForeignKey, String
+from sqlalchemy import Boolean, Date, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel, enum_column
@@ -22,3 +22,8 @@ class CampagneAudit(BaseModel):
     statut: Mapped[StatutInspection] = mapped_column(
         enum_column(StatutInspection, "statut_inspection"), default=StatutInspection.EN_COURS, nullable=False
     )
+    # Prompt 6.4, même principe que RevueDirection : synthèse pré-rédigée à
+    # partir du score réel (jamais l'inverse — l'assistance ne produit aucun
+    # chiffre), brouillon tant que non validée, jamais exportée avant.
+    commentaire_ia: Mapped[str | None] = mapped_column(Text, nullable=True)
+    commentaire_valide: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

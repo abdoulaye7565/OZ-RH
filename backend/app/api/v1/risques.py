@@ -45,6 +45,9 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_RISQUES)),
 ) -> RisqueSortie:
+    """Crée un risque et sa première cotation. La criticité (probabilité ×
+    gravité) et son niveau (faible/modéré/élevé/critique, selon les seuils 4, 8,
+    15) sont calculés côté serveur, jamais soumis par le client."""
     risque = creer_risque(db, payload, auteur_id=utilisateur.id)
     cotation = dernieres_cotations(db, [risque.id]).get(risque.id)
     return vers_sortie(risque, cotation)
@@ -58,6 +61,8 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[RisqueSortie]:
+    """Liste les risques avec leur dernière cotation, filtrables par niveau,
+    catégorie et unité de travail. Consultation ouverte à tout le personnel."""
     # Consultation ouverte à tout le personnel (section 5.2.5, Acteurs :
     # "Consultation : ensemble du personnel").
     return [vers_sortie(r, c) for r, c in lister_risques(db, niveau=niveau, categorie=categorie, unite_travail=unite_travail)]
@@ -68,6 +73,8 @@ def matrice(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[dict]:
+    """Renvoie la matrice de criticité (répartition des risques par cellule
+    probabilité × gravité)."""
     return matrice_criticite(db)
 
 
@@ -77,6 +84,8 @@ def lister_revues_dues(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[dict]:
+    """Liste les risques dont la revue périodique arrive à échéance dans
+    l'horizon donné."""
     return revues_dues_service(db, horizon_jours)
 
 
@@ -86,6 +95,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> RisqueDetailSortie:
+    """Récupère un risque avec l'historique complet de ses cotations."""
     risque = obtenir_risque(db, risque_id)
     cotations = cotations_de(db, risque_id)
     sortie = vers_sortie(risque, cotations[0] if cotations else None)
@@ -102,6 +112,9 @@ def reevaluer_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_RISQUES)),
 ) -> CotationSortie:
+    """Ajoute une nouvelle cotation à un risque existant (réévaluation
+    périodique ou suite à un événement), sans modifier les cotations
+    précédentes."""
     risque = obtenir_risque(db, risque_id)
     cotation = reevaluer(db, risque, payload, auteur_id=utilisateur.id)
     return CotationSortie.model_validate(cotation)
@@ -114,6 +127,8 @@ async def importer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_RISQUES)),
 ) -> RapportImportRisques:
+    """Importe en masse un registre de risques depuis un fichier (5 Mo maximum)
+    et renvoie un rapport ligne par ligne des créations et rejets."""
     contenu = await fichier.read()
     if len(contenu) > TAILLE_MAX_IMPORT_OCTETS:
         raise HTTPException(

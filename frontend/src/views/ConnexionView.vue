@@ -54,7 +54,7 @@ async function seConnecter() {
 
       <div v-if="auth.erreur" class="banner err" style="margin-top: 16px">{{ auth.erreur }}</div>
       <div class="banner info" style="margin-top: 16px">
-        <div>Vos saisies fonctionnent <b>sans réseau</b> et se synchronisent automatiquement au retour de la connexion.</div>
+        <div>Le mode hors connexion n'est pas encore actif : une connexion réseau est nécessaire pour se connecter et pour enregistrer vos saisies.</div>
       </div>
     </div>
   </div>

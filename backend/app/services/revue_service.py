@@ -24,6 +24,7 @@ from app.models.signalement import Signalement
 from app.models.utilisateur import Utilisateur
 from app.schemas.revue import DecisionCreation, RevueCreation
 from app.services import action_service
+from app.services.assistance import generer_commentaire_revue
 from app.services.reference_service import obtenir_ou_generer_reference
 
 _TYPES_ACCIDENT = (TypeSignalement.INCIDENT, TypeSignalement.ACCIDENT)
@@ -185,6 +186,48 @@ def solder_decision(db: Session, decision: DecisionRevue, modifie_par_id: int) -
     return decision
 
 
+def generer_commentaire(db: Session, revue: RevueDirection, utilisateur_id: int) -> RevueDirection:
+    """Prompt 6.4 : régénère le commentaire de synthèse à partir des données déjà
+    figées dans `donnees_entree` (jamais recalculées) — une régénération écrase
+    le commentaire précédent et repasse en brouillon, la fonction n'écrit
+    jamais directement une version "définitive"."""
+    resultat = generer_commentaire_revue(
+        db,
+        indicateurs=revue.donnees_entree.get("indicateurs", {}),
+        decisions_reportees=revue.donnees_entree.get("decisions_reportees", []),
+        utilisateur_id=utilisateur_id,
+    )
+    if resultat.disponible and resultat.contenu:
+        revue.commentaire_ia = resultat.contenu
+        revue.commentaire_valide = False
+        revue.modifie_par_id = utilisateur_id
+        db.commit()
+        db.refresh(revue)
+    return revue
+
+
+def modifier_commentaire(db: Session, revue: RevueDirection, texte: str, modifie_par_id: int) -> RevueDirection:
+    """Édition libre (prompt 6.4 : "l'utilisateur peut... modifier librement ou
+    repartir d'un document vierge" — un texte vide vaut "vierge"). Repasse en
+    brouillon : un texte modifié n'est plus le contenu qui a été validé."""
+    revue.commentaire_ia = texte or None
+    revue.commentaire_valide = False
+    revue.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(revue)
+    return revue
+
+
+def valider_commentaire(db: Session, revue: RevueDirection, valide_par_id: int) -> RevueDirection:
+    if not revue.commentaire_ia:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Aucun commentaire à valider")
+    revue.commentaire_valide = True
+    revue.modifie_par_id = valide_par_id
+    db.commit()
+    db.refresh(revue)
+    return revue
+
+
 def generer_pdf(db: Session, revue: RevueDirection, redacteur: Utilisateur) -> bytes:
     """Export PDF (chapitre 14 du CDC, cas de test 12 ; FOR-SHEQ-016 « Compte
     rendu de revue de direction »). Reprend l'ordre des sections du formulaire
@@ -226,6 +269,12 @@ def generer_pdf(db: Session, revue: RevueDirection, redacteur: Utilisateur) -> b
             ("Taux d'avancement du plan d'action", f"{avancement.get('taux_avancement_global', 0) * 100:.0f} %"),
         ],
     )
+    # Prompt 6.4 : section 3 du formulaire réel, laissée vide depuis le
+    # prompt 5.1 faute de contenu à y afficher — remplie seulement une fois
+    # le commentaire validé par un humain (16.4 : jamais une suggestion non
+    # validée dans un export qui a valeur de compte rendu officiel).
+    if revue.commentaire_valide and revue.commentaire_ia:
+        pdf.section("3. Analyse des événements marquants", [("Synthèse", revue.commentaire_ia)])
     pdf.section(
         "4. État du registre des risques",
         [

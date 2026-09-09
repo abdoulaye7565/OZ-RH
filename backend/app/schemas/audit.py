@@ -27,6 +27,10 @@ class CampagneCreation(BaseModel):
     date: dt.date | None = None
 
 
+class CommentaireEntree(BaseModel):
+    texte: str
+
+
 class CotationEntree(BaseModel):
     exigence_id: int
     cotation: int
@@ -60,6 +64,10 @@ class CampagneSortie(BaseModel):
     date: dt.date
     auditeur_id: int
     statut: StatutInspection
+    # Prompt 6.4 : commentaire de synthèse pré-rédigé, brouillon tant que
+    # commentaire_valide vaut False.
+    commentaire_ia: str | None
+    commentaire_valide: bool
     archive: bool
     cree_le: datetime
 

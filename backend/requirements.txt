@@ -39,6 +39,13 @@ reportlab>=4.2,<5
 # pas une file de tâches distribuée avec worker séparé.
 apscheduler>=3.10,<4
 
+# Nouvelles dépendances (prompt 6.2, chapitre 16.3.2 du CDC) : extraction du
+# texte des documents en vigueur (Word/PDF) pour l'indexation de l'assistant
+# documentaire — openpyxl (déjà présente ci-dessus, prompt 3.1) couvre déjà
+# Excel. La bibliothèque standard ne lit ni l'un ni l'autre format.
+python-docx>=1.1,<2
+pypdf>=5.1,<6
+
 # Tests
 pytest>=8.3,<9
 pytest-cov>=6,<7

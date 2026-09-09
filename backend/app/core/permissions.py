@@ -104,3 +104,14 @@ class Permissions:
     # distinct dans la matrice : ouvert à tout utilisateur authentifié plutôt
     # que restreint, l'accueil des visiteurs n'étant pas un privilège
     # sensible comparable aux autres référentiels SHEQ.
+    # Section 5.2.4, "Acteurs" : "Création et modification : responsable
+    # technique et administrateur." La CONSULTATION, elle, n'est pas une
+    # permission globale : elle dépend du `role_requis` de chaque secret
+    # (référent SHEQ et collaborateur toujours exclus — voir
+    # secret_service.NIVEAU_ROLE_SECRET) et n'utilise donc pas cette
+    # constante, vérifiée directement dans le service.
+    GERER_SECRETS: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)
+    # Le CDC ne précise pas qui peut consulter le journal des accès à un
+    # secret (par opposition au secret lui-même) — rapproché des mêmes rôles
+    # que sa gestion, décision confirmée avec l'utilisateur (2026-09-08).
+    CONSULTER_JOURNAL_SECRETS: tuple[R, ...] = (R.RESPONSABLE, R.ADMINISTRATEUR)

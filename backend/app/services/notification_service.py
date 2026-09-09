@@ -167,6 +167,38 @@ def notifier_satisfaction_faible(db: Session, reponse) -> None:
         )
 
 
+def notifier_plafond_assistance_atteint(
+    db: Session, *, annee: int, mois_numero: int, depense_usd: float, plafond_usd: float
+) -> None:
+    """Chapitre 16.4 du CDC : "son atteinte désactive les fonctions non
+    essentielles et alerte l'administrateur". Hors tableau 3 (module IA
+    postérieur, prompt 6.1) — mêmes conventions que le reste de ce service.
+
+    `objet_id` ET `declencheur` renseignés (jamais `None`) : la contrainte
+    unique du modèle porte sur les deux, et en SQL une valeur NULL n'est
+    jamais égale à une autre valeur NULL, y compris dans une contrainte
+    UNIQUE — laisser l'un des deux à `None` désactiverait silencieusement
+    toute déduplication (une notification recréée à chaque appel, un
+    courriel renvoyé à chaque fois). Trouvé en écrivant le test de
+    déduplication de ce prompt, pas en le supposant correct."""
+    mois_libelle = f"{annee:04d}-{mois_numero:02d}"
+    for destinataire in _utilisateurs_par_role(db, RoleUtilisateur.ADMINISTRATEUR):
+        _creer(
+            db,
+            destinataire=destinataire,
+            type_=TypeNotification.PLAFOND_ASSISTANCE,
+            message=(
+                f"Plafond mensuel du service d'assistance atteint pour {mois_libelle} "
+                f"({depense_usd:.2f} $ / {plafond_usd:.2f} $) : les fonctions non essentielles sont désactivées"
+            ),
+            canal=CanalNotification.LES_DEUX,
+            objet_type="assistance",
+            objet_id=annee * 100 + mois_numero,
+            declencheur=mois_libelle,
+            sujet_courriel="SHEQ — Plafond du service d'assistance atteint",
+        )
+
+
 # ---------------------------------------------------------------------------
 # Rappels d'échéance périodiques (tableau 3, lignes 4, 5, 6, 8)
 # ---------------------------------------------------------------------------

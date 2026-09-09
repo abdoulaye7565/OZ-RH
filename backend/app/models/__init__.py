@@ -4,6 +4,7 @@ ajoutés au prompt 4.2) auprès de Base.metadata — nécessaire pour qu'Alembic
 les détecte à l'autogénération et que les relations inter-modèles (chaînes de
 classes) se résolvent."""
 from app.models.action import Action
+from app.models.appel_assistance import AppelAssistance
 from app.models.campagne_audit import CampagneAudit
 from app.models.competence import Competence
 from app.models.configuration import Configuration
@@ -30,6 +31,7 @@ from app.models.revue_direction import RevueDirection
 from app.models.risque import Risque
 from app.models.seance import Seance
 from app.models.secret import Secret
+from app.models.segment_document import SegmentDocument
 from app.models.signalement import Signalement
 from app.models.site import Site
 from app.models.tentative_quiz import TentativeQuiz
@@ -38,6 +40,7 @@ from app.models.visiteur import Visiteur
 
 __all__ = [
     "Action",
+    "AppelAssistance",
     "CampagneAudit",
     "Competence",
     "Configuration",
@@ -65,6 +68,7 @@ __all__ = [
     "Risque",
     "Seance",
     "Secret",
+    "SegmentDocument",
     "Signalement",
     "Site",
     "TentativeQuiz",

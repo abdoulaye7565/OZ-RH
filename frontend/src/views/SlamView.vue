@@ -157,8 +157,8 @@ const messageVerdict = computed(() =>
           <div class="banner warn" style="margin-top: 12px">
             <Icone nom="wifioff" taille="sm" style="margin-top: 1px" />
             <div>
-              Le mode hors connexion n'est pas encore actif pour le SLAM (prompt 1.4 non
-              implémenté) : une connexion est nécessaire pour enregistrer cette évaluation.
+              Le mode hors connexion n'est pas encore actif pour le SLAM : une connexion est
+              nécessaire pour enregistrer cette évaluation.
             </div>
           </div>
         </div>
@@ -185,6 +185,8 @@ const messageVerdict = computed(() =>
       <button class="tb" @click="router.push({ name: 'signalements' })"><Icone nom="alert" />Signaux</button>
       <button class="tb on"><Icone nom="climb" />SLAM</button>
       <button class="tb" @click="router.push({ name: 'tableau-de-bord' })"><Icone nom="chart" />Tableau</button>
+      <button class="tb" @click="router.push({ name: 'assistant-documentaire' })"><Icone nom="chat" />Assistant</button>
+      <button class="tb" @click="router.push({ name: 'menu' })"><Icone nom="grid" />Menu</button>
     </nav>
   </div>
 </template>

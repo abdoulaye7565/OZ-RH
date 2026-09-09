@@ -12,6 +12,7 @@ from app.models.cotation_audit import CotationAudit
 from app.models.enums import StatutInspection
 from app.models.exigence_audit import ExigenceAudit
 from app.schemas.audit import CampagneCreation, CotationEntree
+from app.services.assistance import generer_commentaire_audit
 from app.services.reference_service import obtenir_ou_generer_reference
 
 # Seuils repris littéralement de FOR-SHEQ-017 ("Interprétation indicative :
@@ -186,6 +187,41 @@ def comparer_campagnes(db: Session, campagne_reference_id: int, campagne_compare
     }
 
 
+def generer_commentaire(db: Session, campagne: CampagneAudit, utilisateur_id: int) -> CampagneAudit:
+    """Prompt 6.4 : mêmes règles que revue_service.generer_commentaire — le
+    score est recalculé à la demande (calculer_score n'est jamais stocké,
+    contrairement à donnees_entree de REVUE_DIRECTION), mais toujours à
+    partir des cotations réelles, jamais inventé par le modèle."""
+    score = calculer_score(db, campagne.id)
+    resultat = generer_commentaire_audit(db, score=score, utilisateur_id=utilisateur_id)
+    if resultat.disponible and resultat.contenu:
+        campagne.commentaire_ia = resultat.contenu
+        campagne.commentaire_valide = False
+        campagne.modifie_par_id = utilisateur_id
+        db.commit()
+        db.refresh(campagne)
+    return campagne
+
+
+def modifier_commentaire(db: Session, campagne: CampagneAudit, texte: str, modifie_par_id: int) -> CampagneAudit:
+    campagne.commentaire_ia = texte or None
+    campagne.commentaire_valide = False
+    campagne.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(campagne)
+    return campagne
+
+
+def valider_commentaire(db: Session, campagne: CampagneAudit, valide_par_id: int) -> CampagneAudit:
+    if not campagne.commentaire_ia:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Aucun commentaire à valider")
+    campagne.commentaire_valide = True
+    campagne.modifie_par_id = valide_par_id
+    db.commit()
+    db.refresh(campagne)
+    return campagne
+
+
 def generer_pdf(db: Session, campagne: CampagneAudit, auditeur) -> bytes:
     """Export PDF (chapitre 14 du CDC, cas de test 12) — reprend l'ordre de
     FOR-SHEQ-017 (« Grille d'audit interne ») : cotation 0/1/2 par exigence,
@@ -225,6 +261,11 @@ def generer_pdf(db: Session, campagne: CampagneAudit, auditeur) -> bytes:
             ("Interprétation", score["interpretation"]),
         ],
     )
+
+    # Prompt 6.4 : même principe que revue_service.generer_pdf — la synthèse
+    # n'apparaît qu'une fois validée par un humain, jamais avant.
+    if campagne.commentaire_valide and campagne.commentaire_ia:
+        pdf.section("Synthèse", [("Commentaire", campagne.commentaire_ia)])
 
     pdf.pied_de_page(datetime.now(timezone.utc).strftime("%d/%m/%Y %H:%M UTC"), f"{auditeur.prenom} {auditeur.nom}")
     return pdf.construire()

@@ -43,6 +43,7 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_EPI)),
 ) -> Epi:
+    """Enregistre un nouvel équipement de protection individuelle au registre."""
     return creer_epi(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -54,6 +55,8 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Epi]:
+    """Liste les EPI non archivés, avec filtres optionnels par type, statut et
+    porteur."""
     # Consultation ouverte (section 5.3.2, Acteurs : "porteurs et responsables") :
     # pas de restriction de visibilité par rôle, comme pour les actions.
     requete = select(Epi).where(Epi.archive.is_(False))
@@ -72,6 +75,8 @@ def lister_verifications_dues(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Epi]:
+    """Liste les EPI dont la vérification périodique arrive à échéance dans
+    l'horizon donné (12 mois après la dernière vérification)."""
     return verifications_dues(db, horizon_jours)
 
 
@@ -81,6 +86,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Epi:
+    """Récupère un EPI par son identifiant."""
     return _recuperer(db, epi_id)
 
 
@@ -91,6 +97,7 @@ def affecter(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_EPI)),
 ) -> Epi:
+    """Affecte ou réaffecte un EPI à un porteur."""
     epi = _recuperer(db, epi_id)
     return modifier_affectation(db, epi, payload.porteur_id, modifie_par_id=utilisateur.id)
 
@@ -102,6 +109,8 @@ def verification_periodique(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_EPI)),
 ) -> Epi:
+    """Enregistre une vérification périodique de l'EPI et recalcule la prochaine
+    échéance (dernière vérification + 12 mois). Réservé à la gestion EPI."""
     epi = _recuperer(db, epi_id)
     return enregistrer_verification_periodique(db, epi, payload.conforme, modifie_par_id=utilisateur.id)
 
@@ -113,6 +122,9 @@ def verification_avant_utilisation(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Epi:
+    """Enregistre la vérification faite par le porteur lui-même juste avant
+    utilisation, depuis le mobile — contrairement à la vérification périodique,
+    ouvert à tout utilisateur authentifié, pas réservé à la gestion EPI."""
     # Depuis le mobile, par le porteur lui-même avant de monter : pas réservé
     # au référent SHEQ, contrairement à la vérification périodique.
     epi = _recuperer(db, epi_id)
@@ -125,6 +137,8 @@ def retirer_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_EPI)),
 ) -> Epi:
+    """Retire temporairement un EPI du service — action réversible, à la
+    différence de la réforme."""
     epi = _recuperer(db, epi_id)
     return retirer(db, epi, modifie_par_id=utilisateur.id)
 
@@ -136,5 +150,7 @@ def reformer_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_EPI)),
 ) -> Epi:
+    """Réforme définitivement un EPI en fin de vie — action irréversible,
+    contrairement au retrait, et exige un motif."""
     epi = _recuperer(db, epi_id)
     return reformer(db, epi, payload.motif, modifie_par_id=utilisateur.id)

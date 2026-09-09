@@ -20,6 +20,7 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[PointChecklist]:
+    """Liste les points de checklist actifs pour un type d'inspection donné."""
     return lister_points(db, type_inspection)
 
 
@@ -29,6 +30,7 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_CHECKLISTS)),
 ) -> PointChecklist:
+    """Ajoute un point au référentiel de checklist d'un type d'inspection."""
     return creer_point(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -38,6 +40,7 @@ def archiver(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_CHECKLISTS)),
 ) -> PointChecklist:
+    """Archive un point de checklist (jamais de suppression physique)."""
     point = db.get(PointChecklist, point_id)
     if point is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Point de checklist introuvable")

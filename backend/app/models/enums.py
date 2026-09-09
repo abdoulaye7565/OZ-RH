@@ -242,8 +242,11 @@ class Recommandation(str, enum.Enum):
 
 
 class TypeNotification(str, enum.Enum):
-    """Reprend une à une les huit lignes du tableau 3 (chapitre 6.3 du CDC,
-    "Règles de notification")."""
+    """Les huit premières valeurs reprennent une à une les lignes du tableau 3
+    (chapitre 6.3 du CDC, "Règles de notification"). `PLAFOND_ASSISTANCE`
+    ajoutée au prompt 6.1 : alerte administrateur du chapitre 16.4 ("son
+    atteinte... alerte l'administrateur"), hors tableau 3 (module IA
+    postérieur au socle notifications)."""
 
     NOUVEAU_SIGNALEMENT = "nouveau_signalement"
     PERMIS_EN_ATTENTE = "permis_en_attente"
@@ -253,6 +256,7 @@ class TypeNotification(str, enum.Enum):
     INSPECTION_PLANIFIEE = "inspection_planifiee"
     SATISFACTION_FAIBLE = "satisfaction_faible"
     DOCUMENT_REVUE = "document_revue"
+    PLAFOND_ASSISTANCE = "plafond_assistance"
 
 
 class CanalNotification(str, enum.Enum):

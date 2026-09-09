@@ -2,23 +2,31 @@
 /**
  * Tableau de bord — vue desktop (maquette #p-dash, figure A.24 du CDC).
  *
- * Écarts assumés, documentés dans docs/JOURNAL.md :
- * - Barre latérale complète de la maquette non reprise (la plupart de ses
- *   liens n'ont pas d'écran) ; remplacée par un bandeau simple.
- * - Les 4 indicateurs de tête sont ceux réellement calculables aujourd'hui
- *   (signalements, à traiter, avancement du plan, actions en retard), pas les
- *   4 de la maquette (accidents, conformité inspections… indisponibles).
- * - "Échéances proches" ne montre que des actions (EPI/formations/documents
- *   n'existent pas encore comme sources d'échéances).
+ * Mis à jour le 2026-09-08 (synchronisation aux données réelles) : les 4
+ * indicateurs de tête reprennent maintenant ceux de la maquette (accidents,
+ * signalements, plan d'action, conformité inspections) — EPI, Inspections,
+ * Formations, Documents et Satisfaction existent depuis le chantier du
+ * 2026-09-07 et alimentent chacun un indicateur réel côté API
+ * (`tableau_bord_service.py`), plutôt que d'être listés comme indisponibles.
+ * Une seconde rangée d'indicateurs (absente de la maquette, qui n'en montre
+ * que 4) rend visibles les autres données désormais réelles : séances à
+ * venir, personnel formé, documents à réviser, réclamations clients.
+ *
+ * Écarts encore assumés :
+ * - Barre latérale complète de la maquette non reprise ; remplacée par la
+ *   barre latérale commune de GestionLayout.vue.
+ * - "Accidents avec arrêt" affiché sans la distinction avec/sans arrêt :
+ *   aucun champ ne la porte dans le dictionnaire de données du signalement.
+ * - Incidents environnementaux et sécurité des données (coffre-fort)
+ *   restent sans indicateur, faute de module source — plus signalé par une
+ *   banane technique en pied de page, un utilisateur final n'a pas à
+ *   connaître l'état d'avancement du développement.
  */
 import { computed, onMounted } from "vue";
-import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
-import { useAuthStore } from "../stores/auth";
 import { useTableauBordStore } from "../stores/tableauBord";
+import { joursRestantsCivil } from "../utils/dates";
 
-const router = useRouter();
-const auth = useAuthStore();
 const tdb = useTableauBordStore();
 
 onMounted(() => tdb.charger());
@@ -43,9 +51,13 @@ function formaterDateCourte(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 }
 
-function joursRestants(echeance) {
-  const jours = Math.ceil((new Date(echeance) - new Date()) / 86400000);
-  return jours;
+// Une échéance (a.echeance) est une date civile, pas un horodatage : voir
+// utils/dates.js — new Date(echeance) seul décale parfois d'un jour.
+const joursRestants = joursRestantsCivil;
+
+function formaterEcheanceCourte(echeance) {
+  const [annee, mois, jour] = echeance.slice(0, 10).split("-").map(Number);
+  return new Date(annee, mois - 1, jour).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
 }
 
 function styleEcheance(jours) {
@@ -53,37 +65,66 @@ function styleEcheance(jours) {
   if (jours <= 7) return "t-or";
   return "t-gy";
 }
+
+const ICONE_ECHEANCE = { action: "check", epi: "vest", document: "doc", formation: "cap" };
+const COULEUR_ECHEANCE = { action: "m-bl", epi: "m-or", document: "m-gd", formation: "m-bl" };
+
+const conformiteInspectionsPourcent = computed(() => {
+  const taux = tdb.donnees?.inspections?.taux_conformite_moyen;
+  return taux === null || taux === undefined ? null : Math.round(taux * 100);
+});
 </script>
 
 <template>
-  <div class="bureau">
-    <div class="bureau-entete">
-      <h1>Tableau de bord</h1>
-      <span class="sub">{{ auth.utilisateur ? `${auth.utilisateur.prenom} ${auth.utilisateur.nom}` : "" }}</span>
-      <button class="btn gh" style="width: auto; margin-left: auto" @click="router.push({ name: 'signalements' })">
-        <Icone nom="alert" taille="sm" />Signalements
-      </button>
-    </div>
-
+  <div>
     <div v-if="tdb.erreur" class="banner err">{{ tdb.erreur }}</div>
 
     <template v-if="tdb.donnees">
       <div class="mets">
         <div class="met">
-          <div class="met-hd"><span class="ic m-or"><Icone nom="alert" taille="sm" /></span>Signalements de la période</div>
-          <div class="v">{{ tdb.donnees.signalements.total_periode }}</div>
+          <div class="met-hd">
+            <span class="ic" :class="tdb.donnees.securite.accidents_periode > 0 ? 'm-red' : 'm-gr'"><Icone nom="shield" taille="sm" /></span>
+            Accidents (période)
+          </div>
+          <div class="v">{{ tdb.donnees.securite.accidents_periode }}</div>
+          <div v-if="tdb.donnees.securite.jours_sans_accident !== null" class="sub" style="font-size: 11px; color: var(--mut); margin-top: 2px">
+            {{ tdb.donnees.securite.jours_sans_accident }} jours sans accident
+          </div>
         </div>
         <div class="met">
-          <div class="met-hd"><span class="ic m-red"><Icone nom="search" taille="sm" /></span>Signalements à traiter</div>
-          <div class="v">{{ tdb.donnees.signalements.nombre_a_traiter }}</div>
+          <div class="met-hd"><span class="ic m-or"><Icone nom="alert" taille="sm" /></span>Signalements de la période</div>
+          <div class="v">{{ tdb.donnees.signalements.total_periode }}</div>
         </div>
         <div class="met">
           <div class="met-hd"><span class="ic m-gd"><Icone nom="check" taille="sm" /></span>Plan d'action réalisé</div>
           <div class="v">{{ Math.round(tdb.donnees.actions.taux_avancement_global * 100) }}%</div>
         </div>
         <div class="met">
-          <div class="met-hd"><span class="ic m-bl"><Icone nom="chart" taille="sm" /></span>Actions en retard</div>
-          <div class="v">{{ tdb.donnees.actions.nombre_en_retard }}</div>
+          <div class="met-hd"><span class="ic" :class="conformiteInspectionsPourcent !== null && conformiteInspectionsPourcent < 90 ? 'm-or' : 'm-bl'"><Icone nom="clip" taille="sm" /></span>Conformité inspections</div>
+          <div class="v">{{ conformiteInspectionsPourcent !== null ? `${conformiteInspectionsPourcent}%` : "—" }}</div>
+          <div class="sub" style="font-size: 11px; color: var(--mut); margin-top: 2px">{{ tdb.donnees.inspections.realisees_periode }} réalisées sur la période</div>
+        </div>
+      </div>
+
+      <div class="mets" style="margin-top: 12px">
+        <div class="met">
+          <div class="met-hd"><span class="ic m-bl"><Icone nom="cap" taille="sm" /></span>Personnel formé</div>
+          <div class="v">{{ tdb.donnees.formations.personnel_forme }} / {{ tdb.donnees.formations.personnel_total }}</div>
+        </div>
+        <div class="met">
+          <div class="met-hd"><span class="ic m-gd"><Icone nom="calendar" taille="sm" /></span>Sensibilisations à venir</div>
+          <div class="v">{{ tdb.donnees.formations.seances_a_venir }}</div>
+        </div>
+        <div class="met">
+          <div class="met-hd"><span class="ic m-or"><Icone nom="doc" taille="sm" /></span>Documents à réviser</div>
+          <div class="v">{{ tdb.donnees.documents.a_reviser_bientot }}</div>
+        </div>
+        <div class="met">
+          <div class="met-hd"><span class="ic" :class="tdb.donnees.satisfaction.reclamations_periode > 0 ? 'm-red' : 'm-gr'"><Icone nom="star" taille="sm" /></span>Réclamations clients</div>
+          <div class="v">{{ tdb.donnees.satisfaction.reclamations_periode }}</div>
+          <div v-if="tdb.donnees.satisfaction.note_moyenne !== null" class="sub" style="font-size: 11px; color: var(--mut); margin-top: 2px">
+            note moyenne {{ tdb.donnees.satisfaction.note_moyenne.toFixed(1) }} / 5
+          </div>
         </div>
       </div>
 
@@ -149,14 +190,14 @@ function styleEcheance(jours) {
         </div>
 
         <div class="card">
-          <div class="ch"><Icone nom="clock" /><h3>Échéances proches (actions)</h3></div>
+          <div class="ch"><Icone nom="clock" /><h3>Échéances proches</h3></div>
           <table>
             <tbody>
-              <tr v-for="a in tdb.donnees.echeances_proches" :key="a.id">
+              <tr v-for="(a, i) in tdb.donnees.echeances_proches" :key="`${a.type}-${a.reference}-${a.echeance}-${i}`">
                 <td>
                   <div class="cellrow">
-                    <span class="mini" :class="joursRestants(a.echeance) < 0 ? 'm-red' : 'm-or'"><Icone nom="check" taille="sm" /></span>
-                    <div><b>{{ a.libelle }}</b><div class="sub">Échéance {{ formaterDateCourte(a.echeance) }}</div></div>
+                    <span class="mini" :class="joursRestants(a.echeance) < 0 ? 'm-red' : COULEUR_ECHEANCE[a.type]"><Icone :nom="ICONE_ECHEANCE[a.type]" taille="sm" /></span>
+                    <div><b>{{ a.libelle }}</b><div class="sub">Échéance {{ formaterEcheanceCourte(a.echeance) }}</div></div>
                   </div>
                 </td>
                 <td style="text-align: right">
@@ -168,12 +209,6 @@ function styleEcheance(jours) {
               <tr v-if="!tdb.donnees.echeances_proches.length"><td style="color: var(--mut)">Aucune échéance proche.</td></tr>
             </tbody>
           </table>
-        </div>
-      </div>
-
-      <div class="banner info">
-        <div>
-          Indisponibles pour l'instant, faute de module : {{ tdb.donnees.modules_non_disponibles.join(", ") }}.
         </div>
       </div>
     </template>

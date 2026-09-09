@@ -14,6 +14,7 @@ htmlcov/
 .env
 .env.*
 !.env.example
+!.env.prod.example
 
 # --- Node / Vue / Vite ---
 node_modules/
@@ -30,3 +31,7 @@ Thumbs.db
 
 # --- Fichiers stockés hors base (uploads) ---
 backend/storage/
+
+# --- Sauvegardes locales (scripts/sauvegarde.py) : jamais versionnées, ---
+# --- contiennent des données réelles une fois en production ---
+backend/sauvegardes/

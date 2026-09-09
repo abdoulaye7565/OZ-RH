@@ -22,6 +22,8 @@ def obtenir(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.CONSULTER_TABLEAU_BORD)),
 ) -> TableauBordSortie:
+    """Construit les indicateurs SHEQ agrégés du tableau de bord, filtrables par
+    période et par site."""
     return construire_tableau_de_bord(db, date_debut=date_debut, date_fin=date_fin, site_id=site_id)
 
 
@@ -33,6 +35,7 @@ def exporter_pdf(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.CONSULTER_TABLEAU_BORD)),
 ) -> Response:
+    """Génère le PDF du tableau de bord pour la période et le site donnés."""
     tableau = construire_tableau_de_bord(db, date_debut=date_debut, date_fin=date_fin, site_id=site_id)
     contenu = generer_pdf(tableau, utilisateur)
     return Response(

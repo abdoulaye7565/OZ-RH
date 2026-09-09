@@ -103,11 +103,17 @@ def test_filtre_site(client, db_session, technicien, referent_sheq, site):
     assert corps["site_id"] == site.id
 
 
-def test_modules_non_disponibles_liste_ce_qui_manque(client, referent_sheq):
+def test_modules_non_disponibles_liste_seulement_ce_qui_manque_reellement(client, referent_sheq):
+    """EPI, Inspections, Formations et Documents ont désormais un module
+    réel (chantier du 2026-09-07) : ils calculent un indicateur, ils ne sont
+    plus listés comme indisponibles. Seuls les incidents environnementaux et
+    la sécurité des données (coffre-fort, toujours bloqué) le restent."""
     reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
     corps = reponse.json()
-    for module in ("epi", "inspections", "formations", "documents"):
-        assert module in corps["modules_non_disponibles"]
+    assert set(corps["modules_non_disponibles"]) == {"incidents_environnementaux", "coffre_fort"}
+    for module in ("epi", "inspections", "formations", "documents", "satisfaction"):
+        assert module not in corps["modules_non_disponibles"]
+        assert module in corps
 
 
 def test_technicien_ne_peut_pas_consulter_le_tableau_de_bord(client, technicien):
@@ -216,3 +222,228 @@ def test_aggregation_actions_utilise_group_by_pas_un_chargement_complet(db_sessi
     for r in requetes_select:
         assert "GROUP BY" in r.upper() or "COUNT" in r.upper()
         assert "action.id" not in r.lower() or "count" in r.lower()
+
+
+# --- Indicateurs ajoutés le 2026-09-08 : EPI, Inspections, Formations,
+# Documents, Satisfaction — chacun désormais un vrai module (voir
+# docs/JOURNAL.md, "Documents en sous-dossiers réels + module Inspections"
+# puis "Tableau de bord synchronisé aux données réelles").
+
+
+def test_securite_compte_accidents_et_presque_accidents(client, db_session, technicien, referent_sheq, site):
+    _creer_signalement(db_session, site, technicien, datetime.now(timezone.utc), statut=StatutSignalement.NOUVEAU)
+    accident = Signalement(
+        reference="SIG-2026-ACC1",
+        type=TypeSignalement.ACCIDENT,
+        site_id=site.id,
+        lieu="Terrain",
+        description="Chute",
+        anonyme=False,
+        auteur_id=technicien.id,
+        date_constat=datetime.now(timezone.utc) - timedelta(days=5),
+        date_saisie=datetime.now(timezone.utc) - timedelta(days=5),
+        statut=StatutSignalement.CLOTURE,
+    )
+    presque = Signalement(
+        reference="SIG-2026-PA1",
+        type=TypeSignalement.PRESQUE_ACCIDENT,
+        site_id=site.id,
+        lieu="Terrain",
+        description="Glissade évitée",
+        anonyme=False,
+        auteur_id=technicien.id,
+        date_constat=datetime.now(timezone.utc),
+        date_saisie=datetime.now(timezone.utc),
+        statut=StatutSignalement.NOUVEAU,
+    )
+    db_session.add_all([accident, presque])
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    securite = reponse.json()["securite"]
+    assert securite["accidents_periode"] == 1
+    assert securite["presque_accidents_periode"] == 1
+    assert securite["jours_sans_accident"] == 5
+
+
+def test_securite_jours_sans_accident_nul_si_aucun_accident_jamais(client, referent_sheq):
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    assert reponse.json()["securite"]["jours_sans_accident"] is None
+
+
+def test_inspections_realisees_et_taux_conformite_moyen(client, db_session, technicien, referent_sheq, site):
+    from app.models.inspection import Inspection
+
+    cloturee = Inspection(
+        modele="locaux",
+        site_id=site.id,
+        inspecteur_id=technicien.id,
+        date=date.today(),
+        points=[
+            {"point_checklist_id": 1, "libelle": "Point A", "cotation": "C", "observation": None, "photo": None},
+            {"point_checklist_id": 2, "libelle": "Point B", "cotation": "NC", "observation": None, "photo": None},
+        ],
+        statut="cloturee",
+    )
+    en_cours = Inspection(
+        modele="incendie",
+        site_id=site.id,
+        inspecteur_id=technicien.id,
+        date=date.today(),
+        points=[{"point_checklist_id": 3, "libelle": "Point C", "cotation": "C", "observation": None, "photo": None}],
+        statut="en_cours",
+    )
+    db_session.add_all([cloturee, en_cours])
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    inspections = reponse.json()["inspections"]
+    # Seule la clôturée compte : 1 conforme / 2 cotés = 0.5.
+    assert inspections["realisees_periode"] == 1
+    assert inspections["taux_conformite_moyen"] == pytest.approx(0.5)
+
+
+def test_epi_distingue_a_verifier_bientot_et_depasse(client, db_session, referent_sheq):
+    from app.models.epi import Epi
+
+    proche = Epi(
+        numero="H-100",
+        type="harnais",
+        marque_modele="Test",
+        date_mise_service=date.today() - timedelta(days=300),
+        date_limite=date.today() + timedelta(days=2000),
+        derniere_verification=date.today() - timedelta(days=360),
+        prochaine_verification=date.today() + timedelta(days=5),
+        statut="en_service",
+    )
+    depasse = Epi(
+        numero="H-101",
+        type="harnais",
+        marque_modele="Test",
+        date_mise_service=date.today() - timedelta(days=400),
+        date_limite=date.today() + timedelta(days=2000),
+        derniere_verification=date.today() - timedelta(days=400),
+        prochaine_verification=date.today() - timedelta(days=30),
+        statut="a_verifier",
+    )
+    db_session.add_all([proche, depasse])
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    epi = reponse.json()["epi"]
+    assert epi["a_verifier_bientot"] == 1
+    assert epi["verifications_depassees"] == 1
+
+
+def test_documents_a_reviser_et_en_attente_approbation(client, db_session, referent_sheq, administrateur):
+    from app.models.document import Document
+
+    a_reviser = Document(
+        reference="PRO-SHEQ-099",
+        intitule="Procédure de test",
+        niveau=3,
+        version="01",
+        redacteur_id=referent_sheq.id,
+        approbateur_id=administrateur.id,
+        statut="en_vigueur",
+        date_revue=date.today() + timedelta(days=10),
+        confidentialite="normal",
+    )
+    en_attente = Document(
+        reference="PRO-SHEQ-098",
+        intitule="Autre procédure",
+        niveau=3,
+        version="01",
+        redacteur_id=referent_sheq.id,
+        statut="en_approbation",
+        confidentialite="normal",
+    )
+    db_session.add_all([a_reviser, en_attente])
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    documents = reponse.json()["documents"]
+    assert documents["a_reviser_bientot"] == 1
+    assert documents["en_attente_approbation"] == 1
+
+
+def test_satisfaction_reclamations_et_note_moyenne(client, db_session, technicien, referent_sheq, site):
+    from app.models.enquete_satisfaction import EnqueteSatisfaction
+    from app.models.reponse_satisfaction import ReponseSatisfaction
+
+    enquete = EnqueteSatisfaction(
+        client="Client Test",
+        site_id=site.id,
+        intervention="Intervention test",
+        technicien_id=technicien.id,
+        envoyee_le=datetime.now(timezone.utc),
+        repondu=True,
+    )
+    db_session.add(enquete)
+    db_session.flush()
+    reponse_faible = ReponseSatisfaction(
+        enquete_id=enquete.id,
+        notes=[{"critere": "Qualité", "note": 1}, {"critere": "Délais", "note": 2}],
+        recommandation="non",
+        necessite_analyse=True,
+        date_reponse=datetime.now(timezone.utc),
+    )
+    db_session.add(reponse_faible)
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    satisfaction = reponse.json()["satisfaction"]
+    assert satisfaction["reclamations_periode"] == 1
+    assert satisfaction["note_moyenne"] == pytest.approx(1.5)
+
+
+def test_echeances_proches_melange_actions_epi_documents_formations(client, db_session, referent_sheq, administrateur, technicien, site):
+    from app.models.document import Document
+    from app.models.epi import Epi
+    from app.models.seance import Seance
+
+    db_session.add(
+        Epi(
+            numero="H-200",
+            type="harnais",
+            marque_modele="Test",
+            date_mise_service=date.today() - timedelta(days=300),
+            date_limite=date.today() + timedelta(days=2000),
+            derniere_verification=date.today() - timedelta(days=360),
+            prochaine_verification=date.today() + timedelta(days=3),
+            statut="en_service",
+        )
+    )
+    db_session.add(
+        Document(
+            reference="PRO-SHEQ-097",
+            intitule="Procédure échéance",
+            niveau=3,
+            version="01",
+            redacteur_id=referent_sheq.id,
+            approbateur_id=administrateur.id,
+            statut="en_vigueur",
+            date_revue=date.today() + timedelta(days=4),
+            confidentialite="normal",
+        )
+    )
+    db_session.add(
+        Seance(
+            theme="Sensibilisation sécurité",
+            date=date.today() + timedelta(days=6),
+            lieu="Siège",
+            animateur_id=referent_sheq.id,
+            statut="planifiee",
+        )
+    )
+    db_session.commit()
+
+    reponse = client.get("/api/v1/tableau-de-bord", headers=_entete(referent_sheq))
+    echeances = reponse.json()["echeances_proches"]
+    types = {e["type"] for e in echeances}
+    assert "epi" in types
+    assert "document" in types
+    assert "formation" in types
+    # Triées par proximité, pas par type ni par ordre d'insertion.
+    dates_triees = [e["echeance"] for e in echeances]
+    assert dates_triees == sorted(dates_triees)

@@ -2,7 +2,7 @@
 « Compte rendu de revue de direction SHEQ »)."""
 from datetime import date
 
-from sqlalchemy import JSON, Date, ForeignKey, String, Text
+from sqlalchemy import JSON, Boolean, Date, ForeignKey, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.db.base import BaseModel
@@ -27,3 +27,10 @@ class RevueDirection(BaseModel):
     # rapport de revue ne doit pas changer rétroactivement si les données
     # sources évoluent ensuite.
     donnees_entree: Mapped[dict] = mapped_column(JSON, nullable=False)
+    # Prompt 6.4 : pré-rédaction du commentaire de synthèse (section 3 de
+    # FOR-SHEQ-016, "analyse des événements marquants" — jamais remplie avant
+    # ce prompt, faute de donnée à y afficher). `commentaire_valide=False` =
+    # brouillon, jamais exporté en PDF tant que la validation humaine n'a pas
+    # eu lieu (16.4 : "toute suggestion est identifiée").
+    commentaire_ia: Mapped[str | None] = mapped_column(Text, nullable=True)
+    commentaire_valide: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

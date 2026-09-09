@@ -51,6 +51,35 @@ class Settings(BaseSettings):
     # qui ouvre toujours sa propre session sur la base réelle).
     scheduler_actif: bool = True
 
+    # Service d'assistance IA (lot 6, chapitre 16 du CDC — prompt 6.1, socle
+    # technique seul, aucune fonction métier). Interrupteur général désactivé
+    # par défaut : "le mode dégradé est la norme" (tableau 10) tant qu'aucune
+    # fonction n'est validée pour un usage réel. Fournisseur retenu : Anthropic
+    # (décision explicite, hors CDC qui n'impose aucun fournisseur).
+    assistance_activee: bool = False
+    assistance_api_cle: str | None = None
+    assistance_modele: str = "claude-haiku-4-5-20251001"
+    assistance_delai_max_secondes: float = 10.0
+    # None = pas de plafond configuré (aucune alerte, aucune désactivation
+    # automatique) — un déploiement de test peut vouloir garder le socle actif
+    # sans encore avoir arbitré de budget avec la direction (16.6).
+    assistance_plafond_mensuel_usd: float | None = None
+
+    # Assistant documentaire (prompt 6.2, chapitre 16.2.1/16.3.2 du CDC) —
+    # première fonction du lot 6, son propre indicateur d'activation (voir
+    # app/services/assistance/configuration.py). Fournisseur d'embeddings
+    # distinct d'Anthropic (retenu au prompt 6.1) : Anthropic n'expose aucune
+    # API de représentation vectorielle publique — Voyage AI est le
+    # partenaire qu'Anthropic recommande elle-même pour cet usage (décision
+    # explicite avec l'utilisateur, prompt 6.2).
+    assistance_assistant_documentaire_active: bool = False
+    assistance_voyage_api_cle: str | None = None
+    assistance_modele_embeddings: str = "voyage-3-lite"
+
+    # Pré-rédaction des rapports (prompt 6.4, chapitre 16.2.4) : réutilise
+    # entièrement le client Anthropic du prompt 6.1, aucun nouveau fournisseur.
+    assistance_pre_redaction_active: bool = False
+
 
 @lru_cache
 def get_settings() -> Settings:

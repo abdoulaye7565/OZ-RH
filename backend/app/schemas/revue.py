@@ -21,6 +21,10 @@ class DecisionCreation(BaseModel):
     echeance: date
 
 
+class CommentaireEntree(BaseModel):
+    texte: str
+
+
 class DecisionSortie(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -46,6 +50,10 @@ class RevueSortie(BaseModel):
     # Instantané assemblé à la création (voir app/models/revue_direction.py) :
     # indicateurs de la période + décisions non soldées reportées.
     donnees_entree: dict
+    # Prompt 6.4 : commentaire de synthèse pré-rédigé, brouillon tant que
+    # commentaire_valide vaut False (voir app/models/revue_direction.py).
+    commentaire_ia: str | None
+    commentaire_valide: bool
     archive: bool
     cree_le: datetime
 

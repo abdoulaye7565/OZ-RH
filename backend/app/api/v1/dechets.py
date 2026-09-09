@@ -22,6 +22,7 @@ def creer_dechet_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DECHETS)),
 ) -> Dechet:
+    """Enregistre un lot de déchets produit."""
     return creer_dechet(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -30,6 +31,7 @@ def lister_dechets_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Dechet]:
+    """Liste les lots de déchets enregistrés."""
     return lister_dechets(db)
 
 
@@ -41,6 +43,7 @@ async def enregistrer_enlevement_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DECHETS)),
 ) -> Dechet:
+    """Enregistre l'enlèvement d'un lot de déchets, avec justificatif optionnel."""
     dechet = obtenir_dechet(db, dechet_id)
     chemin = (await enregistrer_justificatifs([justificatif], sous_dossier="dechets"))[0] if justificatif else None
     return enregistrer_enlevement(db, dechet, date_enlevement, chemin, modifie_par_id=utilisateur.id)

@@ -25,6 +25,9 @@ def lister_notifications_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Notification]:
+    """Liste les notifications de l'utilisateur connecté. La plupart sont
+    générées automatiquement par les événements applicatifs et le planificateur,
+    pas créées manuellement via l'API."""
     return lister_notifications(db, utilisateur.id)
 
 
@@ -33,6 +36,7 @@ def compteur_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> dict:
+    """Renvoie le nombre de notifications non lues de l'utilisateur connecté."""
     return {"non_lues": compteur_non_lues(db, utilisateur.id)}
 
 
@@ -41,6 +45,7 @@ def marquer_toutes_lues_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> dict:
+    """Marque toutes les notifications de l'utilisateur connecté comme lues."""
     marquer_toutes_lues(db, utilisateur.id)
     return {"non_lues": 0}
 
@@ -51,6 +56,7 @@ def marquer_lue_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Notification:
+    """Marque une notification de l'utilisateur connecté comme lue."""
     notification = obtenir_notification(db, notification_id, utilisateur.id)
     return marquer_lue(db, notification)
 
@@ -60,6 +66,9 @@ def executer_taches_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(RoleUtilisateur.ADMINISTRATEUR)),
 ) -> dict:
+    """Déclenche manuellement les tâches planifiées (alertes d'échéances, etc.)
+    normalement exécutées chaque jour par le planificateur. Réservé à
+    l'administrateur, utile en exploitation ou en débogage."""
     # Déclenchement manuel (exploitation/débogage) — le planificateur
     # (app/core/scheduler.py) appelle la même fonction de service
     # automatiquement chaque jour ; ce n'est pas un second chemin de code.

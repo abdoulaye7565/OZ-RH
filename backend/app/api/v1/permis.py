@@ -29,6 +29,11 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Permis:
+    """Crée un permis de travail, ouvert à tout utilisateur authentifié. Le
+    permis n'est réellement utilisable qu'une fois validé : la règle de
+    blocage (EPI non conforme, absence de SLAM GO, absence de surveillant,
+    surveillant parmi les intervenants) est évaluée côté serveur à la
+    validation, pas à la création."""
     return creer_permis(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -39,6 +44,8 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Permis]:
+    """Liste les permis non archivés, avec filtres optionnels par statut et
+    site."""
     requete = select(Permis).where(Permis.archive.is_(False))
     if statut is not None:
         requete = requete.where(Permis.statut == statut)
@@ -53,6 +60,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Permis:
+    """Récupère un permis par son identifiant."""
     return _recuperer(db, permis_id)
 
 
@@ -62,6 +70,7 @@ def exporter_pdf(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Response:
+    """Génère le PDF d'un permis."""
     permis = _recuperer(db, permis_id)
     site = db.get(Site, permis.site_id)
     surveillant = db.get(Utilisateur, permis.surveillant_id) if permis.surveillant_id else None
@@ -80,6 +89,12 @@ def valider_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.VALIDER_PERMIS)),
 ) -> Permis:
+    """Valide un permis, réservé aux rôles habilités à valider. C'est ici
+    qu'est évaluée la règle de blocage : la validation est refusée si un EPI
+    affecté à un intervenant n'est pas conforme, si un intervenant n'a pas
+    d'évaluation SLAM GO, si aucun surveillant n'est désigné, ou si le
+    surveillant figure parmi les intervenants — la réponse liste les conditions
+    non satisfaites."""
     permis = _recuperer(db, permis_id)
     return valider(db, permis, validateur_id=utilisateur.id)
 
@@ -91,6 +106,8 @@ def refuser_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.VALIDER_PERMIS)),
 ) -> Permis:
+    """Refuse un permis avec un motif obligatoire, réservé aux rôles habilités à
+    valider."""
     permis = _recuperer(db, permis_id)
     return refuser(db, permis, payload.motif, modifie_par_id=utilisateur.id)
 
@@ -101,5 +118,6 @@ def cloturer_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.VALIDER_PERMIS)),
 ) -> Permis:
+    """Clôture un permis, réservé aux rôles habilités à valider."""
     permis = _recuperer(db, permis_id)
     return cloturer(db, permis, modifie_par_id=utilisateur.id)

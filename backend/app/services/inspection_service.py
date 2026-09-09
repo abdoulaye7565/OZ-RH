@@ -125,7 +125,18 @@ def ajouter_photo(db: Session, inspection: Inspection, point_checklist_id: int, 
             status_code=status.HTTP_409_CONFLICT,
             detail="Une inspection clôturée n'est plus modifiable",
         )
-    points = list(inspection.points)
+    # `points` est une colonne JSON brute (pas de MutableList/MutableDict) :
+    # SQLAlchemy ne détecte un changement que par comparaison de valeur à la
+    # réassignation. `list(inspection.points)` ne copie que la liste
+    # externe — les dictionnaires internes restent partagés avec l'objet
+    # déjà suivi par la session ; les muter en place corrompt donc l'état
+    # "avant" que SQLAlchemy compare à l'état "après", qui deviennent
+    # identiques : aucun UPDATE n'est émis (bug réel trouvé en testant
+    # l'upload de photo en conditions réelles — le point restait `photo:
+    # null` malgré une réponse 200). Corrigé en reconstruisant des
+    # dictionnaires neufs, sans aucune référence partagée avec l'ancienne
+    # valeur.
+    points = [dict(p) for p in inspection.points]
     for p in points:
         if p["point_checklist_id"] == point_checklist_id:
             p["photo"] = chemin

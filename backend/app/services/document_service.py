@@ -11,6 +11,7 @@ from app.models.document import Document
 from app.models.enums import ConfidentialiteDocument, RoleUtilisateur, StatutDocument
 from app.models.utilisateur import Utilisateur
 from app.schemas.document import DocumentCreation
+from app.services.assistance import indexation
 
 # Section 5.3.5 : "Un document en cours d'approbation n'est pas accessible aux
 # utilisateurs finaux." Les rôles ci-dessous voient tous les statuts (rédaction,
@@ -114,6 +115,16 @@ def approuver(db: Session, document: Document, approbateur_id: int) -> Document:
     document.modifie_par_id = approbateur_id
     db.commit()
     db.refresh(document)
+
+    # Chapitre 16.3.2 du CDC : indexation à l'approbation, retrait des segments
+    # de la version archivée — après le commit ci-dessus, jamais avant : une
+    # indexation en échec (service indisponible, format non reconnu) ne doit
+    # jamais empêcher ni annuler l'approbation elle-même ("le mode dégradé est
+    # la norme", tableau 10).
+    if version_precedente is not None:
+        indexation.retirer_segments(db, version_precedente.id)
+    indexation.indexer_document(db, document)
+
     return document
 
 

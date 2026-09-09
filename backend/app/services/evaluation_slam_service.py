@@ -2,6 +2,7 @@
 import logging
 from datetime import datetime, timezone
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.pdf import DocumentPDF
@@ -42,6 +43,14 @@ def creer_evaluation(db: Session, donnees: EvaluationSlamCreation, utilisateur_i
         logger.info("GO enregistré par utilisateur id=%s", utilisateur_id)
 
     return evaluation
+
+
+def lister_toutes(db: Session) -> list[EvaluationSlam]:
+    """Toutes les évaluations SLAM, tous intervenants confondus — distinct de
+    `/mes-evaluations` (scopée à l'appelant) : sert à l'écran de pilotage
+    "SLAM & permis" (décisions récentes), réservé aux rôles habilités à
+    consulter le tableau de bord."""
+    return list(db.scalars(select(EvaluationSlam).order_by(EvaluationSlam.date.desc())))
 
 
 def generer_pdf(db: Session, evaluation: EvaluationSlam, intervenant) -> bytes:

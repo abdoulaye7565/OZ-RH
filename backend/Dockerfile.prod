@@ -1,0 +1,17 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Pas de --reload (réservé au développement, backend/Dockerfile) : un
+# rechargement à chaud n'a aucun sens sur une image immuable, et surveiller le
+# système de fichiers en continu coûte des ressources inutiles en production.
+# Un seul worker : le volume attendu (une PME) ne justifie pas la complexité
+# d'une coordination multi-worker (APScheduler en tâche de fond dans le même
+# processus, prompt 4.4 — plusieurs workers dupliqueraient les rappels
+# planifiés sans coordination prévue pour l'éviter).
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

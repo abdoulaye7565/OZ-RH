@@ -43,6 +43,7 @@ def creer(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
+    """Crée une inspection à partir du modèle de checklist choisi."""
     return creer_inspection(db, payload, inspecteur_id=utilisateur.id)
 
 
@@ -54,6 +55,8 @@ def lister(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Inspection]:
+    """Liste les inspections non archivées, avec filtres optionnels par modèle,
+    site et statut."""
     requete = select(Inspection).where(Inspection.archive.is_(False))
     if modele is not None:
         requete = requete.where(Inspection.modele == modele)
@@ -70,6 +73,7 @@ def planification_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[dict]:
+    """Liste les inspections planifiées dans l'horizon donné."""
     return planification(db, horizon_jours)
 
 
@@ -79,6 +83,7 @@ def lire(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
+    """Récupère une inspection par son identifiant."""
     return _recuperer(db, inspection_id)
 
 
@@ -88,6 +93,7 @@ def exporter_pdf(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Response:
+    """Génère le PDF d'une inspection."""
     inspection = _recuperer(db, inspection_id)
     inspecteur = db.get(Utilisateur, inspection.inspecteur_id)
     site = db.get(Site, inspection.site_id)
@@ -107,6 +113,8 @@ def mettre_a_jour(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
+    """Met à jour les réponses aux points de la checklist d'une inspection. Un
+    point marqué non conforme génère automatiquement une action corrective."""
     inspection = _recuperer(db, inspection_id)
     return mettre_a_jour_points(db, inspection, payload.points, modifie_par_id=utilisateur.id)
 
@@ -119,6 +127,7 @@ async def deposer_photo(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
+    """Attache une photo à un point de la checklist d'une inspection."""
     inspection = _recuperer(db, inspection_id)
     chemins = await enregistrer_photos([photo], sous_dossier="inspections", nombre_max=1)
     return ajouter_photo(db, inspection, point_checklist_id, chemins[0], modifie_par_id=utilisateur.id)
@@ -130,6 +139,9 @@ def cloturer_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Inspection:
+    """Clôture une inspection. Le taux de conformité (conformes ÷ (conformes +
+    non conformes), les points « sans objet » étant exclus du dénominateur) est
+    calculé côté serveur."""
     inspection = _recuperer(db, inspection_id)
     inspection, _actions = cloturer(db, inspection, modifie_par_id=utilisateur.id)
     return inspection
@@ -141,5 +153,7 @@ def actions_generees(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list:
+    """Liste les actions correctives générées automatiquement par les points non
+    conformes de l'inspection."""
     _recuperer(db, inspection_id)  # 404 si l'inspection n'existe pas
     return list(db.scalars(select(Action).where(Action.inspection_id == inspection_id)))

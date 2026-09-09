@@ -94,3 +94,25 @@ def test_mes_evaluations_ne_montre_que_les_siennes(client, db_session, technicie
 def test_aucune_route_de_suppression(client):
     reponse = client.delete("/api/v1/slam/1")
     assert reponse.status_code == 405
+
+
+def test_lister_toutes_montre_toutes_les_evaluations_au_referent(client, technicien, referent_sheq):
+    client.post(
+        "/api/v1/slam",
+        headers=_entete(technicien),
+        json={"etapes_validees": [[True] * 4] * 4, "decision": "GO"},
+    )
+    client.post(
+        "/api/v1/slam",
+        headers=_entete(referent_sheq),
+        json={"etapes_validees": [[True] * 4] * 4, "decision": "GO"},
+    )
+
+    reponse = client.get("/api/v1/slam", headers=_entete(referent_sheq))
+    assert reponse.status_code == 200
+    assert len(reponse.json()) == 2
+
+
+def test_technicien_ne_peut_pas_lister_toutes_les_evaluations(client, technicien):
+    reponse = client.get("/api/v1/slam", headers=_entete(technicien))
+    assert reponse.status_code == 403

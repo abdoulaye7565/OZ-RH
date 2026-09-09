@@ -194,6 +194,41 @@ def test_identifiant_deja_utilise_refuse(client, administrateur, mot_de_passe_cl
     assert reponse.status_code == 409
 
 
+def test_lister_utilisateurs_ouvert_a_tout_authentifie(client, technicien, referent_sheq, mot_de_passe_clair):
+    connexion = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": technicien.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    jeton = connexion.json()["access_token"]
+
+    reponse = client.get("/api/v1/auth/utilisateurs", headers={"Authorization": f"Bearer {jeton}"})
+
+    assert reponse.status_code == 200
+    identifiants = [u["identifiant"] for u in reponse.json()]
+    assert technicien.identifiant in identifiants
+    assert referent_sheq.identifiant in identifiants
+    assert all("mot_de_passe" not in u for u in reponse.json())
+
+
+def test_lister_utilisateurs_sans_jeton_refuse(client):
+    reponse = client.get("/api/v1/auth/utilisateurs")
+    assert reponse.status_code == 401
+
+
+def test_lister_utilisateurs_expose_la_derniere_connexion(client, administrateur, mot_de_passe_clair):
+    connexion = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    jeton = connexion.json()["access_token"]
+
+    reponse = client.get("/api/v1/auth/utilisateurs", headers={"Authorization": f"Bearer {jeton}"})
+    corps = next(u for u in reponse.json() if u["identifiant"] == administrateur.identifiant)
+    # Doit refléter la connexion qui vient d'avoir lieu, pas rester à `null`
+    # comme avant l'ajout du champ au schéma de sortie.
+    assert corps["derniere_connexion"] is not None
+
+
 def test_compte_desactive_ne_peut_pas_se_connecter(client, db_session, administrateur, mot_de_passe_clair):
     administrateur.actif = False
     db_session.commit()
@@ -203,3 +238,111 @@ def test_compte_desactive_ne_peut_pas_se_connecter(client, db_session, administr
         json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
     )
     assert reponse.status_code == 401
+
+
+def test_administrateur_peut_desactiver_puis_reactiver_un_compte(client, administrateur, technicien, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+    entete = {"Authorization": f"Bearer {jeton}"}
+
+    desactivation = client.post(f"/api/v1/auth/utilisateurs/{technicien.id}/desactiver", headers=entete)
+    assert desactivation.status_code == 200
+    assert desactivation.json()["actif"] is False
+
+    # Le compte désactivé ne peut plus se connecter (règle déjà couverte,
+    # vérifiée ici de bout en bout depuis la nouvelle route).
+    connexion_refusee = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": technicien.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    assert connexion_refusee.status_code == 401
+
+    reactivation = client.post(f"/api/v1/auth/utilisateurs/{technicien.id}/activer", headers=entete)
+    assert reactivation.status_code == 200
+    assert reactivation.json()["actif"] is True
+
+    connexion_de_nouveau_possible = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": technicien.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    assert connexion_de_nouveau_possible.status_code == 200
+
+
+def test_administrateur_ne_peut_pas_se_desactiver_lui_meme(client, administrateur, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.post(
+        f"/api/v1/auth/utilisateurs/{administrateur.id}/desactiver",
+        headers={"Authorization": f"Bearer {jeton}"},
+    )
+    assert reponse.status_code == 400
+
+
+def test_technicien_ne_peut_pas_desactiver_un_compte(client, technicien, referent_sheq, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": technicien.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.post(
+        f"/api/v1/auth/utilisateurs/{referent_sheq.id}/desactiver",
+        headers={"Authorization": f"Bearer {jeton}"},
+    )
+    assert reponse.status_code == 403
+
+
+def test_cinq_mots_de_passe_faux_verrouillent_le_compte(client, administrateur, mot_de_passe_clair):
+    """Revue de sécurité du 2026-09-08 (CLAUDE.md point 10) : avant ce
+    verrouillage, /auth/connexion n'avait aucune limite de tentatives."""
+    for _ in range(5):
+        reponse = client.post(
+            "/api/v1/auth/connexion",
+            json={"identifiant": administrateur.identifiant, "mot_de_passe": "mauvais-mot-de-passe"},
+        )
+        assert reponse.status_code == 401
+
+    # Un 6e essai, même avec le BON mot de passe cette fois, est refusé —
+    # le compte est verrouillé, pas seulement le mot de passe faux rejeté.
+    reponse = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    assert reponse.status_code == 401
+
+
+def test_une_connexion_reussie_reinitialise_le_compteur_de_tentatives(client, db_session, administrateur, mot_de_passe_clair):
+    for _ in range(3):
+        client.post(
+            "/api/v1/auth/connexion",
+            json={"identifiant": administrateur.identifiant, "mot_de_passe": "mauvais-mot-de-passe"},
+        )
+    db_session.refresh(administrateur)
+    assert administrateur.tentatives_echouees == 3
+
+    reussie = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    )
+    assert reussie.status_code == 200
+
+    db_session.refresh(administrateur)
+    assert administrateur.tentatives_echouees == 0
+    assert administrateur.verrouille_jusqua is None
+
+
+def test_desactiver_un_compte_inexistant_renvoie_404(client, administrateur, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.post(
+        "/api/v1/auth/utilisateurs/999999/desactiver",
+        headers={"Authorization": f"Bearer {jeton}"},
+    )
+    assert reponse.status_code == 404

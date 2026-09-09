@@ -1,0 +1,68 @@
+# Déploiement de production (prompt 5.3). Différences volontaires avec
+# docker-compose.yml (développement) :
+# - images construites une fois (Dockerfile.prod / frontend/Dockerfile),
+#   aucun montage du code source en volume, aucun --reload ;
+# - frontend servi en fichiers statiques par Nginx (résultat de `vite build`),
+#   pas par le serveur de développement Vite ;
+# - aucun mot de passe par défaut : les variables sans valeur ici doivent être
+#   fournies par l'environnement (fichier .env à la racine, voir
+#   .env.prod.example), sans quoi `docker compose` refuse de démarrer plutôt
+#   que de se rabattre silencieusement sur une valeur faible connue de tous
+#   (même principe que backend/app/core/config.py) ;
+# - le port PostgreSQL n'est pas publié sur l'hôte : seule l'API y accède,
+#   via le réseau interne du compose.
+#
+# Utilisation :
+#   cp .env.prod.example .env      # puis renseigner les valeurs
+#   cp backend/.env.example backend/.env   # puis renseigner les secrets (JWT, Fernet, SMTP)
+#   docker compose -f docker-compose.prod.yml up --build -d
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER doit être défini dans .env}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD doit être défini dans .env}
+      POSTGRES_DB: ${POSTGRES_DB:?POSTGRES_DB doit être défini dans .env}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.prod
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      STORAGE_DIR: /app/storage
+      ENVIRONMENT: production
+    volumes:
+      - storage_data:/app/storage
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${API_PORT:-8000}:8000"
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:?VITE_API_URL doit être défini dans .env (URL publique de l'API)}
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+volumes:
+  db_data:
+  storage_data:

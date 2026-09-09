@@ -141,3 +141,26 @@ def test_reponse_a_analyser_visible_par_le_referent_sheq_et_action_creable(clien
 def test_technicien_ne_peut_pas_consulter_les_reponses_a_traiter(client, technicien):
     reponse = client.get("/api/v1/satisfaction/a-traiter", headers=_entete(technicien))
     assert reponse.status_code == 403
+
+
+def test_lister_toutes_les_reponses_inclut_celles_sans_analyse(client, technicien, referent_sheq):
+    enquete = client.post(
+        "/api/v1/satisfaction/enquetes", headers=_entete(technicien), json={"client": "Client Démo", "intervention": "X"}
+    ).json()
+    client.post(
+        f"/api/v1/satisfaction/questionnaire/{enquete['jeton']}",
+        json={"notes": _notes(5), "recommandation": "oui_certainement"},
+    )
+
+    toutes = client.get("/api/v1/satisfaction/reponses", headers=_entete(referent_sheq)).json()
+    assert len(toutes) == 1
+    assert toutes[0]["necessite_analyse"] is False
+
+    # Contrairement à /a-traiter, cette route n'exclut pas les bonnes notes.
+    a_traiter = client.get("/api/v1/satisfaction/a-traiter", headers=_entete(referent_sheq)).json()
+    assert len(a_traiter) == 0
+
+
+def test_technicien_ne_peut_pas_consulter_toutes_les_reponses(client, technicien):
+    reponse = client.get("/api/v1/satisfaction/reponses", headers=_entete(technicien))
+    assert reponse.status_code == 403

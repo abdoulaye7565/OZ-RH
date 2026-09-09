@@ -19,11 +19,12 @@ onMounted(async () => {
 <template>
   <main class="accueil">
     <h1>SHEQ Management</h1>
-    <p>Squelette d'application initialisé — aucun module métier encore implémenté.</p>
+    <p>Hirondelles IT Lab — gestion Sécurité, Santé, Environnement, Qualité.</p>
     <p class="etat" :class="etatApi">
       API : <strong>{{ etatApi }}</strong>
       <span v-if="environnement"> ({{ environnement }})</span>
     </p>
+    <RouterLink class="btn pri" to="/connexion">Se connecter</RouterLink>
   </main>
 </template>
 

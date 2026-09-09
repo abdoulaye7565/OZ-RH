@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.v1.actions import router as actions_router
+from app.api.v1.assistance import router as assistance_router
 from app.api.v1.audits import router as audits_router
 from app.api.v1.auth import router as auth_router
 from app.api.v1.configurations import router as configurations_router
@@ -21,7 +22,9 @@ from app.api.v1.points_checklist import router as points_checklist_router
 from app.api.v1.revues import router as revues_router
 from app.api.v1.risques import router as risques_router
 from app.api.v1.satisfaction import router as satisfaction_router
+from app.api.v1.secrets import router as secrets_router
 from app.api.v1.signalements import router as signalements_router
+from app.api.v1.sites import router as sites_router
 from app.api.v1.tableau_bord import router as tableau_bord_router
 from app.api.v1.visiteurs import router as visiteurs_router
 from app.core.config import settings
@@ -38,6 +41,20 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title=settings.app_name,
     version=settings.app_version,
+    description=(
+        "API du système de gestion SHEQ (Sécurité, Santé, Environnement, Qualité) "
+        "d'Hirondelles IT Lab, entreprise malienne de services numériques dont les "
+        "techniciens interviennent sur pylônes et toitures. L'interface et l'ensemble "
+        "des données métier sont en français.\n\n"
+        "**Authentification** : `POST /api/v1/auth/connexion` avec `identifiant` et "
+        "`mot_de_passe` renvoie un `access_token` JWT à transmettre sur les requêtes "
+        "suivantes via l'en-tête `Authorization: Bearer <token>`. `POST "
+        "/api/v1/auth/rafraichissement` permet de renouveler l'access token à partir "
+        "du refresh token.\n\n"
+        "**Droits d'accès** : chaque route applique côté serveur les droits du rôle de "
+        "l'utilisateur connecté (administrateur, referent_sheq, responsable, technicien, "
+        "collaborateur) — voir la matrice des rôles dans la documentation du projet."
+    ),
     lifespan=lifespan,
 )
 
@@ -69,6 +86,9 @@ app.include_router(visiteurs_router, prefix="/api/v1")
 app.include_router(dechets_router, prefix="/api/v1")
 app.include_router(satisfaction_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
+app.include_router(assistance_router, prefix="/api/v1")
+app.include_router(sites_router, prefix="/api/v1")
+app.include_router(secrets_router, prefix="/api/v1")
 
 
 @app.get("/health", tags=["système"])

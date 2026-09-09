@@ -12,7 +12,8 @@ import { computed, onMounted } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
-import { FILTRES_STATUT, useSignalementsStore } from "../stores/signalements";
+import NotificationsCloche from "../components/NotificationsCloche.vue";
+import { FILTRES_STATUT, FILTRES_TYPE, useSignalementsStore } from "../stores/signalements";
 
 const router = useRouter();
 const signalements = useSignalementsStore();
@@ -33,9 +34,27 @@ const STYLE_STATUT = {
   cloture: { lead: "gr", tag: "t-gr", icone: "check", libelle: "CLÔTURÉ" },
 };
 
-function styleDe(statut) {
-  return STYLE_STATUT[statut] ?? STYLE_STATUT.nouveau;
+// Un signalement saisi hors connexion (2026-09-08, voir stores/horsConnexion.js)
+// n'a pas encore de statut serveur : son statut local ("nouveau") ne doit pas
+// se confondre avec un vrai signalement déjà reçu par l'API.
+const STYLE_EN_ATTENTE = { lead: "gd", tag: "t-gd", icone: "sync", libelle: "EN ATTENTE DE RÉSEAU" };
+
+function styleDe(s) {
+  if (s.enAttente) return STYLE_EN_ATTENTE;
+  return STYLE_STATUT[s.statut] ?? STYLE_STATUT.nouveau;
 }
+
+// Le type n'était visible nulle part dans cette liste (seul le statut
+// l'était) : ajouté le 2026-09-08 (retour direct de l'utilisateur, "je ne
+// vois pas l'écran des accidents" — les accidents n'ont pas d'écran séparé,
+// ce sont des signalements comme les autres, distingués par ce champ).
+const LIBELLE_TYPE = {
+  situation_dangereuse: "Situation dangereuse",
+  presque_accident: "Presque-accident",
+  anomalie: "Anomalie matérielle",
+  incident: "Incident",
+  accident: "Accident",
+};
 
 function formaterDate(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -51,6 +70,7 @@ function formaterDate(iso) {
         <h1>Signalements</h1>
         <div class="sub">{{ total }} signalement{{ total > 1 ? "s" : "" }}</div>
       </div>
+      <div class="act"><NotificationsCloche /></div>
     </header>
 
     <div class="wrap">
@@ -69,6 +89,19 @@ function formaterDate(iso) {
             </button>
           </div>
 
+          <div class="segs" style="margin-bottom: 12px">
+            <button
+              v-for="filtre in FILTRES_TYPE"
+              :key="filtre.valeur ?? 'tous-types'"
+              type="button"
+              class="seg"
+              :class="{ on: signalements.filtreType === filtre.valeur }"
+              @click="signalements.definirFiltreType(filtre.valeur)"
+            >
+              {{ filtre.libelle }}
+            </button>
+          </div>
+
           <div v-if="signalements.erreur" class="banner err">{{ signalements.erreur }}</div>
 
           <div v-if="signalements.chargement" class="skel" style="height: 64px"></div>
@@ -80,19 +113,20 @@ function formaterDate(iso) {
           </div>
 
           <div v-for="s in signalements.liste" :key="s.id" class="row">
-            <span class="lead" :class="styleDe(s.statut).lead">
-              <Icone :nom="styleDe(s.statut).icone" />
+            <span class="lead" :class="styleDe(s).lead">
+              <Icone :nom="styleDe(s).icone" />
             </span>
             <div class="tx">
               <b>{{ s.lieu }}</b>
               <div class="meta">
-                <span>{{ s.reference ?? "en attente de référence" }}</span>
+                <span :style="s.type === 'accident' ? 'color: var(--red); font-weight: 650' : ''">{{ LIBELLE_TYPE[s.type] ?? s.type }}</span>
+                <span>{{ s.reference ?? (s.enAttente ? "réf. provisoire, en attente du réseau" : "en attente de référence") }}</span>
                 <span>{{ formaterDate(s.date_saisie) }}</span>
                 <span>{{ s.anonyme ? "Anonyme" : `Utilisateur #${s.auteur_id}` }}</span>
                 <span v-if="s.photos?.length">{{ s.photos.length }} photo{{ s.photos.length > 1 ? "s" : "" }}</span>
               </div>
             </div>
-            <span class="tag" :class="styleDe(s.statut).tag">{{ styleDe(s.statut).libelle }}</span>
+            <span class="tag" :class="styleDe(s).tag">{{ styleDe(s).libelle }}</span>
           </div>
 
           <div style="height: 56px"></div>
@@ -108,6 +142,8 @@ function formaterDate(iso) {
       <button class="tb on"><Icone nom="alert" />Signaux</button>
       <button class="tb" @click="router.push({ name: 'slam' })"><Icone nom="climb" />SLAM</button>
       <button class="tb" @click="router.push({ name: 'tableau-de-bord' })"><Icone nom="chart" />Tableau</button>
+      <button class="tb" @click="router.push({ name: 'assistant-documentaire' })"><Icone nom="chat" />Assistant</button>
+      <button class="tb" @click="router.push({ name: 'menu' })"><Icone nom="grid" />Menu</button>
     </nav>
   </div>
 </template>

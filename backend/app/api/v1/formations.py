@@ -63,6 +63,8 @@ def creer_competence_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ) -> Competence:
+    """Crée une compétence du référentiel de formation, avec sa périodicité de
+    recyclage en mois."""
     return creer_competence(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -71,6 +73,7 @@ def lister_competences_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Competence]:
+    """Liste les compétences du référentiel de formation."""
     return lister_competences(db)
 
 
@@ -80,6 +83,9 @@ def creer_habilitation_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ):
+    """Enregistre l'habilitation d'un utilisateur à une compétence. La date
+    d'expiration se calcule automatiquement à partir de la périodicité de la
+    compétence."""
     return creer_habilitation(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -88,6 +94,9 @@ def matrice_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*ROLES_VUE_ENSEMBLE)),
 ):
+    """Renvoie la matrice complète des habilitations de tous les utilisateurs.
+    Réservé aux rôles ayant une vue d'ensemble (gestion des formations,
+    responsable)."""
     return matrice_competences(db)
 
 
@@ -96,6 +105,8 @@ def mes_habilitations_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ):
+    """Renvoie les habilitations de l'utilisateur connecté uniquement — ouvert à
+    tous, chacun ne voit que ses propres lignes."""
     # Section 5.3.3, Acteurs : "chaque collaborateur pour ses propres
     # compétences" — ouvert à tous, restreint à ses propres lignes.
     return matrice_competences(db, utilisateur_id=utilisateur.id)
@@ -107,6 +118,8 @@ def alertes_recyclage_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*ROLES_VUE_ENSEMBLE)),
 ):
+    """Liste les habilitations qui expirent dans l'horizon donné (recyclage à
+    prévoir), calculé à partir de la périodicité de chaque compétence."""
     habilitations = alertes_recyclage(db, horizon_jours)
     competences = {c.id: c for c in lister_competences(db)}
     return [
@@ -129,6 +142,7 @@ def creer_seance_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ) -> Seance:
+    """Planifie une séance de formation."""
     return creer_seance(db, payload, cree_par_id=utilisateur.id)
 
 
@@ -137,6 +151,7 @@ def lister_seances_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Seance]:
+    """Liste les séances de formation."""
     return lister_seances(db)
 
 
@@ -146,6 +161,7 @@ def lire_seance_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> Seance:
+    """Récupère une séance de formation par son identifiant."""
     return _recuperer_seance(db, seance_id)
 
 
@@ -156,6 +172,7 @@ def emarger_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ):
+    """Enregistre l'émargement des participants à une séance de formation."""
     seance = _recuperer_seance(db, seance_id)
     return emarger(db, seance, payload, cree_par_id=utilisateur.id)
 
@@ -166,6 +183,7 @@ def cloturer_seance_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ) -> Seance:
+    """Clôture une séance de formation."""
     seance = _recuperer_seance(db, seance_id)
     return cloturer_seance(db, seance, modifie_par_id=utilisateur.id)
 
@@ -176,6 +194,8 @@ def creer_question_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
 ) -> QuestionQuiz:
+    """Crée une question de quiz avec ses choix de réponse et la réponse
+    correcte."""
     return creer_question(
         db,
         enonce=payload.enonce,
@@ -190,6 +210,8 @@ def lister_questions_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[QuestionQuiz]:
+    """Liste les questions de quiz sans révéler la réponse correcte — c'est
+    l'écran que voit le participant avant de répondre."""
     # Jamais reponse_correcte ici (QuestionQuizSortie ne l'expose pas) : c'est
     # l'écran que voit le participant avant de répondre.
     return lister_questions(db)
@@ -202,6 +224,9 @@ def passer_quiz_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ):
+    """Soumet les réponses d'un participant à une séance et renvoie le résultat
+    corrigé. La réussite/échec est calculée côté serveur à partir des questions
+    référencées, jamais transmise par le client."""
     seance = _recuperer_seance(db, seance_id)
     tentative, details = passer_quiz(db, seance, payload, participant_id=utilisateur.id)
     sortie = TentativeQuizSortie.model_validate(tentative)
