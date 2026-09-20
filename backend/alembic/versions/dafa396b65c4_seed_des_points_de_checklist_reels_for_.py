@@ -25,7 +25,18 @@ depends_on: Union[str, Sequence[str], None] = None
 
 point_checklist = sa.table(
     "point_checklist",
-    sa.column("type_inspection", sa.String),
+    # Enum PostgreSQL existant (créé par la migration fb8c539876c8) : sa.String
+    # fonctionnait sur SQLite (pas de vrai type ENUM) mais échoue sur PostgreSQL
+    # (« column "type_inspection" is of type type_inspection_point but
+    # expression is of type character varying ») — create_type=False car le
+    # type existe déjà, il ne doit pas être recréé ici.
+    sa.column(
+        "type_inspection",
+        sa.Enum(
+            "locaux", "incendie", "electricite", "installations", "equipements",
+            name="type_inspection_point", create_type=False,
+        ),
+    ),
     sa.column("categorie", sa.String),
     sa.column("ordre", sa.Integer),
     sa.column("libelle", sa.String),
