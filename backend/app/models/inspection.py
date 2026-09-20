@@ -26,6 +26,15 @@ class Inspection(BaseModel):
     # inspections, incidents") ne pourrait jamais retrouver ses inspections.
     # Nullable : seules les inspections de type "équipements" le renseignent.
     equipement_id: Mapped[int | None] = mapped_column(ForeignKey("equipement.id"), nullable=True)
+    # Objet précis inspecté quand ce n'est PAS un équipement du parc (retour
+    # utilisateur 2026-09-10 : "après inspection d'un extincteur, on ne sait
+    # pas lequel a été inspecté"). Champ libre volontairement : le CDC ne
+    # prévoit pas de registre des extincteurs / tableaux électriques / lignes
+    # de vie — un texte court ("Extincteur EXT-03, hall RDC", "TGBT local
+    # technique") suffit à lever l'ambiguïté. Pour le type "équipements",
+    # equipement_id porte déjà l'identification ; ce champ reste alors
+    # facultatif (complément de repérage).
+    objet_inspecte: Mapped[str | None] = mapped_column(String(200), nullable=True)
     inspecteur_id: Mapped[int] = mapped_column(ForeignKey("utilisateur.id"), nullable=False)
     date: Mapped[date] = mapped_column(Date, nullable=False)
     # Liste de {point_checklist_id, libelle, cotation: "C"|"NC"|"SO", observation,

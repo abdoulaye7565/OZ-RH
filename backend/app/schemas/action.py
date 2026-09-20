@@ -1,7 +1,7 @@
 """Schémas Pydantic du module Actions (prompt 1.2)."""
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
 from app.models.enums import StatutAction, TypeMesureAction
 
@@ -36,6 +36,26 @@ class ActionCreation(BaseModel):
                 "risque_id, signalement_id, inspection_id, cotation_audit_id ou reponse_satisfaction_id"
             )
         return self
+
+
+class ActionModification(BaseModel):
+    """Correction des champs de suivi d'une action (libellé, responsable,
+    échéance, type de mesure) — revue d'ensemble 2026-09-10. L'origine
+    (risque_id…) ne se modifie pas : une action mal rattachée s'archive et se
+    recrée. Refusé sur une action clôturée (règle métier côté service).
+    Modification partielle (`exclude_unset`)."""
+
+    libelle: str | None = None
+    type_mesure: TypeMesureAction | None = None
+    responsable_id: int | None = None
+    echeance: date | None = None
+
+    @field_validator("libelle")
+    @classmethod
+    def _libelle_non_vide(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("le libellé ne peut pas être vide")
+        return v.strip() if v is not None else None
 
 
 class AvancementMiseAJour(BaseModel):

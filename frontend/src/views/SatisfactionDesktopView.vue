@@ -17,11 +17,20 @@
  *    une analyse est requise, pas le numéro de l'action.
  */
 import { computed, onMounted, ref } from "vue";
+import BarrePagination from "../components/BarrePagination.vue";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
+import { useRechercheEtPagination } from "../composables/useRechercheEtPagination";
 import { useSatisfactionStore } from "../stores/satisfaction";
 
 const satisfaction = useSatisfactionStore();
 onMounted(() => satisfaction.charger());
+
+function correspond(e, terme) {
+  return e.client?.toLowerCase().includes(terme) || e.intervention?.toLowerCase().includes(terme);
+}
+const { recherche, page, totalPages, resultats, elementsPage, allerPage } =
+  useRechercheEtPagination(computed(() => satisfaction.enquetes), correspond, 15);
 
 const COULEUR_BARRE = ["g", "gd", "g", "g", "gd", "g"];
 
@@ -49,14 +58,17 @@ const lienGenere = ref(null);
 
 async function soumettre() {
   erreurFormulaire.value = null;
-  lienGenere.value = null;
   try {
     const donnees = { client: nouveau.value.client, intervention: nouveau.value.intervention };
     if (nouveau.value.site_id) donnees.site_id = Number(nouveau.value.site_id);
     if (nouveau.value.technicien_id) donnees.technicien_id = Number(nouveau.value.technicien_id);
     const enquete = await satisfaction.creerEnquete(donnees);
+    // Le modal se ferme après l'action (2026-09-09), mais le lien généré
+    // reste affiché au niveau de la page — sinon l'administrateur n'aurait
+    // aucune occasion de le copier avant qu'il disparaisse avec le modal.
     lienGenere.value = `${window.location.origin}/satisfaction/${enquete.jeton}`;
     nouveau.value = { client: "", site_id: "", intervention: "", technicien_id: "" };
+    formulaireOuvert.value = false;
   } catch (e) {
     erreurFormulaire.value = e?.message ?? "Impossible de créer cette enquête";
   }
@@ -66,6 +78,10 @@ async function soumettre() {
 <template>
   <div>
     <div v-if="satisfaction.erreur" class="banner err">{{ satisfaction.erreur }}</div>
+    <div v-if="lienGenere" class="banner info">
+      <Icone nom="check" taille="sm" style="margin-top: 1px" />
+      <div>Enquête créée. Lien à transmettre au client : <b>{{ lienGenere }}</b></div>
+    </div>
 
     <div class="grid2" style="grid-template-columns: 1fr 1fr">
       <div class="card">
@@ -111,51 +127,53 @@ async function soumettre() {
       </div>
     </div>
 
-    <div v-if="formulaireOuvert" class="card">
-      <div class="ch"><h3>Nouvelle enquête</h3></div>
-      <div class="cb">
-        <div class="grid2">
-          <div>
-            <label class="f">Client</label><input v-model="nouveau.client" class="inp" />
-            <label class="f">Intervention</label><input v-model="nouveau.intervention" class="inp" placeholder="Installation liaison, maintenance…" />
-          </div>
-          <div>
-            <label class="f">Site (facultatif)</label>
-            <select v-model="nouveau.site_id" class="inp">
-              <option value="">Aucun</option>
-              <option v-for="s in satisfaction.sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
-            </select>
-            <label class="f">Technicien (facultatif)</label>
-            <select v-model="nouveau.technicien_id" class="inp">
-              <option value="">Aucun</option>
-              <option v-for="u in satisfaction.utilisateurs.filter((u) => u.role === 'technicien')" :key="u.id" :value="u.id">{{ u.prenom }} {{ u.nom }}</option>
-            </select>
-          </div>
+    <Modal v-if="formulaireOuvert" titre="Nouvelle enquête" @fermer="formulaireOuvert = false">
+      <div class="grid2">
+        <div>
+          <label class="f">Client</label><input v-model="nouveau.client" class="inp" />
+          <label class="f">Intervention</label><input v-model="nouveau.intervention" class="inp" placeholder="Installation liaison, maintenance…" />
         </div>
-        <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
-        <div v-if="lienGenere" class="banner info" style="margin-top: 8px">
-          <Icone nom="check" taille="sm" style="margin-top: 1px" /><div>Enquête créée. Lien à transmettre au client : <b>{{ lienGenere }}</b></div>
+        <div>
+          <label class="f">Site (facultatif)</label>
+          <select v-model="nouveau.site_id" class="inp">
+            <option value="">Aucun</option>
+            <option v-for="s in satisfaction.sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
+          </select>
+          <label class="f">Technicien (facultatif)</label>
+          <select v-model="nouveau.technicien_id" class="inp">
+            <option value="">Aucun</option>
+            <option v-for="u in satisfaction.utilisateurs.filter((u) => u.role === 'technicien')" :key="u.id" :value="u.id">{{ u.prenom }} {{ u.nom }}</option>
+          </select>
         </div>
-        <button class="btn pri" style="width: auto; margin-top: 10px" @click="soumettre">Envoyer l'enquête</button>
       </div>
-    </div>
+      <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
+      <div style="display: flex; gap: 8px; margin-top: 10px">
+        <button class="btn pri" style="width: auto" @click="soumettre">Envoyer l'enquête</button>
+        <button class="btn gh" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
+      </div>
+    </Modal>
 
     <div class="card">
       <div class="ch">
         <h3>Enquêtes envoyées</h3>
+        <span style="flex: 1"></span>
+        <div class="srch">
+          <Icone nom="search" taille="sm" />
+          <input v-model="recherche" placeholder="Rechercher un client, une intervention…" />
+        </div>
         <span
           class="r"
           style="cursor: pointer"
           role="button"
           tabindex="0"
-          @click="formulaireOuvert = !formulaireOuvert"
-          @keydown.enter="formulaireOuvert = !formulaireOuvert"
+          @click="formulaireOuvert = true"
+          @keydown.enter="formulaireOuvert = true"
         >Nouvelle enquête</span>
       </div>
       <table>
         <thead><tr><th>Client</th><th>Intervention</th><th>Envoyée</th><th>Réponse</th><th>Note</th><th>Suite donnée</th></tr></thead>
         <tbody>
-          <tr v-for="e in satisfaction.enquetes" :key="e.id">
+          <tr v-for="e in elementsPage" :key="e.id">
             <td><b>{{ e.client }}</b></td>
             <td>{{ e.intervention }}</td>
             <td>{{ new Date(e.envoyee_le).toLocaleDateString("fr-FR") }}</td>
@@ -175,9 +193,12 @@ async function soumettre() {
             </td>
           </tr>
           <tr v-if="!satisfaction.chargement && !satisfaction.enquetes.length"><td colspan="6" style="color: var(--mut)">Aucune enquête envoyée.</td></tr>
+          <tr v-if="satisfaction.enquetes.length && !resultats.length"><td colspan="6" style="color: var(--mut)">Aucune enquête ne correspond à la recherche.</td></tr>
         </tbody>
       </table>
-      <div class="pagin"><span>{{ satisfaction.enquetes.length }} enquêtes · toute note ≤ 2 déclenche une analyse</span></div>
+      <BarrePagination :page="page" :total-pages="totalPages" @changer="allerPage">
+        {{ resultats.length }} sur {{ satisfaction.enquetes.length }} enquêtes · toute note ≤ 2 déclenche une analyse
+      </BarrePagination>
     </div>
   </div>
 </template>

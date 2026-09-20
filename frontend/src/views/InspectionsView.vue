@@ -10,6 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { TYPES_INSPECTION, useInspectionsStore } from "../stores/inspections";
 import { formaterDateCivile } from "../utils/dates";
@@ -41,10 +42,17 @@ const formulaireOuvert = ref(false);
 const modeleChoisi = ref("locaux");
 const siteChoisi = ref("");
 const equipementChoisi = ref("");
+const objetInspecte = ref("");
+
+// Un équipement appartient à un site : ne proposer que ceux du site retenu.
+const equipementsDuSite = computed(() =>
+  siteChoisi.value ? inspections.equipements.filter((e) => e.site_id === Number(siteChoisi.value)) : []
+);
 
 function demarrer() {
   const query = { modele: modeleChoisi.value, site_id: siteChoisi.value };
   if (modeleChoisi.value === "equipements" && equipementChoisi.value) query.equipement_id = equipementChoisi.value;
+  if (objetInspecte.value.trim()) query.objet_inspecte = objetInspecte.value.trim();
   router.push({ name: "inspection-nouvelle", query });
 }
 </script>
@@ -94,8 +102,12 @@ function demarrer() {
             <span class="lead nv"><Icone nom="clip" /></span>
             <div class="tx">
               <b>{{ i.reference ?? `Inspection #${i.id}` }} — {{ inspections.libelleType(i.modele) }}</b>
+              <div v-if="i.equipement_id || i.objet_inspecte" class="meta">
+                <span>{{ i.equipement_id ? (inspections.nomEquipement(i.equipement_id) ?? `Équipement #${i.equipement_id}`) : i.objet_inspecte }}</span>
+              </div>
               <div class="meta">
                 <span>{{ inspections.nomSite(i.site_id) ?? `Site #${i.site_id}` }}</span>
+                <span>{{ inspections.nomUtilisateur(i.inspecteur_id) ?? `Inspecteur #${i.inspecteur_id}` }}</span>
                 <span>{{ formaterDateCivile(i.date) }}</span>
                 <span v-if="i.taux_conformite !== null">{{ pourcent(i.taux_conformite) }} % conforme</span>
               </div>
@@ -110,12 +122,12 @@ function demarrer() {
             <b>Aucune inspection</b>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true">
             <Icone nom="plus" taille="sm" />Nouvelle inspection
           </button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
+          <Modal v-if="formulaireOuvert" titre="Nouvelle inspection" @fermer="formulaireOuvert = false">
             <label class="f">Type d'inspection</label>
             <select v-model="modeleChoisi" class="inp">
               <option v-for="t in TYPES_INSPECTION" :key="t.valeur" :value="t.valeur">{{ t.libelle }}</option>
@@ -126,17 +138,25 @@ function demarrer() {
               <option v-for="s in inspections.sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
             </select>
             <template v-if="modeleChoisi === 'equipements'">
-              <label class="f">Équipement (facultatif)</label>
-              <select v-model="equipementChoisi" class="inp">
+              <label class="f">Équipement inspecté (facultatif)</label>
+              <select v-model="equipementChoisi" class="inp" :disabled="!siteChoisi">
                 <option value="">Aucun en particulier</option>
-                <option v-for="e in inspections.equipements" :key="e.id" :value="e.id">{{ e.identity }}</option>
+                <option v-for="e in equipementsDuSite" :key="e.id" :value="e.id">
+                  {{ e.identity }} — {{ e.marque }} {{ e.modele }}
+                </option>
               </select>
+              <p v-if="siteChoisi && !equipementsDuSite.length" class="sub" style="margin-top: 4px">
+                Aucun équipement enregistré pour ce site.
+              </p>
             </template>
+            <label class="f">Objet / repère inspecté{{ modeleChoisi === "equipements" ? " (facultatif)" : " (recommandé)" }}</label>
+            <input v-model="objetInspecte" class="inp" placeholder="Ex. Extincteur EXT-03, hall RDC" />
+            <p class="sub" style="margin-top: 4px">Sinon on ne saura pas lequel a été inspecté.</p>
             <div class="btnrow" style="margin-top: 8px">
               <button class="btn pri sm" style="width: auto" :disabled="!siteChoisi" @click="demarrer">Démarrer</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div style="height: 56px"></div>
         </div>

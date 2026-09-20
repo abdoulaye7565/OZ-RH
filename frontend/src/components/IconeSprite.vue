@@ -9,8 +9,40 @@
 
 <template>
   <svg style="display: none" aria-hidden="true">
+    <!-- Logo Hirondelles IT Lab. Redessiné le 2026-09-10 d'après l'emblème
+         fourni par l'utilisateur (cercle fin + hirondelle vue de face, ailes
+         relevées, corps et queue fourchue) : passage d'un tracé au trait à
+         une silhouette pleine (`fill` explicite, `stroke` neutralisé sur ce
+         seul symbole) — une marque pleine reste lisible dans les pastilles
+         .mk de 24-40 px là où un trait fin se perdait. viewBox 0 0 48 48.
+         L'utilisateur a fourni un PNG : cette version SVG le reproduit au
+         plus près ; pour un rendu strictement identique, déposer le PNG dans
+         src/assets/ et l'y référencer. -->
+    <symbol id="i-hirondelle" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="21.4" fill="none" stroke="currentColor" stroke-width="2" />
+      <path
+        fill="currentColor"
+        stroke="none"
+        d="M24 26.2c-2.7-3.6-7-6.6-13.6-8.3 3.2 3.9 5.5 7 7.2 10.2-1.9.5-3.9.7-6 .6 3 2.4 6.1 3.6 9.2 3.6l2 8.1 1.2-8.1c3.1 0 6.2-1.2 9.2-3.6-2.1.1-4.1-.1-6-.6 1.7-3.2 4-6.3 7.2-10.2C31 19.6 26.7 22.6 24 26.2Z"
+      />
+    </symbol>
     <symbol id="i-alert" viewBox="0 0 24 24">
       <path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" />
+    </symbol>
+    <!-- Téléchargement (flèche vers le bac) — ajouté 2026-09-10 pour les
+         boutons d'export PDF, style trait Lucide comme le reste du jeu. -->
+    <symbol id="i-dl" viewBox="0 0 24 24">
+      <path d="M12 3v12" /><path d="m7 10 5 5 5-5" /><path d="M5 21h14" />
+    </symbol>
+    <!-- Déconnexion — ajouté 2026-09-10, aucun bouton de déconnexion volontaire
+         n'existait jusqu'ici (voir docs/JOURNAL.md). -->
+    <symbol id="i-logout" viewBox="0 0 24 24">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="m16 17 5-5-5-5" /><path d="M21 12H9" />
+    </symbol>
+    <symbol id="i-print" viewBox="0 0 24 24">
+      <path d="M6 9V2h12v7" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="8" />
     </symbol>
     <symbol id="i-home" viewBox="0 0 24 24">
       <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" />

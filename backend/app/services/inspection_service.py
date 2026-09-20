@@ -84,6 +84,7 @@ def creer_inspection(db: Session, donnees: InspectionCreation, inspecteur_id: in
         modele=donnees.modele,
         site_id=donnees.site_id,
         equipement_id=donnees.equipement_id,
+        objet_inspecte=donnees.objet_inspecte,
         inspecteur_id=inspecteur_id,
         date=date.today(),
         points=_construire_points_json(donnees.points, referentiel),

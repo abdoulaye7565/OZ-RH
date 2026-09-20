@@ -87,6 +87,17 @@ def reevaluer(db: Session, risque: Risque, donnees: CotationEntree, auteur_id: i
     return cotation
 
 
+def modifier_risque(db: Session, risque: Risque, donnees, modifie_par_id: int) -> Risque:
+    """Corrige les champs descriptifs (danger, catégorie, unité, personnes
+    exposées). Ne touche pas aux cotations. Revue d'ensemble 2026-09-10."""
+    for champ, valeur in donnees.model_dump(exclude_unset=True).items():
+        setattr(risque, champ, valeur)
+    risque.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(risque)
+    return risque
+
+
 def cotations_de(db: Session, risque_id: int) -> list[CotationRisque]:
     return list(
         db.scalars(

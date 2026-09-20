@@ -60,6 +60,22 @@ export const useAuthStore = defineStore("auth", {
       api.ecrireJetonRafraichissement(null);
     },
 
+    // Photo de profil (2026-09-10, retour direct de l'utilisateur —
+    // "insérer sa photo"). En libre-service, sur son propre compte
+    // uniquement — la route backend ne prend pas d'identifiant, c'est
+    // toujours "/moi/photo".
+    async changerPhoto(fichier) {
+      const donnees = new FormData();
+      donnees.set("photo", fichier);
+      this.utilisateur = await api.requete("/api/v1/auth/moi/photo", { methode: "POST", corps: donnees });
+      return this.utilisateur;
+    },
+
+    async retirerPhoto() {
+      this.utilisateur = await api.requete("/api/v1/auth/moi/photo/retirer", { methode: "POST" });
+      return this.utilisateur;
+    },
+
     async chargerProfil() {
       // Reconstitue `utilisateur` après un rechargement de page : seul `jeton`
       // survit (localStorage), voir le commentaire de state ci-dessus et

@@ -8,17 +8,30 @@
  * d'écran (lots 2, 3 et 1.5) : mieux vaut les omettre que proposer des boutons
  * qui ne mènent nulle part.
  */
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import NotificationsCloche from "../components/NotificationsCloche.vue";
 import { FILTRES_STATUT, FILTRES_TYPE, useSignalementsStore } from "../stores/signalements";
+import { telechargerPdf } from "../utils/telechargement";
 
 const router = useRouter();
 const signalements = useSignalementsStore();
 
 onMounted(() => signalements.charger());
+
+const pdfEnCours = ref(null);
+async function telechargerSignalement(s) {
+  pdfEnCours.value = s.id;
+  try {
+    await telechargerPdf(`/api/v1/signalements/${s.id}/export-pdf`, `${s.reference ?? "signalement-" + s.id}.pdf`);
+  } catch (e) {
+    signalements.erreur = e?.message ?? "Téléchargement du PDF impossible";
+  } finally {
+    pdfEnCours.value = null;
+  }
+}
 
 const total = computed(() => signalements.liste.length);
 
@@ -65,7 +78,7 @@ function formaterDate(iso) {
   <div class="ecran-mobile">
     <BandeauReseau />
     <header class="hd">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <div>
         <h1>Signalements</h1>
         <div class="sub">{{ total }} signalement{{ total > 1 ? "s" : "" }}</div>
@@ -112,7 +125,16 @@ function formaterDate(iso) {
             <p>Créez le premier signalement avec le bouton ci-dessous.</p>
           </div>
 
-          <div v-for="s in signalements.liste" :key="s.id" class="row">
+          <div
+            v-for="s in signalements.liste"
+            :key="s.id"
+            class="row"
+            :style="s.enAttente ? '' : 'cursor: pointer'"
+            :role="s.enAttente ? undefined : 'button'"
+            :tabindex="s.enAttente ? undefined : 0"
+            @click="!s.enAttente && router.push({ name: 'signalement-detail', params: { id: s.id } })"
+            @keydown.enter="!s.enAttente && router.push({ name: 'signalement-detail', params: { id: s.id } })"
+          >
             <span class="lead" :class="styleDe(s).lead">
               <Icone :nom="styleDe(s).icone" />
             </span>
@@ -122,11 +144,19 @@ function formaterDate(iso) {
                 <span :style="s.type === 'accident' ? 'color: var(--red); font-weight: 650' : ''">{{ LIBELLE_TYPE[s.type] ?? s.type }}</span>
                 <span>{{ s.reference ?? (s.enAttente ? "réf. provisoire, en attente du réseau" : "en attente de référence") }}</span>
                 <span>{{ formaterDate(s.date_saisie) }}</span>
-                <span>{{ s.anonyme ? "Anonyme" : `Utilisateur #${s.auteur_id}` }}</span>
+                <span>{{ s.anonyme ? "Anonyme" : (s.auteur_nom ?? `Utilisateur #${s.auteur_id}`) }}</span>
                 <span v-if="s.photos?.length">{{ s.photos.length }} photo{{ s.photos.length > 1 ? "s" : "" }}</span>
               </div>
             </div>
             <span class="tag" :class="styleDe(s).tag">{{ styleDe(s).libelle }}</span>
+            <button
+              v-if="!s.enAttente"
+              class="btn gh sm"
+              style="width: auto; margin-left: 6px"
+              :disabled="pdfEnCours === s.id"
+              aria-label="Télécharger le PDF"
+              @click.stop="telechargerSignalement(s)"
+            ><Icone nom="dl" taille="sm" /></button>
           </div>
 
           <div style="height: 56px"></div>

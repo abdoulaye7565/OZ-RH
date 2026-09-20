@@ -1,7 +1,8 @@
 """Schémas Pydantic du module Formations (prompt 4.2, section 5.3.3 du CDC)."""
+import datetime as _dt
 from datetime import date, datetime
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.models.enums import StatutSeance
 
@@ -44,6 +45,26 @@ class SeanceCreation(BaseModel):
     lieu: str
     animateur_id: int
     competence_id: int | None = None
+
+
+class SeanceModification(BaseModel):
+    """Correction d'une séance encore planifiée (revue d'ensemble
+    2026-09-10) — refusé une fois la séance réalisée (règle de service).
+    Partielle. `date` qualifié `_dt.date` : le champ porte le même nom que le
+    type et a une valeur par défaut (piège d'évaluation différée, Python 3.14)."""
+
+    theme: str | None = None
+    date: _dt.date | None = None
+    lieu: str | None = None
+    animateur_id: int | None = None
+    competence_id: int | None = None
+
+    @field_validator("theme", "lieu")
+    @classmethod
+    def _non_vide(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("ce champ ne peut pas être vide")
+        return v.strip() if v is not None else None
 
 
 class SeanceSortie(BaseModel):

@@ -40,7 +40,7 @@ async function ouvrirDocument(documentId) {
   <div class="ecran-mobile">
     <BandeauReseau />
     <header class="hd">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <div>
         <h1>Assistant documentaire</h1>
         <div class="sub">Posez une question sur le système documentaire</div>

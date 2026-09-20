@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.dechet import Dechet
-from app.schemas.dechet import DechetCreation
+from app.schemas.dechet import DechetCreation, DechetModification
 
 
 def creer_dechet(db: Session, donnees: DechetCreation, cree_par_id: int) -> Dechet:
@@ -35,6 +35,26 @@ def obtenir_dechet(db: Session, dechet_id: int) -> Dechet:
 
 def lister_dechets(db: Session) -> list[Dechet]:
     return list(db.scalars(select(Dechet).where(Dechet.archive.is_(False)).order_by(Dechet.date.desc())))
+
+
+def modifier_dechet(db: Session, dechet: Dechet, donnees: DechetModification, modifie_par_id: int) -> Dechet:
+    """Corrige les champs d'un lot (revue d'ensemble 2026-09-10). Modification
+    partielle ; l'enlèvement se traite par sa route dédiée."""
+    for champ, valeur in donnees.model_dump(exclude_unset=True).items():
+        setattr(dechet, champ, valeur)
+    dechet.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(dechet)
+    return dechet
+
+
+def archiver_dechet(db: Session, dechet: Dechet, modifie_par_id: int) -> Dechet:
+    """Archivage logique (jamais de suppression, CLAUDE.md §2)."""
+    dechet.archive = True
+    dechet.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(dechet)
+    return dechet
 
 
 def enregistrer_enlevement(

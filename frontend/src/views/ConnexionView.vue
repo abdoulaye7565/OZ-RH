@@ -7,6 +7,7 @@
  */
 import { ref } from "vue";
 import { useRouter } from "vue-router";
+import Icone from "../components/Icone.vue";
 import { useAuthStore } from "../stores/auth";
 
 const auth = useAuthStore();
@@ -24,7 +25,7 @@ async function seConnecter() {
 <template>
   <div class="ecran-mobile">
     <div class="login">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <h2>SHEQ Management</h2>
       <p class="sb">Hirondelles IT Lab</p>
 

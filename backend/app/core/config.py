@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     # qui ouvre toujours sa propre session sur la base réelle).
     scheduler_actif: bool = True
 
+    # Sauvegarde automatique de la base (revue d'ensemble 2026-09-10 — contrainte
+    # §2 traçabilité / §4 secrets hors sauvegarde). Le script Scripts/sauvegarde.py
+    # existait mais n'était planifié nulle part. Job quotidien via APScheduler ;
+    # `sauvegarde_active=False` le désactive (ex. si une sauvegarde externe
+    # d'infrastructure prend déjà le relais).
+    sauvegarde_active: bool = True
+    sauvegarde_dir: str = "./sauvegardes"
+    sauvegarde_heure: int = 2  # 2 h du matin, hors heures d'activité
+    sauvegarde_retention: int = 14  # nb d'archives conservées (les plus anciennes sont supprimées)
+
     # Service d'assistance IA (lot 6, chapitre 16 du CDC — prompt 6.1, socle
     # technique seul, aucune fonction métier). Interrupteur général désactivé
     # par défaut : "le mode dégradé est la norme" (tableau 10) tant qu'aucune

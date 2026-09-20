@@ -1,10 +1,13 @@
 """Routes du module Signalements (prompt 1.1)."""
 from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Response, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.deps import get_current_user, require_role
 from app.core.fichiers import enregistrer_photos
 from app.core.permissions import Permissions
@@ -14,7 +17,14 @@ from app.models.site import Site
 from app.models.signalement import Signalement
 from app.models.utilisateur import Utilisateur
 from app.schemas.signalement import SignalementSortie, StatutMiseAJour
-from app.services.signalement_service import archiver, changer_statut, creer_signalement, generer_pdf
+from app.services.signalement_service import (
+    archiver,
+    changer_statut,
+    creer_signalement,
+    generer_pdf,
+    serialiser,
+    serialiser_plusieurs,
+)
 
 router = APIRouter(prefix="/signalements", tags=["signalements"])
 
@@ -50,7 +60,7 @@ async def creer(
     signalement, y compris dans les journaux."""
     chemins_photos = await enregistrer_photos(photos, sous_dossier="signalements", nombre_max=NOMBRE_MAX_PHOTOS)
 
-    return creer_signalement(
+    signalement = creer_signalement(
         db,
         type_=type,
         site_id=site_id,
@@ -61,6 +71,7 @@ async def creer(
         photos=chemins_photos,
         auteur=utilisateur,
     )
+    return serialiser(db, signalement)
 
 
 @router.get("", response_model=list[SignalementSortie])
@@ -96,7 +107,7 @@ def lister(
 
     requete = requete.order_by(Signalement.date_saisie.desc()).offset(decalage).limit(min(limite, 200))
 
-    return list(db.scalars(requete))
+    return serialiser_plusieurs(db, list(db.scalars(requete)))
 
 
 @router.get("/{signalement_id}", response_model=SignalementSortie)
@@ -113,7 +124,29 @@ def lire(
         # 404 plutôt que 403 : ne pas confirmer l'existence d'un signalement que
         # l'appelant n'a pas le droit de consulter (a fortiori s'il est anonyme).
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
-    return signalement
+    return serialiser(db, signalement)
+
+
+@router.get("/{signalement_id}/photos/{index}")
+def obtenir_photo_route(
+    signalement_id: int,
+    index: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> FileResponse:
+    """Sert une photo jointe (2026-09-19, revue de compatibilité front/back —
+    aucune route ne permettait jusqu'ici de revoir une photo déjà envoyée,
+    seul son décompte était affiché). Même règle de visibilité que la
+    consultation du signalement lui-même."""
+    signalement = db.get(Signalement, signalement_id)
+    if signalement is None or not _visible_par(signalement, utilisateur):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
+    if not signalement.photos or index < 0 or index >= len(signalement.photos):
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo introuvable")
+    chemin = Path(settings.storage_dir) / signalement.photos[index]
+    if not chemin.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo introuvable")
+    return FileResponse(chemin)
 
 
 @router.get("/{signalement_id}/export-pdf")
@@ -149,7 +182,8 @@ def mettre_a_jour_statut(
     signalement = db.get(Signalement, signalement_id)
     if signalement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
-    return changer_statut(db, signalement, payload.statut, modifie_par_id=utilisateur.id)
+    changer_statut(db, signalement, payload.statut, modifie_par_id=utilisateur.id)
+    return serialiser(db, signalement)
 
 
 @router.post("/{signalement_id}/archiver", response_model=SignalementSortie)
@@ -162,4 +196,5 @@ def archiver_route(
     signalement = db.get(Signalement, signalement_id)
     if signalement is None:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Signalement introuvable")
-    return archiver(db, signalement, modifie_par_id=utilisateur.id)
+    archiver(db, signalement, modifie_par_id=utilisateur.id)
+    return serialiser(db, signalement)

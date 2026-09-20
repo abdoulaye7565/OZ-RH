@@ -3164,3 +3164,2060 @@ périmètre d'un correctif ponctuel.
 régression** — suite complète relancée après les deux correctifs de ce
 point (328 précédents + 3 nouveaux : 1 régression coffre-fort +
 2 verrouillage de connexion).
+
+### Point 6 — sauvegarde de base de données : déjà fait, revérifié
+
+En listant ce point comme critique, je ne savais pas encore qu'un chantier
+antérieur (lot 5, prompt 5.3) avait déjà construit
+`backend/scripts/sauvegarde.py` et `restaurer.py` : copie sûre du fichier
+SQLite (API `backup()` de `sqlite3`, cohérente même si l'API écrit en
+parallèle) ou `pg_dump --format=custom` selon `DATABASE_URL`, plus
+`storage/`, jamais `.env`. Déjà testé de bout en bout à l'époque (incident
+simulé, restauration, vérification). Revérifié aujourd'hui après tous les
+changements de schéma de cette session (colonnes `tentatives_echouees`/
+`verrouille_jusqua`) : `python scripts/sauvegarde.py` fonctionne toujours
+sans modification — normal, la copie SQLite est binaire, pas
+colonne-par-colonne, donc insensible à l'ajout de colonnes. Le chemin
+PostgreSQL reste non exercé, pour la même raison que le point 3 ci-dessous
+(ni Docker ni PostgreSQL disponibles ici). Rien à corriger : juste corriger
+mon propre état des lieux, qui l'ignorait.
+
+### Point 5 — première suite de tests automatisés côté frontend (Vitest)
+
+Vitest était déjà dans la pile imposée (CLAUDE.md §3) mais jamais utilisé
+— aucun fichier `*.test.js` n'existait avant aujourd'hui. Ajouté :
+`vitest`, `jsdom` (environnement DOM en Node, nécessaire pour tout test
+qui touche `localStorage`), `fake-indexeddb` (IndexedDB n'existe pas
+nativement dans jsdom — nécessaire pour tester `filesync.js` sans passer
+par un vrai navigateur) — trois dépendances de développement, aucune en
+production, signalées ici comme demandé plutôt qu'ajoutées en silence.
+`vite.config.js` porte directement la config `test` (pas de fichier
+séparé, Vitest sait lire la config Vite existante).
+
+**Priorité donnée à la logique la plus récemment corrigée**, pas un
+balayage générique : les trois fichiers testés sont ceux du rafraîchissement
+de jeton (point 1) et du mode hors connexion — exactement le code où de
+vrais bugs ont été trouvés cette session (le DataCloneError du Proxy Vue,
+la confusion 401/erreur réseau). Choix déjà signalé dans le journal du mode
+hors connexion : "introduire IndexedDB en environnement de test... pour un
+premier test isolé aurait été disproportionné" — ce n'est plus vrai
+maintenant que le point 5 est traité pour de bon.
+
+- `services/api.test.js` (8 tests) : extraction de message d'erreur (les 3
+  formes de `detail` FastAPI), rafraîchissement silencieux + rejeu de la
+  requête, dédoublonnage de deux 401 concurrents (une seule vraie requête
+  de rafraîchissement), échec définitif (jetons effacés, callback de
+  session expirée appelé, erreur 401 d'origine qui remonte), aucune
+  tentative de rafraîchissement si la requête ne portait pas de jeton ou
+  si aucun refresh token n'est stocké.
+- `services/filesync.test.js` (8 tests) : ordre de la file, comptage,
+  copie plate de `champs`/`fichiers` (pas de référence conservée vers
+  l'original — le principe du correctif du DataCloneError, sans
+  prétendre reproduire l'erreur de clonage elle-même : signalé
+  explicitement en commentaire que fake-indexeddb n'a aucune raison de
+  partager les mêmes restrictions de clonage qu'un vrai moteur de
+  navigateur, la vérification de ce bug précis reste celle déjà faite en
+  navigateur réel), et les trois branchements de `synchroniser()` (succès,
+  vrai refus qui n'arrête pas la file, erreur réseau qui l'arrête net).
+- `stores/signalements.test.js` (4 tests) : la distinction TypeError
+  (mise en file) vs ErreurApi (remontée normale, jamais mise en file) au
+  cœur de `creer()` — exactement la confusion qu'un 401 de session expirée
+  provoquait avant le correctif du point 1. Un test a d'abord échoué pour
+  une fausse raison (`toBe` au lieu de `toEqual` — Pinia enveloppe l'état
+  dans un Proxy réactif, l'objet lu depuis `store.liste` n'est jamais la
+  même référence que celle renvoyée par l'action même à contenu strictement
+  identique), corrigé, pas un vrai défaut du store.
+
+**20 tests, 3 fichiers, tous au vert** (`npm test`). `package.json` gagne
+un script `test`.
+
+### Point 4 — mode hors connexion étendu : SLAM
+
+Deux volets, parce que SLAM a un besoin que Signalements n'a pas : un
+référentiel à **lire** avant de pouvoir rien saisir (`GET
+/slam/referentiel`), pas seulement une écriture à mettre en file.
+
+- **Lecture** : le référentiel est mis en cache dans `localStorage`
+  (`sheq_slam_referentiel_cache`) dès qu'il charge avec succès ; si le
+  réseau manque au montage de l'écran, retombe sur ce cache plutôt
+  qu'une erreur bloquante. **Limite réelle assumée et non résolue** :
+  cette app n'a pas de service worker (la case "PWA" de la pile technique,
+  CLAUDE.md §3, n'a jamais été construite au-delà de cette file
+  IndexedDB) — un technicien qui recharge la page ou l'ouvre pour la toute
+  première fois alors qu'il est déjà hors ligne ne peut charger ni le
+  cache ni rien d'autre, l'application elle-même (JS/CSS) n'étant pas mise
+  en cache. Le correctif d'aujourd'hui aide seulement l'utilisateur déjà
+  arrivé sur l'écran avant de perdre le réseau (le cas réel visé : monter
+  au pylône avec du réseau, le perdre en cours de route) — pas le
+  chargement à froid sans réseau, qui resterait un chantier à part entière
+  (service worker complet).
+- **Écriture** : la décision GO/NO_GO part en file au lieu d'échouer,
+  même mécanisme que Signalements (`horsConnexion.enregistrerGestionnaire
+  ("slam", …)`, câblé dans `main.js` — pas de store SLAM dédié, l'écran
+  appelle l'API directement, donc pas d'`onSucces` : rien à rafraîchir
+  après coup). Ce choix n'est pas anodin : cette décision autorise ou non
+  l'intervention (CLAUDE.md §7.2, "une décision NO_GO... ne bloque rien
+  pour l'intervenant") — elle devait rester utilisable hors connexion,
+  pas simplement échouer silencieusement.
+
+**Deuxième bug réel du DataCloneError, une couche plus profonde.**
+Testé en conditions réelles (réseau coupé au niveau du navigateur, pas
+supposé), la mise en file du SLAM échouait exactement comme celle des
+signalements la veille — alors que le correctif de la veille (copie
+superficielle `{ ...champs }`) était censé être réglé. Cause : `champs`
+pour SLAM contient `etapes_validees`, un **tableau de tableaux de
+booléens** qui est lui-même un `ref()` Vue, imbriqué DANS l'objet
+`champs` — une copie superficielle du conteneur ne "dérobotise" pas cette
+valeur imbriquée, seulement le premier niveau. Le correctif de la veille
+était donc accidentellement correct pour les signalements (leurs champs
+sont tous des primitifs plats issus d'un objet littéral fraîchement
+construit) et pas structurellement robuste. Corrigé pour de bon dans
+`filesync.js` (`ajouterEnAttente`) avec un clonage JSON récursif
+(`JSON.parse(JSON.stringify(champs))`) plutôt qu'une copie superficielle
+— retire la réactivité à n'importe quelle profondeur, correct pour tout
+futur module qui réutilisera ce mécanisme (Inspections, ensuite). Limite
+consciente : ne fonctionnerait pas pour une valeur non sérialisable en
+JSON (Date, Map...) — non applicable ici, tout ce qui transite dans
+`champs` part de toute façon en JSON vers l'API.
+
+**Vérifié en conditions réelles**, bout en bout : référentiel chargé en
+ligne puis mis en cache (vérifié en lisant `localStorage` directement) ;
+passage hors ligne réel (`context.setOffline`, pas
+`navigator.onLine` simulé) ; 16 points cochés sur les 4 étapes, GO
+enregistré → écran de verdict affiché immédiatement ("GO enregistré...")
+avec la mention "Enregistrée localement, en attente du retour du réseau"
+et le bandeau réseau affichant "1 élément en attente" ; retour du réseau
+→ synchronisation automatique ; **vérifié côté serveur** (pas seulement
+côté écran) via `GET /api/v1/slam` : l'évaluation est bien arrivée, avec
+les 4×4 valeurs `true` exactement telles que cochées. Test Vitest ajouté
+pour la régression précise (`filesync.test.js` — une valeur réactive
+imbriquée, pas seulement le conteneur, est bien dérobotisée), 21 tests
+au vert.
+
+### Point 4 — Inspections : décision de conception nécessaire avant de coder
+
+Contrairement à Signalements et SLAM (une saisie, un envoi, terminé),
+Inspections est un flux en plusieurs étapes dont chacune dépend de la
+précédente côté serveur : `creer()` (obtient un id serveur réel) →
+`mettreAJourPoints()` (PATCH sur CET id, potentiellement plusieurs fois
+pendant l'inspection, point par point) → `cloturer()` (POST sur CE même
+id). Mettre uniquement `creer()` en file, comme les deux modules
+précédents, laisserait l'inspection bloquée : sans id serveur réel, il
+n'y a rien sur quoi faire porter un PATCH de points ni une clôture tant
+que la création n'a pas été confirmée — or c'est précisément pendant une
+inspection réelle sur site (cocher les points un par un en marchant) que
+le réseau manque le plus. Traiter ce module correctement demande de
+changer la forme des choses, pas seulement de réutiliser
+`horsConnexion.enregistrerGestionnaire()` tel quel : par exemple, une
+inspection non synchronisée vivrait entièrement en local (id provisoire,
+tous ses points modifiables sans réseau) et ne partirait vers l'API qu'en
+un seul envoi groupé à la synchronisation, plutôt que trois appels
+distincts et dépendants. C'est un changement de mécanisme, pas une
+extension du même — signalé avant de coder plutôt que bâclé (CLAUDE.md
+§9, "explique avant de coder quand tu introduis un mécanisme nouveau").
+
+### Point 4 — Inspections : construit (retour direct de l'utilisateur : "je construis la nouvelle mécanique")
+
+**Simplification décisive qui rend le mécanisme tractable** : `PATCH
+/inspections/{id}/points` envoie déjà l'état COMPLET des réponses à
+chaque coche (remplace le tableau entier, ne fusionne pas — service
+`mettre_a_jour_points`, déjà ainsi avant ce chantier). Pas besoin
+d'accumuler des opérations en file : un seul élément par inspection,
+remplacé (jamais dupliqué) à chaque coche.
+
+- `services/filesync.js` : nouvelle fonction `mettreAJourEnAttente(id,
+  champs)` — remplace les `champs` d'un élément déjà en file au lieu
+  d'en créer un nouveau. Générique, réutilisable par un futur module.
+- `stores/inspections.js` : `_mettreEnFile(points, cloturer, idReelConnu)`,
+  cœur du mécanisme. `champs.id` reste `null` tant que l'inspection n'a
+  jamais été créée côté serveur (`donnees_creation` porte alors de quoi
+  faire le POST initial à la synchronisation) ; une fois un id réel connu
+  (créée en ligne, puis coupée hors ligne plus tard), seuls
+  points/cloturer restent à envoyer. `creer()`, `mettreAJourPoints()` et
+  `cloturer()` retombent chacun sur cette fonction en cas de `TypeError`
+  réseau, sans changer leur signature — `InspectionDetailView.vue` n'a
+  connaissance d'aucun cas hors ligne, tout vit dans le store.
+- Lecture aussi mise en cache (référentiel des points par modèle,
+  sites/équipements/utilisateurs) — même principe que SLAM, même limite
+  assumée (pas de service worker, un rechargement à froid déjà hors ligne
+  reste impossible).
+- `main.js` : gestionnaire "inspection" — POST initial si `id===null`,
+  sinon PATCH points, puis POST clôture si `cloturer`.
+
+**Piège trouvé en écrivant le premier test** (pas seulement en le
+faisant tourner) : mon premier réflexe testait `id === null` pour
+décider si l'inspection restait "à créer" — cassé dès le deuxième appel,
+puisque `id` devient `local-N` dès la première mise en file. Corrigé en
+se basant uniquement sur la présence de `_donneesCreation` (posé une
+fois, jamais retiré avant une vraie confirmation serveur — qui n'arrive
+jamais dans la session locale ouverte, une limite déjà notée : l'écran
+resté ouvert après une synchronisation en arrière-plan n'affiche pas
+automatiquement la référence réelle).
+
+**Vérifié en conditions réelles**, coupure réseau simulée au niveau du
+navigateur, sur une inspection "incendie" (14 points) : 3 points cotés
+"C", un seul élément en file à chaque fois (vérifié en lisant
+IndexedDB directement, pas seulement l'écran) ; re-cotation du premier
+point en "NC" → même élément remplacé, pas dupliqué, `champs.points`
+reflète les 3 valeurs à jour ; clôture hors ligne → `champs.cloturer:
+true` sur ce même élément, banderole "Cette inspection est clôturée."
+affichée immédiatement ; retour du réseau → synchronisation automatique,
+file vidée. **Vérifié côté serveur** (`GET /api/v1/inspections`) :
+inspection réellement créée, `statut: "cloturee"`,
+`taux_conformite: 0.6667` — exactement 2 conformes sur 3 cotés (le point
+recoté en NC exclu du numérateur), preuve que le contenu synchronisé est
+le bon, pas une coïncidence de comptage. 25 tests Vitest au vert (4
+nouveaux pour ce module, `inspections.test.js`).
+
+**Restait délibérément non traité** : upload de photo sur un point NC
+(`deposerPhoto()`) — nécessiterait un id d'inspection réel pour
+s'attacher, incompatible avec une inspection encore locale ; hors ligne,
+l'erreur actuelle ("Impossible d'ajouter la photo") reste honnête plutôt
+que silencieusement cassée, mais rien n'est mis en file pour ce cas
+précis.
+
+## Gestion des utilisateurs — modification de profil (2026-09-09)
+
+Retour direct de l'utilisateur ("dans ce module, nous devons permettre
+la modification, la création d'un nouvel utilisateur"). La création
+existait déjà (`UtilisateursDesktopView.vue`, chantier "construire tous
+les écrans") ; la modification, elle, n'avait jamais été construite — le
+commentaire d'en-tête de l'écran le disait déjà : "aucune route de
+modification n'existait, seule la création". Vérifié dans le CDC (figure
+A.40, "gestion des utilisateurs avec matrice des droits par rôle") et
+dans la maquette (aucun écran dédié à l'édition d'un compte) : ni l'un
+ni l'autre ne détaille ce flux au niveau des champs — construit sur la
+base du modèle de données existant (`UTILISATEUR`) et du principe déjà
+appliqué à la désactivation (même garde-fou d'auto-protection).
+
+**Backend** :
+- `schemas/auth.py` — `UtilisateurModification` : nom/prénom/rôle/site/
+  courriel, tous optionnels (`exclude_unset`, même motif que
+  `SecretModification` du coffre-fort — permet d'effacer explicitement
+  `site_id`/`courriel` à `null` sans le confondre avec "non fourni").
+  **Compromis assumé, à signaler** : ni `identifiant` ni `mot_de_passe`
+  n'y figurent. Le premier sert de clé de connexion et de repère dans
+  tout l'historique/les journaux — le changer mériterait son propre flux
+  dédié. Le second est sensible par nature (réinitialisation) — à traiter
+  séparément d'une modification de profil générale, pas construit ici.
+- `auth_service.modifier_utilisateur()` — même garde-fou que
+  `desactiver_utilisateur` : un administrateur ne peut pas retirer son
+  propre rôle d'administrateur (risque de verrouiller tout le monde hors
+  de la gestion des comptes). Toute autre modification sur son propre
+  compte reste permise.
+- `PATCH /auth/utilisateurs/{id}` — réservé à l'administrateur
+  (`GERER_UTILISATEURS`), 404 générique si le compte n'existe pas.
+
+**Régression trouvée et corrigée en relançant la suite complète** :
+`test_cas_14_utilisateur_aucune_suppression_possible` supposait
+qu'aucune route `/auth/utilisateurs/{id}` n'existait DU TOUT — devenu
+faux avec l'ajout de PATCH sur ce même chemin. `DELETE` sur ce chemin
+renvoie donc désormais 405 (méthode non autorisée) plutôt que 404
+(chemin introuvable) — même comportement que pour actions/signalements,
+toujours aucune suppression possible, seul le code exact change,
+légitimement.
+
+**Frontend** : `UtilisateursDesktopView.vue` — un seul emplacement de
+carte bascule entre "Nouveau compte" et "Modifier le compte"
+(`modeFormulaire`), plutôt que deux cartes séparées ; le formulaire
+d'édition n'expose que les champs modifiables (pas d'identifiant, pas de
+mot de passe). Bouton "Modifier" ajouté à chaque ligne du tableau,
+pré-remplit le formulaire avec les valeurs actuelles. `stores/
+utilisateurs.js` gagne `modifier(id, donnees)`.
+
+**Incident de session, sans rapport avec le code applicatif** : après le
+redémarrage du backend, `netstat -ano` continuait de rapporter un ancien
+PID comme à l'écoute sur le port 8000 alors que `tasklist` ne le
+trouvait plus — la route PATCH toute fraîche renvoyait donc l'erreur
+générique FastAPI ("Not Found") d'un process resté sur l'ancien code,
+pas la mienne ("Utilisateur introuvable"), ce qui a permis de repérer
+l'incohérence. `tasklist`/`taskkill` par nom d'image (`python.exe`) a
+retrouvé le vrai PID là où `netstat` induisait en erreur — à retenir
+pour la suite de ce chantier : ne plus se fier au PID de `netstat -ano`
+seul pour identifier le processus à arrêter dans cet environnement.
+
+**Vérifié en conditions réelles**, bout en bout dans le navigateur,
+connecté en admin : compte créé via "Inviter un utilisateur" (apparaît
+immédiatement dans le tableau) ; compte existant modifié via
+"Modifier" — formulaire pré-rempli avec les valeurs réelles (rôle actuel
+présélectionné), nom changé, enregistré, reflété immédiatement dans le
+tableau sans rechargement ; **vérifié côté serveur** que le changement a
+persisté. Garde-fou anti-auto-rétrogradation testé directement contre le
+vrai compte admin (`PATCH` sur son propre id avec un autre rôle) → 400,
+message explicite ; le même changement de rôle appliqué à un AUTRE
+compte fonctionne normalement. 44 tests pytest sur `test_auth.py` +
+`test_recette_lot1.py` au vert (10 nouveaux pour la modification), suite
+complète relancée sans régression restante.
+
+## Trois chantiers UX (2026-09-09) — retour direct de l'utilisateur : "les points à améliorer"
+
+Trois demandes en une fois, deux ambiguës au départ, clarifiées avant de
+coder (CLAUDE.md §9) : (1) thèmes — combien, gardant le thème actuel par
+défaut ; (2) "dropdown" pour les formulaires — le motif ouverture/
+fermeture déjà en place sur ~20 écrans, ou une vraie fenêtre modale ? La
+réponse : une vraie fenêtre modale centrée, pas le motif existant ; (3)
+recherche et filtrage avancés sur toutes les listes — non commencé cette
+session, périmètre trop large pour s'y lancer sans d'abord finir les deux
+premiers points proprement.
+
+**État des lieux fait avant de coder** (pas seulement supposé) : aucune
+couleur codée en dur en dehors de `style.css` (4 occurrences isolées,
+sans rapport) — un système de thèmes par variables CSS est donc
+réellement propre à construire, pas un vœu pieux. Le motif ouverture/
+fermeture existait déjà sur ~20 écrans (`formulaireOuvert`/
+`modeFormulaire`...) — seul un vrai manque trouvé : **Visiteurs**, dont
+le formulaire restait affiché en permanence. Aucun écran desktop n'avait
+de champ de recherche texte, seulement quelques filtres par statut/type
+(Signalements, Documents, Inspections, Utilisateurs) — confirme un vrai
+manque généralisé pour le point 3.
+
+### Point 1 — système de thèmes
+
+`stores/theme.js` (nouveau) : 4 thèmes déclarés (`THEMES`), persistance
+`localStorage`, `appliquer(theme)` pose/retire l'attribut
+`data-theme` sur `<html>` (rien posé pour "clair" — le thème par défaut
+reste celui de `:root`, sans condition). `main.js` pose l'attribut
+**avant même la création de l'app Vue** (lecture directe de
+`localStorage`, pas d'attente du montage de Pinia) : sans ça, un
+rechargement de page sur un thème non-clair afficherait le clair une
+fraction de seconde avant de basculer — vérifié explicitement (attribut
+lu à 100 ms après rechargement, pas seulement après stabilisation,
+aucune différence observée entre les deux mesures).
+
+**4 thèmes, un seul documenté par CLAUDE.md §8** — signalé explicitement
+avant de coder, comme demandé au §9 : "Clair" (par défaut, Navy/Or,
+identique à aujourd'hui) ; "Sombre" (mêmes teintes de marque éclaircies
+pour rester lisibles sur fond sombre — identité conservée, pas une
+palette différente) ; "Ardoise" (clair, accent bleu-acier au lieu de
+l'or — rendu plus neutre) ; "Émeraude" (clair, accent vert profond —
+teinte volontairement distincte du vert de statut "conforme" déjà
+utilisé partout ailleurs, pour ne jamais confondre "thème actif" et
+"élément conforme"). Toutes les variables (`--navy`, `--gold`, les
+couleurs d'état, les neutres) redéfinies sous `[data-theme="..."]` dans
+`style.css` — un composant qui utilise `var(--gold)` reçoit l'accent du
+thème actif sans rien changer à son propre code.
+
+**Sélecteur** : `<select>` natif dans l'en-tête desktop
+(`GestionLayout.vue`, visible sur tous les écrans de gestion) et dans le
+menu mobile (`MenuView.vue`, section "APPARENCE") — un vrai menu
+déroulant, cohérent avec la nature du choix (une seule valeur parmi
+quatre), à ne pas confondre avec le point 2 ci-dessous qui parle de
+fenêtres modales pour des formulaires à plusieurs champs.
+
+**Vérifié en conditions réelles**, capture d'écran à l'appui (pas
+seulement la lecture des variables CSS) : bascule vers "Sombre" — fond
+`#0b1220`, cartes/texte lisibles, accents navy/or toujours reconnaissables,
+tag rouge "Nouveau" et barre orange "En retard" toujours contrastés ;
+bascule vers "Ardoise" — le graphique "Signalements par mois" (qui
+utilise `var(--gold)`) passe du doré au bleu-acier sans aucune
+modification du composant graphique lui-même, preuve que le découplage
+variable/composant fonctionne réellement. Persistance vérifiée après un
+vrai rechargement de page (pas simulée). 6 tests Vitest ajoutés
+(`theme.test.js`) : pose/retrait de l'attribut, mémorisation, valeur
+invalide ignorée sans casser l'état, valeur mémorisée corrompue retombe
+sur "clair". 34 tests Vitest au total, tous au vert.
+
+### Point 2 — fenêtres modales pour les formulaires de création/édition
+
+`components/Modal.vue` (nouveau) : générique, réutilisable — fond
+semi-transparent, boîte centrée (réutilise `.card`/`.ch`/`.cb`, pas de
+nouvelle classe pour le contenu), ferme sur Échap, sur clic **hors** de
+la boîte (`@click.self` sur le fond, jamais sur un clic dans la boîte),
+ou sur le bouton ✕. Le contenu (champs, boutons "Enregistrer"/"Annuler")
+reste entièrement à la charge de l'écran appelant via un slot — ce
+composant ne connaît aucune logique métier.
+
+**Deux écrans convertis cette session** (sur ~20 à terme — chantier
+volontairement étalé, pas tout fait d'un coup, CLAUDE.md §9 "un module à
+la fois") :
+- **Utilisateurs** (`UtilisateursDesktopView.vue`) — écran pilote,
+  création et édition toutes deux converties.
+- **Visiteurs** (`VisiteursDesktopView.vue`) — le vrai manque identifié
+  dans l'état des lieux : formulaire "Nouveau visiteur" qui restait
+  affiché en permanence à côté de "Présents sur site", jamais escamoté.
+  Un bouton "Nouveau visiteur" ouvre désormais le modal, fermé par
+  défaut.
+
+**Reste à faire, explicitement** : les ~19 autres écrans utilisant déjà
+le motif carte-en-haut-de-page (`formulaireOuvert`, `modeFormulaire`...)
+gagneraient en cohérence visuelle à passer au même composant `Modal.vue`
+— fonctionnellement ils ouvrent/ferment déjà correctement, c'est
+uniquement une question de présentation (carte insérée dans la page vs.
+fenêtre par-dessus). Report volontaire, pas un oubli.
+
+**Vérifié en conditions réelles**, sur les deux écrans convertis : fond
+présent, boîte centrée (marge gauche ≈ marge droite, mesuré), fermeture
+sur Échap, fermeture sur clic hors de la boîte, fermeture automatique
+après une création/modification réussie, et — le plus important —
+le compte/visiteur créé apparaît bien dans la liste ensuite (la
+conversion visuelle n'a rien cassé de fonctionnel). Formulaire "Nouveau
+visiteur" confirmé absent de l'écran par défaut (`formulaireVisiblePardefaut:
+false`), corrigeant le vrai manque trouvé dans l'état des lieux.
+
+### Point 3 — recherche et filtrage avancés
+
+**Non commencé cette session** — signalé plutôt que bâclé. Périmètre
+réel une fois l'état des lieux fait : ~20 écrans desktop sans aucun champ
+de recherche texte, seulement quelques filtres par statut/type déjà en
+place. Nécessite de définir d'abord un motif commun (barre de recherche
++ éventuels filtres avancés) avant de le décliner partout, comme cela a
+été fait pour `Modal.vue` — à traiter dans un prochain chantier.
+
+## Suite directe (2026-09-09) — retour de l'utilisateur : généraliser les modales + 5e thème
+
+Deux demandes courtes, sans ambiguïté cette fois (le point 2 précédent
+avait déjà établi le vocabulaire exact — "fenêtre modale centrée, ferme
+après l'action") : (1) généraliser ce comportement à tous les écrans
+desktop restants, pas seulement les deux du pilote ; (2) ajouter un
+5e thème, "bleu clair professionnel".
+
+**Thème "Bleu professionnel"** : contrairement à Ardoise/Émeraude (qui ne
+changent que l'accent `--gold`), celui-ci éclaircit la couleur
+PRINCIPALE elle-même (`--navy: #1568c4`, bleu vif plutôt que le navy
+foncé par défaut) — c'est cette couleur-là, pas l'accent, que la demande
+visait explicitement ("la couleur bleu claire"). L'or reste inchangé
+comme accent chaud, pour ne pas tout mettre dans la même famille de
+bleus et garder un contraste net avec les statuts. `THEMES` passe à 5
+entrées, test `theme.test.js` mis à jour en conséquence (34 tests
+toujours au vert).
+
+**Conversion complète des ~9 écrans desktop restants** vers
+`components/Modal.vue` (Actions, Risques, Parc, Documents, Formations,
+Déchets, Inspections, Permis, Coffre-fort, Audits) — tous les écrans
+desktop avec formulaire de création/édition utilisent désormais le même
+composant modal, plus aucun "carte affichée en haut de la page".
+
+**Deux écrans avec une vraie nuance, pas juste un copier-coller** :
+- **Satisfaction** : la création d'une enquête génère un lien à
+  transmettre au client (`lienGenere`). Fermer le modal immédiatement
+  après l'action, comme demandé, aurait fait disparaître ce lien avant
+  que l'administrateur ait pu le copier. Résolu en déplaçant l'affichage
+  du lien au niveau de la page (bannière au-dessus du tableau), en dehors
+  du modal — le modal se ferme bien après l'action, le lien reste visible
+  ensuite. Vérifié explicitement : `satisfaction_ferme_apres_envoi: true`
+  ET `satisfaction_lien_visible_apres_fermeture: true` en même temps.
+- **Audits — Revue de direction** : flux en deux étapes réelles (créer la
+  revue, PUIS y ajouter des décisions) — fermer après la première étape
+  aurait rendu la seconde inatteignable. Le modal reste donc ouvert après
+  la création de la revue (bascule vers l'étape "Ajouter une décision"),
+  et ne se ferme que sur un bouton "Terminé" explicite ou "Annuler".
+  Vérifié : `audits_reste_ouvert_apres_creation_revue: true`,
+  `audits_etape_decision_visible: true`.
+
+**Défaut d'accessibilité réel trouvé en écrivant les tests** (pas
+seulement en les faisant tourner) : le déclencheur "Nouvelle séance"
+(Formations) et "Nouvelle revue"/"Ouvrir une campagne" (Audits) sont des
+`<span class="r" @click="...">` sans `role="button"` ni `tabindex` — donc
+absents de l'arbre d'accessibilité (invisibles au clavier, invisibles à
+un lecteur d'écran, et c'est cette absence qui a fait échouer le premier
+essai de test automatisé, pas un bug du modal lui-même). Corrigés avec le
+même motif déjà appliqué plus tôt dans la session à Déchets/Permis/
+Coffre-fort (`role="button" tabindex="0" @keydown.enter`) — recherché
+ensuite sur tout le dépôt (`class="r" @click` sans `role="button"`),
+aucune occurrence restante.
+
+**Vérifié en conditions réelles**, sur les 9 écrans convertis + les 2
+déjà faits (Utilisateurs, Visiteurs), soit 11 au total : fond modal
+présent, boîte centrée (mesuré, pas supposé), fermeture sur Échap sur
+chacun, plus les deux cas particuliers ci-dessus vérifiés séparément.
+Build de production propre (103 modules), 34 tests Vitest au vert.
+
+## Thèmes — vrai bug corrigé, un faux bug écarté (2026-09-09)
+
+Retour direct de l'utilisateur : "les thèmes ne sont pas professionnels et
+en plus après avoir changé un thème celui de la sidebar ne change pas".
+Deux affirmations, un seul vrai bug derrière — creusé plutôt que supposé.
+
+**Bug réel confirmé** : `.side` (barre latérale, `GestionLayout.vue`)
+avait sa couleur de fond codée en dur (`background: #12294f`) dans
+`style.css`, **en dehors** de tout bloc `:root`/`[data-theme]` — un oubli
+de la mise en place du système de thèmes la veille : je n'avais vérifié
+les couleurs codées en dur que dans les fichiers `.vue`, jamais dans
+`style.css` lui-même en dehors des blocs de thème. La barre latérale ne
+pouvait donc littéralement jamais changer, quel que soit le thème choisi
+— exactement le symptôme rapporté.
+
+**Corrigé** : nouveau token `--side-bg`, dédié (pas `var(--navy)`
+réutilisé tel quel — la barre reste volontairement sombre dans tous les
+thèmes, y compris les thèmes clairs, donc sa couleur doit être choisie
+par thème plutôt que dérivée mécaniquement d'un navy parfois clair,
+comme dans le thème "Bleu"). Une valeur par thème : `#12294f` (clair,
+valeur d'origine conservée), `#060d1a` (sombre), `#0c3563` (bleu),
+`#1b2732` (ardoise), `#0c2620` (émeraude). `.side` utilise désormais
+`var(--side-bg)`.
+
+**Ardoise retravaillé** : la première version (navy `#1f3a52`, accent
+`#3f6f93`) mettait couleur principale et accent dans la même famille de
+bleus, trop proches pour vraiment se distinguer — un vrai défaut de
+palette, pas qu'une question de goût : sans contraste de teinte entre les
+deux, aucune palette ne lit comme "professionnelle", elle lit comme fade.
+Remplacé par un accent teal (`#2f8f88`), franchement distinct du navy
+tout en restant sobre.
+
+**Un faux bug écarté, vérifié à trois niveaux avant d'être exclu** :
+en relisant ma propre capture d'écran du thème "Bleu professionnel", j'ai
+d'abord cru que rien n'avait changé par rapport au thème clair (bouton de
+navigation actif visuellement identique). Vérifié avant de conclure à un
+bug : (1) `getComputedStyle` sur `.nv.on` → `rgb(47, 128, 224)` (bleu vif)
+pour "bleu" contre `rgb(37, 70, 126)` (navy foncé) pour "clair", nettement
+différents ; (2) `document.elementFromPoint` au centre de ce bouton →
+confirme qu'aucun élément ne se superpose, c'est bien `.nv.on` lui-même
+qui est visible à cet endroit ; (3) lecture du pixel réellement peint dans
+le PNG exporté (Pillow) → `(74, 128, 224)`, cohérent avec la valeur CSS.
+Les trois niveaux (CSS calculé, élément réellement affiché, pixel
+réellement peint) concordent : le thème "Bleu" fonctionnait déjà
+correctement, c'est ma propre lecture visuelle de la capture compressée
+qui était erronée — signalé ici explicitement plutôt que corrigé une
+seconde fois sans raison, ou pire, laissé sans explication.
+
+**Vérifié en conditions réelles** : capture d'écran des 5 thèmes,
+couleur de fond de la sidebar interrogée par script pour chacun —
+5 valeurs RGB distinctes confirmées (`rgb(18,41,79)`, `rgb(6,13,26)`,
+`rgb(12,53,99)`, `rgb(27,39,50)`, `rgb(12,38,32)`). 34 tests Vitest et
+build de production toujours au vert (changement CSS pur, aucune
+logique touchée).
+
+## Impression, sidebar en accordéon, logo (2026-09-09)
+
+Trois retours directs de l'utilisateur en une fois : (1) tous les
+documents renseignés doivent pouvoir s'imprimer, l'application doit "se
+connecter à toutes les imprimantes" ; (2) chaque titre de section de la
+barre latérale (PILOTAGE, TERRAIN, SYSTÈME) doit devenir un menu
+déroulant ; (3) créer un logo Hirondelles et l'insérer.
+
+### Point 1 — Impression
+
+**Clarifié avant de coder** (CLAUDE.md §9) : une page web ne se
+"connecte" jamais directement à une imprimante — c'est une frontière de
+sécurité du navigateur, pas une limite de ce projet. `window.print()`
+délègue à la boîte de dialogue d'impression du système, qui voit déjà
+toutes les imprimantes installées sans configuration côté application.
+Le travail réellement utile : un déclencheur visible et une mise en page
+imprimée propre.
+
+- Bouton "Imprimer" ajouté une seule fois, dans l'en-tête partagé de
+  `GestionLayout.vue` — présent sur les ~20 écrans desktop d'un coup,
+  plutôt que 20 modifications séparées (même logique que le sélecteur de
+  thème, déjà ajouté au même endroit).
+- Nouvelle classe utilitaire `.no-print` (style.css) : masque au format
+  impression n'importe quel élément de navigation/action marqué avec —
+  appliquée à la barre latérale et aux contrôles de l'en-tête (thème,
+  impression, cloche). `.gestion-main`/`.gestion-view` reprennent un
+  `overflow: visible` à l'impression (ils sont en défilement interne à
+  l'écran, `overflow-y: auto` — sans ce correctif, seule la portion
+  visible à l'écran se serait imprimée, pas le contenu complet). Modal
+  ouvert, barre d'onglets mobile et bandeau réseau masqués aussi, par
+  sélecteur direct plutôt que d'exiger `.no-print` sur chaque écran.
+- Nouvelle icône `i-print` ajoutée au sprite, même style trait que le
+  reste (Lucide).
+
+**Bug réel introduit puis corrigé en vérifiant** : première version de
+`.no-print` posait aussi `display: block` en dehors de `@media print` —
+inutile (seul le masquage à l'impression compte) et carrément nuisible :
+`.side` et `.no-print` ont la même spécificité CSS, donc l'ordre du
+fichier tranche — `.no-print` étant déclaré plus bas, il l'emportait sur
+`display: flex` de `.side`, cassant sa mise en page **à l'écran**, pas
+seulement à l'impression. Retiré, seule la règle sous `@media print`
+reste.
+
+**Vérifié en conditions réelles** : `.side` correctement masqué en
+simulant le média `print` (`page.emulateMedia`). Le clic sur "Imprimer"
+appelle bien `imprimer()` → `window.print()` — confirmé via le journal
+du serveur Vite (`DEBUG imprimer() appelée` juste après le clic, retiré
+ensuite), **pas** via la valeur de retour du script de test : appeler la
+vraie API `window.print()` dans un navigateur headless se comporte de
+façon imprévisible pour l'automatisation (aucun affichage réel, aucune
+imprimante) — signalé explicitement plutôt que présenté comme un test
+concluant sur ce point précis.
+
+### Point 2 — sections de la barre latérale en accordéon
+
+`GestionLayout.vue` : `sectionOuverte(section)`/`basculerSection(titre)`,
+état mémorisé dans `localStorage` (persiste après rechargement) —
+**sauf** pour la section qui contient l'écran actuellement affiché,
+toujours forcée ouverte même si l'utilisateur l'avait repliée
+juste avant de naviguer dedans (sinon un rechargement de page pourrait
+faire disparaître le lien vers l'écran affiché). Chevron (`i-chev`,
+déjà existant) pivote à 90° par CSS quand la section est ouverte.
+
+**Vérifié en conditions réelles** : repli de TERRAIN → ses liens
+disparaissent, PILOTAGE non affecté ; rechargement de page → repli
+toujours actif ; repli forcé de PILOTAGE (qui contient l'écran actif,
+Tableau de bord) → le lien reste quand même visible, confirmant le
+garde-fou. Capture d'écran à l'appui : mise en page de la barre latérale
+intacte après le correctif du point 1.
+
+### Point 3 — logo Hirondelles
+
+Ajouté comme icône du sprite existant (`i-hirondelle`,
+`IconeSprite.vue`) plutôt qu'un composant à part : même style trait
+(Lucide) que tout le reste, hérite `currentColor` automatiquement,
+s'utilise via `<Icone nom="hirondelle" />` exactement comme les autres.
+Silhouette d'hirondelle en vol — ailes en mouette (courbe large) + queue
+fourchue, le trait distinctif d'une hirondelle par rapport à un oiseau
+générique.
+
+Remplace le "H" texte brut (jamais un vrai logo, un espace réservé)
+dans les 7 écrans qui l'utilisaient (`ConnexionView`,
+`GestionLayout`, `AssistantDocumentaireView`, `ParcView`,
+`SatisfactionQuestionnaireView`, `SignalementsView`,
+`TableauBordMobileView`). Trouvé au passage : le badge `.mk` de la barre
+latérale n'avait jamais eu de règle CSS dédiée (`.hd .mk` et `.login .mk`
+existaient, pas `.side .top .mk`) — ajoutée, même recette (dégradé or,
+coins arrondis) que `.hd .mk`.
+
+**Vérifié en conditions réelles** : SVG présent dans le badge (pas de
+texte "H" résiduel), capture d'écran confirmant un rendu net et lisible
+dans la barre latérale.
+
+34 tests Vitest et build de production au vert après les trois points.
+
+## Aperçu des documents (2026-09-09) — correction du point 1 précédent
+
+Retour direct de l'utilisateur, plus précis que le point 1 de l'entrée
+ci-dessus : l'impression construite était celle des ÉCRANS de
+l'application, pas celle des vrais DOCUMENTS (fichiers réels du module
+Documents) — et surtout, cliquer sur un document ne montrait aucun
+aperçu, juste un nouvel onglet. Corrigé.
+
+`components/ApercuDocument.vue` (nouveau) : fenêtre modale (réutilise
+`Modal.vue`) qui télécharge le fichier, en déduit le type par
+l'extension de `document.fichier` (déjà connue côté liste, pas besoin
+d'inspecter les en-têtes de réponse), et l'affiche :
+- **PDF** : `<iframe>` — la visionneuse native du navigateur (PDF.js
+  dans Chrome/Edge) s'affiche directement à l'intérieur, avec ses
+  propres outils de zoom/pagination/impression déjà intégrés.
+- **Image** : `<img>`.
+- **Autre format** : pas de rendu HTML fiable possible, message honnête
+  plutôt qu'un aperçu qui prétendrait fonctionner, plus un lien "Ouvrir
+  dans un nouvel onglet".
+
+Bouton "Imprimer" dédié à CE document (distinct de celui de
+`GestionLayout.vue`, qui imprime l'écran/tableau) : ouvre le fichier
+dans une fenêtre séparée puis y déclenche `print()` une fois chargée —
+fonctionne pour tous les formats, contrairement à
+`iframe.contentWindow.print()` qui ne s'applique proprement qu'aux PDF
+affichés en iframe.
+
+Branché sur les deux écrans Documents (desktop `DocumentsDesktopView.vue`
+et mobile `DocumentsDossierView.vue`) : le bouton "Ouvrir" devient
+"Aperçu", ouvre `ApercuDocument` au lieu d'un nouvel onglet direct.
+`window.open(URL.createObjectURL(...))` retiré des deux écrans, toute la
+logique de récupération/nettoyage du fichier vit maintenant dans le
+composant partagé (avec `URL.revokeObjectURL` à la fermeture, pour ne
+pas accumuler des URL blob en mémoire à chaque aperçu ouvert).
+
+**Point trouvé en testant, pas supposé** : tous les documents
+actuellement enregistrés dans l'application sont des `.docx`/`.xlsx`
+(vérifié via `GET /documents` — aucun PDF, aucune image) — aucun
+navigateur ne sait afficher ces formats nativement, contrairement au PDF.
+Pour ces documents (la majorité du fonds documentaire réel aujourd'hui),
+l'aperçu retombe donc sur le message "ne peut pas être prévisualisé" +
+le lien d'ouverture externe, pas une vraie prévisualisation inline.
+**Compromis assumé, à signaler explicitement** : une vraie prévisualisation
+Word/Excel dans le navigateur demanderait soit un convertisseur
+serveur (LibreOffice en mode headless ou équivalent — nouvelle
+dépendance système, à discuter avant de l'ajouter, CLAUDE.md §9), soit un
+service cloud tiers (contraire à l'esprit d'une application qui doit
+fonctionner hors connexion) — hors périmètre de ce chantier, pas oublié.
+
+**Vérifié en conditions réelles**, les deux cas : (1) document `.docx`
+existant (FOR-SHEQ-001) → aperçu ouvert, message d'avertissement
+présent, lien "Ouvrir dans un nouvel onglet" présent, bouton "Imprimer"
+quand même proposé (ouvre le fichier, le système fait le relais vers
+l'application associée) ; (2) un vrai PDF de test créé via le
+formulaire "Nouveau document" (upload réel, pas simulé) → aperçu ouvert,
+`<iframe>` chargé avec une URL `blob:`, **capture d'écran confirmant le
+contenu réel du PDF affiché** ("Test document PDF") avec la barre
+d'outils native du navigateur (pagination, zoom, impression,
+téléchargement) visible par-dessus mon propre bouton "Imprimer" — la
+meilleure preuve possible que l'aperçu fonctionne réellement, pas
+seulement que l'iframe existe dans le DOM. 34 tests Vitest et build de
+production toujours au vert.
+
+## Écran d'accueil, histogrammes du tableau de bord, archivage des visiteurs (2026-09-09)
+
+Trois retours directs de l'utilisateur.
+
+### Écran d'accueil retravaillé
+
+`AccueilView.vue` avait un double rôle jamais différencié : page
+d'accueil avant connexion ET destination du bouton "Accueil" de la barre
+d'onglets (~19 écrans mobiles) pour un utilisateur déjà connecté — dans
+les deux cas, la même page générique s'affichait, montrant même le texte
+brut de l'état de l'API ("API : connectee (development)") à
+l'utilisateur final. Corrigé :
+- Utilisateur déjà connecté → redirection immédiate vers Signalements
+  (même destination que juste après une connexion réussie,
+  `ConnexionView.vue`) : "Accueil" ramène à l'écran de travail réel, pas
+  à une vitrine.
+- Utilisateur non connecté → nouvelle présentation avec le vrai logo,
+  `BandeauReseau.vue` (déjà utilisé partout ailleurs, absent jusqu'ici du
+  tout premier écran vu) à la place du texte d'état brut de l'API.
+
+**Vérifié en conditions réelles** : capture d'écran de la nouvelle page
+(logo, indicateur réseau "En ligne · Synchronisé à l'instant", aucun
+jargon de développement) ; utilisateur connecté qui revient sur `/` →
+confirmé redirigé vers `/signalements`.
+
+### Histogrammes du tableau de bord
+
+Le tableau de bord avait déjà un vrai histogramme ("Signalements par
+mois", colonnes verticales) — invisible en pratique avec les données de
+démonstration actuelles (un seul mois renseigné, donc une seule
+colonne, ressemblant à un simple rectangle plutôt qu'à un histogramme).
+Un deuxième histogramme ajouté : "Avancement du plan d'action" (desktop
+uniquement), qui remplace les 3 barres de progression horizontales par
+un histogramme à 3 colonnes verticales (Réalisées/En cours/En retard),
+même style visuel que celui des signalements — deux nouvelles classes
+CSS (`.bcol .bar.g`, `.bcol .bar.o`), miroir de `.fl.g`/`.fl.o` déjà
+utilisées pour les barres de progression ailleurs dans l'application,
+pas de nouvelle dépendance de graphique.
+
+**Écart assumé, à signaler** : aucune autre donnée du tableau de bord
+(inspections, EPI, formations, documents, satisfaction) n'a de
+répartition par catégorie ou par mois côté API (`tableau_bord_service.py`
+— seule `SignalementsResume.par_mois` existe) : un troisième histogramme
+demanderait d'étendre le backend, pas seulement l'écran — pas fait
+faute de justification suffisante pour ce chantier précis.
+
+**Vérifié en conditions réelles** : capture d'écran confirmant les deux
+histogrammes réels côte à côte, colonnes multicolores visibles (vert/or/
+orange selon le statut).
+
+### Archivage des visiteurs
+
+`Visiteur` hérite déjà `archive` (base commune à toutes les tables,
+point 5 CLAUDE.md) mais rien ne l'exploitait — ni route, ni action de
+service, et surtout **`lister_visiteurs()` ne filtrait même pas
+`archive.is_(False)`** : un visiteur archivé serait resté visible dans
+le registre général, l'archivage n'aurait servi à rien. Corrigé en même
+temps que l'ajout de la fonctionnalité, pas après coup.
+
+`archiver_visiteur()` (service) refuse d'archiver un visiteur encore
+présent (400 explicite) — seul un visiteur déjà parti a une raison
+légitime d'être archivé ; `visiteurs_presents()` (liste d'évacuation)
+n'a pas besoin de filtrer sur `archive` pour cette raison même.
+`POST /visiteurs/{id}/archiver`, réservé à aucun rôle particulier (même
+principe que le reste du module — section 5.3.6, "aucun rôle accueil
+distinct dans la matrice").
+
+Frontend : nouvelle carte "Registre — visiteurs partis" sur
+**desktop uniquement** (`VisiteursDesktopView.vue`) — écran de gestion/
+historique, cohérent avec le principe déjà établi ailleurs dans l'appli
+(desktop = pilotage, mobile = saisie rapide terrain) ; `visiteurs.liste`
+était déjà chargée par `charger()` mais jamais affichée jusqu'ici.
+Bouton "Archiver" par ligne, visible seulement pour les visiteurs déjà
+partis.
+
+**Incident de session, pas un défaut du code** : premier test en direct
+échoué avec un 404 générique FastAPI (pas mon message "Visiteur
+introuvable") sur la route pourtant fraîchement ajoutée — même symptôme
+que pour la route PATCH Utilisateurs plus tôt dans la session : le
+serveur backend tournait sur du code obsolète malgré `--reload actif`,
+confirmé par les 6 tests pytest déjà au vert sur cette même route.
+`netstat -ano` a de nouveau rapporté un PID trompeur ; `tasklist` a
+retrouvé le vrai processus à arrêter. Reconfirme la leçon déjà notée :
+ne pas se fier à `netstat` seul dans cet environnement pour identifier
+le processus serveur à redémarrer.
+
+**Repéré au passage, hors périmètre de cette demande, signalé plutôt
+qu'ignoré** : `tests/test_export_pdf.py::test_export_permis` et
+`tests/test_notifications.py::test_permis_en_attente_notifie_le_responsable`
+échouent quand la suite tourne tard le soir — ces deux tests calculent
+`fin_validite` comme `maintenant + 4h` sans tenir compte du passage à
+minuit, ce qui déclenche légitimement la règle métier "un permis ne peut
+couvrir qu'une seule journée" (422) plutôt qu'un vrai bug applicatif.
+Confirmé sans rapport avec les changements de cette session via
+`git diff --stat HEAD -- app/` (seuls des fichiers auth/visiteurs
+modifiés). Test préexistant à corriger séparément, pas fait ici.
+
+**Vérifié en conditions réelles**, bout en bout dans le navigateur, sur
+le backend une fois réellement à jour : visiteur enregistré → départ
+enregistré → apparaît dans le registre → "Archiver" cliqué → disparaît
+du registre. Vérifié aussi directement côté API (`GET /visiteurs` avant/
+après : le visiteur archivé n'apparaît plus, total passé de 5 à 4).
+6 tests pytest sur `test_visiteurs.py` au vert (2 nouveaux), 36 tests
+Vitest (2 nouveaux, `visiteurs.test.js`) et build de production tous
+au vert.
+
+---
+
+## 2026-09-10 — Recherche + pagination des listes desktop (pilote Risques) ; suivi des actions ; emblème du logo
+
+Trois demandes de l'utilisateur, dans l'ordre : (1) « pour les listes tu dois
+[avoir] une possibilité de recherche, les listes doivent être paginées ET
+TOUT DOIT ETRE BIEN OPTIMISER » ; (2) l'image du logo Hirondelle IT Lab
+envoyée, à intégrer ; (3) « on ne peut pas modifier le statut de l'action ».
+
+### 1. Recherche + pagination — mécanique réutilisable
+
+`.pagin` / `.pg` / `.pg button.on` existaient dans `style.css` depuis l'import
+de la maquette mais n'avaient jamais été câblés à un écran. Ajouté :
+
+- **`composables/useRechercheEtPagination.js`** : filtre texte + découpage en
+  pages, 100 % côté client (toutes les listes sont déjà chargées en entier par
+  leur store ; volumes réels de l'ordre de quelques centaines de lignes, cf.
+  CDC — pas de pagination serveur aujourd'hui). Retourne `recherche` (ref),
+  `page`, `totalPages`, `resultats`, `elementsPage`, `allerPage`. Retour en
+  page 1 à chaque nouvelle recherche ; `page` re-borné si la liste rétrécit
+  (archivage).
+- **`components/BarrePagination.vue`** : pied de tableau `.pagin` avec numéros
+  de page (`.pg`), fenêtre autour de la page courante + « … » au-delà de
+  7 pages. Le texte de décompte reste au choix de l'écran (slot).
+- **`style.css`** : `.srch` (recherche par écran, repris de la recherche
+  globale d'en-tête de la maquette) copié depuis la maquette ; `.pg button`
+  passé de `background:#fff` en dur à `var(--surface)` (bouton blanc illisible
+  en thème sombre — même classe de bug que `--side-bg` la veille), `.pg
+  button:disabled` ajouté pour le « … ».
+- **Écran pilote** : `RisquesDesktopView.vue` — champ de recherche dans
+  l'en-tête de carte, `elementsPage` dans le `v-for`, `BarrePagination` en
+  pied. Recherche sur danger / catégorie / numéro / mesures proposées.
+
+**Bug réel trouvé et corrigé (coûteux à isoler).** La recherche ne filtrait
+rien : taper dans le champ mettait bien à jour la valeur DOM mais `resultats`
+ne se recalculait jamais, sans la moindre erreur en console. Cause : le
+prédicat `correspond()` faisait `r.numero?.toLowerCase()`. Or `numero` est un
+**entier** côté API (`"numero": 1`), pas une chaîne — `?.` ne court-circuite
+pas sur un nombre, `.toLowerCase()` lève un `TypeError`. Cette exception,
+levée dans le getter du `computed` `resultats` (lui-même lu pendant le flush
+d'un `watch` interne au composable), était avalée silencieusement par
+l'ordonnanceur de réactivité de Vue : la chaîne réactive se cassait sans
+trace. Diagnostic par bissection (le composant minimal isolé fonctionnait, la
+copie exacte de l'écran non → réduction progressive jusqu'à la ligne
+fautive). Corrigé : `String(r.numero ?? "").toLowerCase()`. Mise en garde
+explicite ajoutée dans le JSDoc du composable (« `filtrer` ne doit jamais
+lever ») + test de régression `useRechercheEtPagination.test.js` avec un champ
+numérique. `v-model` sur la ref déstructurée n'était PAS en cause (piste
+explorée puis écartée) — c'était bien le prédicat.
+
+**Vérifié en conditions réelles** dans le navigateur : recherche « zzz »
+inexistante → tableau vide + message « Aucun risque ne correspond » ; champ
+vidé → 4 lignes de nouveau ; recherche « électrique » → 0 ligne (aucune
+catégorie de ce nom dans le jeu de test, filtrage correct). Décompte
+« 0 sur 4 risques affichés » cohérent. 6 tests Vitest sur le composable.
+Pagination numérotée non exerçable en l'état (4 risques → une seule page) ;
+la mécanique est là, à propager aux autres écrans à liste.
+
+**« TOUT DOIT ETRE BIEN OPTIMISER »** : demande vague, non précisée. La
+pagination côté client (fin du rendu de listes non bornées) + la recherche
+en couvrent l'essentiel pour les volumes actuels. Si de très gros volumes
+apparaissaient, il faudrait une pagination serveur — l'API du composable
+resterait identique côté vue, seule son implémentation changerait. À
+reprendre avec l'utilisateur si un besoin de perf plus large se confirme.
+
+### 2. Suivi d'une action (statut + avancement) — vue desktop
+
+« On ne peut pas modifier le statut de l'action » : le back-end
+(`PATCH /actions/{id}/avancement` et `/statut`) **et** le store
+(`mettreAJourAvancement`, `changerStatut`) exposaient déjà tout ; la vue
+mobile avait un panneau de suivi ; mais `ActionsDesktopView.vue` affichait la
+colonne « Statut » en lecture seule, sans aucun bouton. Écart d'origine, pas
+un choix.
+
+Ajouté : bouton « Suivi » par ligne (« Voir » si clôturée) ouvrant une
+**fenêtre modale** (motif desktop standard) :
+
+- avancement (%) + indicateur de réalisation (texte) ;
+- « Enregistrer l'avancement » → `mettreAJourAvancement` ;
+- « Démarrer » (visible seulement si `ouverte`) → `changerStatut('en_cours')` ;
+- « Clôturer » → enregistre d'abord avancement + indicateur, puis
+  `changerStatut('cloturee')`. L'indicateur est **obligatoire** pour clôturer
+  (règle serveur `action_service.changer_statut`, 409 sinon) : garde côté
+  client (message explicite) + le refus serviteur est de toute façon remonté
+  dans la modale.
+- Action clôturée : modale en lecture seule (« aucun retour en arrière »).
+
+**`stores/actions.js`** : `mettreAJourAvancement` n'envoie plus la clé
+`indicateur` quand elle est vide (le serveur l'enregistrerait en `""`, ce qui
+bloquerait ensuite la clôture) ; envoi de la valeur `trim()`ée sinon.
+
+**Vérifié en conditions réelles** dans le navigateur, bout en bout :
+- action « ouverte » → « Suivi » → « Démarrer » → statut serveur passé à
+  `en_cours` (vérifié via `GET /actions/2`) ; l'affichage reste « En retard »
+  car l'échéance est dépassée — précédence correcte de `en_retard` sur
+  `en_cours` dans `etat()` ;
+- « Clôturer » sans indicateur → message de garde « Renseigne l'indicateur de
+  réalisation avant de clôturer. », modale maintenue ouverte ;
+- indicateur renseigné → « Clôturer » → modale fermée, ligne passée à
+  « Réalisée ».
+6 tests Vitest ajoutés (`stores/actions.test.js`), 47 tests Vitest au total au
+vert.
+
+### 3. Emblème du logo
+
+L'utilisateur a envoyé l'emblème Hirondelle IT Lab (cercle fin + hirondelle
+vue de face, ailes relevées, queue fourchue + mot-symbole « HIRONDELLE / IT
+LAB »). Le fichier étant un PNG non déposé dans le dépôt, `i-hirondelle`
+(`components/IconeSprite.vue`) a été **redessiné en SVG au plus près** de
+l'emblème : passage d'un tracé au trait à une **silhouette pleine** (`fill`
+explicite, `stroke` neutralisé sur ce seul symbole ; le cercle garde un trait
+de 2), viewBox `0 0 48 48`. Une marque pleine reste lisible dans les
+pastilles `.mk` de 24-40 px là où le trait fin se perdait. Les 8 emplacements
+qui utilisent déjà `<Icone nom="hirondelle">` (accueil, connexion, barre
+latérale, etc.) reprennent la nouvelle forme sans changement.
+
+**Reste à traiter** : pour un rendu strictement identique au PNG (dégradés,
+proportions exactes du mot-symbole), déposer le fichier dans `src/assets/` et
+le référencer là où le lockup complet a du sens (accueil, connexion) —
+demandé à l'utilisateur.
+
+---
+
+## 2026-09-10 (suite) — Inspections d'équipements : quel équipement, où, par qui, quand
+
+Retour direct de l'utilisateur : « pour les inspections des équipements on
+doit savoir quel équipement a été inspecté, où et par qui et quand ».
+
+Le back-end portait déjà toute l'information (`Inspection.equipement_id`,
+`site_id`, `inspecteur_id`, `date`, tous dans `InspectionSortie`) — c'est la
+restitution qui manquait, et le choix de l'équipement était absent côté
+desktop.
+
+**`stores/inspections.js`** :
+- `equipementParId(id)` et `nomEquipement(id)` — libellé lisible d'un
+  équipement inspecté : `identity` (code d'inventaire, ex. `BKO-AP-01`) +
+  `marque modele`, comme dans le Parc. Repli sur la seule `identity` si
+  marque/modèle absents, `null` si l'équipement est inconnu.
+
+**`InspectionsDesktopView.vue`** :
+- Colonne « Site / Objet » : quand `equipement_id` est renseigné, l'équipement
+  (`nomEquipement`) devient la ligne principale, le site passe en sous-ligne.
+  Sinon, le site seul comme avant. L'inspecteur et la date étaient déjà là.
+- Modale « Nouvelle inspection » : sélecteur d'équipement affiché quand le
+  type est « Équipements », **filtré sur les équipements du site retenu**
+  (`equipementsDuSite`, un équipement appartient à un site). Facultatif
+  (« Aucun en particulier »). `equipement_id` passé en query à
+  `InspectionDetailView`, qui le transmet déjà à `POST /inspections`.
+
+**`InspectionsView.vue` (mobile)** :
+- Lignes de la liste : ligne équipement ajoutée quand `equipement_id` présent ;
+  inspecteur ajouté à la ligne méta (n'y figurait pas).
+- Le sélecteur d'équipement (déjà présent) est désormais filtré par site et
+  affiche marque + modèle, cohérent avec le desktop.
+
+**`InspectionDetailView.vue`** :
+- En-tête enrichi : ligne équipement (`equipementInspecte`) + « site · date ·
+  inspecteur ». Pour une inspection encore en création (`inspections.inspection`
+  nul), l'équipement vient de la query et l'inspecteur est l'utilisateur
+  connecté ; pour une fiche existante, tout vient de l'objet chargé.
+
+**Vérifié en conditions réelles** dans le navigateur :
+- liste desktop, inspection `#4` (type Équipements) → colonne Objet =
+  « BKO-AP-01 — MikroTik hAP ac2 » + sous-ligne « Siège Bamako (démo) »,
+  inspecteur « Démo Admin », date « 08/09/2026 » ; les inspections sans
+  équipement affichent toujours le site seul ;
+- modale « Nouvelle inspection », type Équipements + site choisi → sélecteur
+  d'équipement présent, option « BKO-AP-01 — MikroTik hAP ac2 (Local
+  technique) » ;
+- fiche `/inspections/4` → en-tête « Équipements · BKO-AP-01 — MikroTik hAP
+  ac2 · Siège Bamako (démo) · 08/09/2026 · Démo Admin » ; fiche `/inspections/1`
+  (sans équipement) → « Incendie et extincteurs · Siège Bamako (démo) ·
+  07/09/2026 · Démo Admin ».
+4 tests Vitest ajoutés (`stores/inspections.test.js`), 51 tests au total au
+vert, build de production OK.
+
+---
+
+## 2026-09-10 (suite) — Objet précis inspecté (extincteur, tableau…) : « lequel »
+
+Retour direct de l'utilisateur : « après inspection d'un extincteur par
+exemple, on ne sait pas lequel a été inspecté ».
+
+Les inspections hors « équipements » (incendie, électricité, installations en
+hauteur, locaux) portent une checklist mais aucun identifiant de l'objet
+concret contrôlé — seulement le site. Le CDC ne prévoit pas de registre des
+extincteurs / tableaux / lignes de vie ; un **champ libre** court suffit à
+lever l'ambiguïté.
+
+**Back-end** :
+- `Inspection.objet_inspecte : str | None` (`String(200)`, nullable) — model,
+  service `creer_inspection`, `InspectionCreation` (facultatif),
+  `InspectionSortie`.
+- Migration `3197fb535115` (après `129412013be2`) : `add_column` nullable,
+  sans `server_default` — les inspections existantes restent à `NULL`, voulu.
+  `alembic upgrade head` OK.
+
+**Front-end** :
+- Modales « Nouvelle inspection » (desktop + mobile) : champ « Objet / repère
+  inspecté » — libellé « (recommandé) » pour les types non-équipement,
+  « (facultatif) » pour « équipements » (où `equipement_id` identifie déjà).
+  Placeholder adapté au type (« Ex. Extincteur EXT-03, hall RDC », « Ex.
+  Tableau TGBT, local technique »…). Passé en query à
+  `InspectionDetailView` → `creer()`.
+- Colonne « Site / Objet » (desktop) et lignes de liste (mobile) : affichent
+  `objet_inspecte` en ligne principale quand il est présent et qu'il n'y a
+  pas d'équipement lié ; site en sous-ligne. Si équipement **et** objet, le
+  second est ajouté en sous-ligne.
+- En-tête `InspectionDetailView` : `cibleInspection` = équipement lié, sinon
+  objet libre.
+- `stores/inspections.js` : `objet_inspecte` propagé aussi dans l'objet
+  d'inspection construit en fallback hors ligne.
+
+**Vérifié en conditions réelles** dans le navigateur, bout en bout :
+inspection « Incendie et extincteurs » créée depuis la modale desktop avec
+« Extincteur EXT-TEST-… » → après cotation d'un point (persistée côté serveur,
+`/inspections/7`), en-tête = « Incendie et extincteurs · Extincteur
+EXT-TEST-… · Siège Bamako (démo) · 10/09/2026 · Démo Admin » ; dans la liste,
+colonne Objet = « Extincteur EXT-TEST-… » + sous-ligne « Siège Bamako
+(démo) », inspecteur « Démo Admin », date « 10/09/2026 ».
+2 tests pytest (`test_inspections.py`, persistance + facultatif),
+343 tests back-end au vert ; 51 tests Vitest au vert ; build de prod OK.
+
+---
+
+## 2026-09-10 (suite) — Gestion multi-sites
+
+Retour direct de l'utilisateur : « dans l'application on a un seul site alors
+que nous intervenons sur plusieurs sites ».
+
+L'entité SITE (hors dictionnaire, section 5.2.3) n'avait qu'une route de
+consultation (`GET /sites`) : les sites se créaient « directement en base ».
+
+**Back-end** :
+- `Permissions.GERER_SITES = (ADMINISTRATEUR,)` — les sites relèvent des
+  « paramètres » du périmètre administrateur (CLAUDE.md §6). La consultation
+  reste ouverte à tout le personnel.
+- `schemas/site.py` : `SiteCreation` (nom obligatoire, non vide),
+  `SiteMiseAJour` (partielle, `exclude_unset`).
+- `services/site_service.py` : `creer_site`, `modifier_site`, `archiver_site`.
+  **Archivage refusé (409)** tant qu'un équipement non archivé ou un permis en
+  cours (`demande`/`delivre`) est rattaché au site — on ne fait pas
+  disparaître un lieu encore exploité ; l'utilisateur doit d'abord traiter
+  ces rattachements. Jamais de suppression physique (CLAUDE.md §2).
+- `api/v1/sites.py` : `POST /sites`, `PATCH /sites/{id}`,
+  `POST /sites/{id}/archiver` — tous `require_role(*GERER_SITES)`.
+- `tests/test_sites.py` : 8 tests (création, nom vide refusé, 403 technicien,
+  liste ouverte, modif partielle, archivage retire de la liste, archivage
+  refusé si équipement rattaché, pas de route DELETE).
+
+**Front-end** :
+- `stores/sites.js` : `charger` / `creer` / `modifier` / `archiver` +
+  `TYPES_SITE` + `libelleType`. `sites.test.js` : 4 tests.
+- `views/SitesDesktopView.vue` : liste + fenêtre modale création/édition
+  (Modal.vue) + « Archiver » (confirmation navigateur, refus serveur remonté
+  dans le bandeau). Réservé à l'administrateur, aucun équivalent mobile
+  (cohérent avec Utilisateurs & rôles).
+- Route `gestion-sites` (`/gestion/sites`), entrée « Sites » dans la section
+  ADMINISTRATION de la barre latérale (déjà masquée aux non-administrateurs).
+
+**Vérifié en conditions réelles** dans le navigateur : écran `/gestion/sites`
+ne montrait que « Siège Bamako (démo) » → création « Antenne Test … » (type
+site client, adresse « Kayes, quartier Légal ») → les deux sites listés ; le
+nouveau site apparaît immédiatement dans le sélecteur « Site » de la modale
+« Nouvelle inspection » (donc disponible partout où un site_id est référencé :
+inspections, permis, équipements, déchets, visiteurs). Lien « Sites » présent
+dans la barre latérale. Aucune erreur console.
+349 tests back-end au vert (8 nouveaux), 55 Vitest (4 nouveaux), build de
+prod OK.
+
+---
+
+## 2026-09-10 (suite) — Fenêtres modales sur les écrans terrain (mobile)
+
+Retour direct de l'utilisateur : « pour les écrans terrain les formulaires
+doivent être des drop down aussi ».
+
+Les écrans desktop avaient été convertis au motif `Modal.vue` (le formulaire
+s'ouvre au-dessus de l'écran au clic, se ferme après l'action) ; les écrans
+mobiles gardaient le motif d'origine « carte insérée dans le flux de la page »
+(`<div v-if="formulaireOuvert" class="card">`).
+
+9 écrans mobiles convertis à `Modal.vue`, même transformation qu'en desktop :
+`ActionsView` (pilote), `RisquesView`, `ParcView`, `ParcFicheView`,
+`DechetsView`, `DocumentsView`, `FormationsView`, `PermisView`,
+`CoffreFortView`, `InspectionsView`. Le bouton déclencheur perd son
+`v-if="!formulaireOuvert"` (il reste visible, la modale le recouvre) ; le
+titre de section `.sec` est remplacé par le `titre` de la modale. `Modal.vue`
+(`position: fixed; inset: 0`) se superpose au conteneur `.ecran-mobile` sans
+adaptation supplémentaire — `.modal-boite` (`width: 100%; max-width: 560px`)
+tient sur un viewport de 400 px.
+
+`ParcFicheView` : cas particulier — le bouton était conditionné à
+`marque === 'MikroTik'` ET `!formulaireOuvert` ; seul le second est retiré,
+le `v-else-if="!formulaireOuvert"` du texte d'indisponibilité devient `v-else`.
+
+`VisiteursView` **laissé tel quel** : son formulaire d'arrivée n'a pas de
+bouton déclencheur, il est affiché en permanence (borne d'accueil, le
+visiteur se saisit lui-même) — ce n'est pas le motif « clic → formulaire »
+visé par la demande. À convertir si l'utilisateur le souhaite aussi.
+
+**Vérifié en conditions réelles** (viewport 400 px) : sur les 8 écrans
+testés en boucle (`/risques`, `/parc`, `/dechets`, `/documents`,
+`/formations`, `/permis`, `/coffre-fort`, `/inspections`) le bouton ouvre une
+`.modal-fond` avec le bon titre et le bon nombre de champs, la touche Échap
+la referme. Flux complet vérifié sur `/risques` : ouverture → saisie danger +
+mesures → « Enregistrer » → modale fermée, nouveau risque présent dans la
+liste. Aucune erreur console. 55 tests Vitest au vert, build de prod OK.
+
+**Complément (même jour)** : `VisiteursView` converti à son tour (l'utilisateur
+a confirmé). Le formulaire d'arrivée, jusque-là affiché en permanence, s'ouvre
+maintenant via « Enregistrer une arrivée » dans une modale « Arrivée d'un
+visiteur » et se referme après l'enregistrement. Vérifié en conditions réelles
+(viewport 400 px) : aucun formulaire au chargement → bouton → modale (5 champs
++ case consignes) → « J'accepte et je m'enregistre » → modale fermée, visiteur
+présent dans la liste « SUR SITE ». Aucune erreur console. Les 10 écrans
+terrain à formulaire sont désormais tous au motif modale.
+
+---
+
+## 2026-09-10 (suite) — Correction des points faibles de la revue (lot 1/n)
+
+Suite à la revue d'ensemble, l'utilisateur demande la correction de tous les
+points. Traité par lots, chacun testé et vérifié.
+
+### Lot 1 — Noms au lieu d'identifiants, refus de permis, site du signalement
+
+**`PermisValidationView`** — l'écran qui autorise un travail en hauteur
+affichait « Site #1 » et « Utilisateur #3, Utilisateur #7 ». Refait :
+- passe par `usePermisStore` (comme le reste de l'app) au lieu d'appeler
+  l'API en direct ; nouveaux `chargerPourValidation(id)`, `valider(id)`,
+  `refuser(id, motif)` dans le store ;
+- affiche les noms résolus (site, intervenants, **surveillant** — n'était pas
+  montré du tout) ;
+- **bouton « Refuser »** ajouté (route `/permis/{id}/refuser` avec motif,
+  jamais exposée) : un permis non conforme ne restait sinon ni validé ni
+  refusé. Motif obligatoire, saisi dans une modale ;
+- squelette de chargement au lieu de « Chargement… » brut.
+
+**Backend signalements** — `SignalementSortie` gagne `auteur_nom` et
+`site_nom` résolus **côté serveur** (`signalement_service.serialiser` /
+`serialiser_plusieurs`, un seul aller-retour SQL pour la liste). `auteur_nom`
+reste `None` pour un signalement anonyme — l'anonymat est garanti par le
+serveur, pas laissé au client (CLAUDE.md §7.3). `SignalementsView` affiche
+`auteur_nom`. 2 tests pytest (dont un vérifiant l'anonymat en liste, vu par
+un référent).
+
+**`NouveauSignalementView`** — sélecteur de **site** ajouté (un technicien
+intervient sur plusieurs sites). Pré-rempli avec le site du compte,
+modifiable. Liste des sites mise en cache `localStorage` pour rester
+utilisable hors connexion (cet écran est le pilote du mode hors ligne).
+
+### Lot 2 — Téléchargement des PDF officiels
+
+Le back-end génère des PDF (signalements, inspections, permis, audits,
+revues, SLAM, configurations) — **aucun bouton dans l'interface**. Or l'app
+digitalise 36 documents papier, le PDF est le livrable.
+
+- `utils/telechargement.js` : `telechargerPdf(chemin, nomFichier)` — récupère
+  le blob via `api.requete(..., { brut: true })` (conserve l'en-tête
+  Authorization, qu'un `<a href>` n'enverrait pas) et déclenche
+  l'enregistrement.
+- Icône `i-dl` (flèche vers le bac, style trait Lucide) ajoutée au sprite.
+- Boutons « PDF » ajoutés : `InspectionsDesktopView` (par ligne),
+  `PermisDesktopView` (par ligne). À étendre à Audits/Revues et à la fiche
+  d'inspection / le détail permis.
+
+**Vérifié en conditions réelles** : `/gestion/inspections` → 7 boutons PDF,
+clic → téléchargement réel déclenché (`inspection-7.pdf`). `/signalements` →
+noms d'auteur (« Démo Admin »), plus aucun « Utilisateur #n ».
+`/signalements/nouveau` → sélecteur de site avec la vraie liste.
+351 tests back-end au vert, 55 Vitest, build de prod OK.
+
+### Reste à traiter (lots suivants)
+
+- **Pagination + filtres serveur** sur `/actions`, `/inspections`, `/permis`,
+  `/risques`, `/equipements`, `/documents`, `/dechets`, `/audits`,
+  `/formations` (seul `/signalements` les a).
+- **Routes PATCH d'édition** : corriger `danger`/`catégorie` d'un risque,
+  `libellé`/`responsable`/`échéance` d'une action, un déchet, une séance de
+  formation, les métadonnées d'un document, un permis avant validation.
+  Archivage d'un déchet.
+- **Recherche + pagination** sur les ~14 tableaux desktop restants
+  (composant `BarrePagination` + `useRechercheEtPagination` déjà prêts,
+  pilotés sur Risques).
+- **PDF** : étendre les boutons à Audits/Revues + fiche inspection + détail
+  permis + ligne signalement mobile.
+- **Sauvegarde automatique de la base** : job APScheduler + rétention +
+  vérifier le chiffrement des secrets dans le dump.
+- **Tests instables** (`test_export_pdf::test_export_permis`,
+  `test_notifications::test_permis_en_attente_notifie_le_responsable`) :
+  corriger le passage de jour dans leur setup.
+- **Lien SLAM ↔ permis** par clé étrangère plutôt que par date.
+- **`RISQUE` sans `site_id`** : décider (global vs par site).
+- **Design** : uniformiser les états de chargement, modale de confirmation
+  réutilisable (remplace `window.confirm`), filtres site/période sur le
+  tableau de bord, piège de focus clavier dans `Modal.vue`, recherche
+  globale d'en-tête, intégration du vrai logo PNG.
+- **PostgreSQL** : jamais testé (Docker en attente).
+- **Revue de sécurité coffre-fort/auth** dédiée avant prod (§10).
+
+### Lot 3 — Pagination/filtres serveur (capacité) + recherche/pagination sur tous les tableaux desktop
+
+**Back-end** — `app/core/pagination.py` : dépendance FastAPI `pagination`
+(`limite`/`decalage`, plafond dur `PLAFOND_ABSOLU = 500`). Sans `limite`, on
+renvoie tout jusqu'au plafond (comportement inchangé, rétrocompatible) ;
+`limite` reste disponible pour les écrans qui voudront paginer côté serveur.
+Appliquée à `/actions` (avec `en_retard` désormais exprimé en SQL pour que la
+pagination reste juste), `/inspections` (+ filtre `equipement_id`), `/permis`.
+Les volumes réels (quelques centaines de lignes/module) ne justifient pas une
+pagination serveur systématique — la vraie optimisation d'affichage est côté
+client (ci-dessous).
+
+**Front-end** — `useRechercheEtPagination` + `BarrePagination` (déjà prêts,
+pilotés sur Risques) déployés sur **14 tableaux desktop** : Risques, Plan
+d'action, Parc, Documents, Inspections, SLAM & permis, Déchets, EPI,
+Utilisateurs, Sites, Registre des visiteurs partis, Coffre-fort, Satisfaction,
+Matrice de compétences. Chaque écran : champ `.srch` dans l'en-tête,
+`elementsPage` dans le `v-for`, `BarrePagination` en pied, ligne « aucune
+correspondance ». Prédicats de recherche avec `String()` sur les champs
+numériques (bug trouvé sur Risques le 2026-09-10 : `numero.toLowerCase()`
+plante silencieusement la réactivité). `AuditsDesktopView` non concerné — pas
+de liste plate (campagnes/chapitres imbriqués).
+
+**Vérifié en conditions réelles** : sur les 6 premiers écrans, recherche d'un
+terme improbable → message « ne correspond à la recherche », champ vidé →
+liste restaurée ; sur les 8 suivants, `.srch` + `.pagin` présents, aucune
+erreur de page, données affichées. Pagination serveur `?limite=2` sur
+`/actions` → 200.
+55 tests Vitest, build de prod OK.
+
+### Lot 4 — Routes PATCH d'édition (corriger une fiche après création)
+
+Aucune route ne permettait de corriger une faute de saisie : il fallait
+archiver puis recréer. Ajouté :
+
+- **`PATCH /risques/{id}`** (`RisqueModification`, `require_role
+  GERER_RISQUES`) : corrige danger / catégorie / unité de travail / personnes
+  exposées. **Ne touche pas la cotation** — elle reste gérée par `/reevaluer`,
+  qui empile une nouvelle cotation sans effacer l'historique (§5.2.5).
+- **`PATCH /actions/{id}`** (`ActionModification`) : libellé / type de mesure /
+  responsable / échéance. Réservé au responsable désigné ou à un rôle de
+  gestion ; **refusé (409) sur une action clôturée** (même esprit que le
+  changement de statut, aucun retour en arrière). L'origine (risque_id…) ne se
+  modifie pas.
+- **`PATCH /dechets/{id}`** + **`POST /dechets/{id}/archiver`** : le module
+  Déchets n'avait ni édition ni archivage (création + enlèvement seulement).
+
+Piège Python 3.14 rencontré : un champ Pydantic nommé `date` **avec valeur par
+défaut** (`date: date | None = None`) masque le type `datetime.date` au moment
+de l'évaluation différée de l'annotation → `TypeError: unsupported operand |`.
+Corrigé dans `schemas/dechet.py` en qualifiant ce seul champ par `_dt.date`.
+
+**Front-end** : `stores/{risques,actions,dechets}.js` gagnent `modifier()` (et
+`archiver()` pour dechets). Bouton « Modifier » + fenêtre modale de correction
+sur `RisquesDesktopView`, `ActionsDesktopView` (masqué sur une action
+clôturée), `DechetsDesktopView` (+ « Archiver » avec confirmation).
+
+**Vérifié en conditions réelles** : `/gestion/risques` → « Modifier » → le
+danger de la ligne change dans le tableau après enregistrement ;
+`/gestion/dechets` → « Archiver » → le lot disparaît du registre (2 lignes →
+1). 359 tests back-end (9 nouveaux : 3 risque, 3 action, 3 déchet), 55 Vitest,
+build de prod OK.
+
+### Lot 5 — Téléchargement des PDF (extension)
+
+Boutons « PDF » ajoutés au-delà des listes Inspections/Permis (lot 2) :
+`SignalementsView` (par ligne, mobile — le module est mobile uniquement) ;
+`AuditsDesktopView` (« Rapport PDF » de la campagne d'audit en cours).
+Vérifié : `/signalements` → 5 boutons, clic → téléchargement réel.
+
+### Lot 6 — Sauvegarde automatique de la base
+
+`Scripts/sauvegarde.py` existait mais n'était planifié nulle part (la contrainte
+§2/§4 supposait pourtant des sauvegardes régulières et sans secrets en clair).
+
+- `app/services/sauvegarde_service.py` : logique extraite du script (copie SQLite
+  cohérente / `pg_dump` en prod, archive `storage.tar.gz`, manifeste JSON) +
+  **rétention** (`purger_anciennes` garde les N plus récentes). `.env` n'est
+  JAMAIS inclus (les secrets applicatifs en base sont chiffrés Fernet ; la clé
+  maîtresse se conserve hors sauvegarde).
+- `app/core/scheduler.py` : job `sauvegarde_quotidienne` (cron, 2 h du matin par
+  défaut), erreur journalisée sans faire tomber le planificateur.
+- `config.py` : `sauvegarde_active` / `sauvegarde_dir` / `sauvegarde_heure` /
+  `sauvegarde_retention`.
+- `Scripts/sauvegarde.py` réduit à un lanceur CLI de la fonction du service.
+- `tests/test_sauvegarde.py` : 3 tests (archive + manifeste + relecture,
+  absence de `.env`, rétention qui supprime les plus anciennes).
+
+### Lot 7 — Tests instables + lien SLAM↔permis
+
+- **Tests instables corrigés** : `test_export_pdf::test_export_permis` et
+  `test_notifications::test_permis_en_attente_notifie_le_responsable`
+  calculaient `fin_validite = now() + 4h` ; après 20 h ça basculait au
+  lendemain et déclenchait la règle « un permis ne couvre qu'une seule
+  journée » (422). Créneau ancré à 08 h-12 h du jour même.
+- **Lien SLAM↔permis** : reste par heuristique de date (pas de clé étrangère).
+  Établir ce lien proprement suppose de décider *quand* il se crée (SLAM saisie
+  en amont sur mobile, permis créé ensuite) — c'est une question de flux
+  métier, pas un bug ; à trancher avec l'utilisateur avant de toucher à une
+  règle de sécurité. **Laissé en l'état, documenté.**
+
+### Lot 8 — Finitions design
+
+- **`components/Modal.vue`** — piège de focus clavier : à l'ouverture le focus
+  entre dans la modale (1er champ), Tab/Shift+Tab bouclent à l'intérieur, à la
+  fermeture le focus revient sur l'élément déclencheur. Vérifié (focus reste
+  dans la modale après 3 Tab).
+- **`components/ModalConfirmation.vue`** (nouveau) — confirmation stylée
+  réutilisable, remplace `window.confirm()`. Câblée sur les archivages :
+  `SitesDesktopView`, `DechetsDesktopView` (remplace `window.confirm`),
+  `VisiteursDesktopView` (n'avait aucune confirmation).
+- `PermisValidationView` : squelette de chargement (fait au lot 1).
+
+**Reste, hors code / à cadrer avec l'utilisateur :**
+- Filtres site + période sur le tableau de bord (le back-end accepte `site_id`).
+- Recherche globale d'en-tête (maquette `.srch`).
+- Intégration du **logo PNG** (fichier à déposer dans `src/assets/`).
+- États « Chargement… » encore en texte brut sur SlamView / InspectionDetailView.
+- **PostgreSQL** jamais testé (Docker à installer côté utilisateur).
+- **Revue de sécurité coffre-fort / auth** dédiée avant prod (§10) — process,
+  pas une tâche de code.
+
+**Bilan des lots 1→8** : 362 tests back-end (au vert, +12 depuis le début de
+la revue : signalement, risque, action, déchet, sauvegarde), 55 Vitest, build
+de prod OK. Recherche + pagination sur 14 tableaux desktop. Édition possible
+sur risques / actions / déchets. PDF téléchargeables. Sauvegarde quotidienne
+planifiée. Noms au lieu des identifiants sur l'écran de validation de permis.
+
+### Lot 7 (suite) — Lien SLAM ↔ permis enregistré
+
+Retour de l'utilisateur : « il ne sont pas lié ». Le rapprochement existait
+mais n'était que **recalculé à la volée** (par date) à chaque évaluation de la
+règle de blocage — rien n'était stocké : impossible de savoir *après coup*
+quelle SLAM avait justifié quel permis.
+
+- **Migration `7901cba3e6ab`** : colonne `evaluation_slam.permis_id` (FK
+  nullable, `batch_alter_table` pour SQLite comme PostgreSQL).
+- **Modèles** : relation `Permis.evaluations_slam` ↔ `EvaluationSlam.permis`,
+  + `EvaluationSlam.utilisateur` (avec `foreign_keys` explicite — BaseModel
+  ajoute cree_par_id/modifie_par_id, le lien serait sinon ambigu).
+- **`permis_service.lier_evaluations_slam(db, permis)`** : pour chaque
+  intervenant, rattache son évaluation SLAM la plus récente du jour du
+  créneau ; **idempotent** (détache d'abord ce qui ne correspond plus). Le
+  rapprochement reste par date — seule clé disponible côté terrain (la SLAM se
+  saisit avant que le permis existe) — mais le lien est désormais **écrit**.
+  N'établit AUCUN blocage : `regle_blocage_permis.evaluer_controles` reste
+  seule juge. Appelée à la création ET à la validation (une SLAM plus récente
+  a pu être saisie entre-temps).
+- **`PermisSortie.evaluations_slam`** : liste `{id, reference, utilisateur_id,
+  utilisateur_nom, decision, date, motif}` — noms résolus côté serveur.
+- **`PermisValidationView`** : nouvelle section « Évaluations SLAM
+  rattachées » — le responsable voit concrètement quelle SLAM (GO/NO GO,
+  horodatage, motif) justifie chaque intervenant.
+
+**Vérifié en conditions réelles** (API) : SLAM GO créée pour l'admin →
+création d'un permis avec l'admin en intervenant → réponse `statut: demande`
+et `evaluations_slam: [{utilisateur_nom: "Démo Admin", decision: "GO", …}]`.
+2 tests pytest (`test_permis.py`) : rattachement à la création ; re-rattachement
+d'une SLAM plus récente à la validation (l'ancienne est détachée). 364 tests
+back-end au vert, 55 Vitest, build de prod OK.
+
+### Lot 9 — Filtres tableau de bord, recherche globale, dernières éditions, états de chargement
+
+Reprise après une interruption de session ; suite directe de "et par la suite le
+reste" (revue d'ensemble).
+
+**Filtres du tableau de bord** — `TableauBordDesktopView` exposait déjà un
+back-end acceptant `site_id`/`date_debut`/`date_fin` sans jamais les
+proposer. Ajout d'un sélecteur de site + d'une période (30 j / 90 j / 12 mois
+/ depuis le début), rechargement automatique au changement (`watch`).
+
+**Recherche globale d'en-tête** — champ « Rechercher partout… » de la
+maquette, jamais implémenté. Nouveau `GET /api/v1/recherche?q=` (backend,
+`app/api/v1/recherche.py`) : interroge signalements (visibilité restreinte
+identique à leur liste — technicien/collaborateur ne voient que les leurs),
+risques, actions, permis, équipements, documents (filtrés par
+`document_service.lister_documents`, donc déjà par visibilité) ; réponses
+typées `{type, id, libelle, sous_libelle}`, plafonnées à 6 par type — recherche
+« contient », pas un moteur d'indexation. Store `stores/recherche.js` +
+menu déroulant dans `GestionLayout.vue` (debounce 250 ms, clic → navigation
+vers l'écran du type). 4 tests pytest, dont un qui vérifie explicitement que
+le technicien ne voit pas les signalements des autres dans les résultats.
+
+**Édition — 2 entités restantes** :
+- `PATCH /documents/{id}` (`DocumentModification`) : corrige référence /
+  intitulé / niveau / confidentialité / date de revue — **uniquement en
+  brouillon** (409 au-delà, la voie normale devient « nouvelle version »).
+- `PATCH /formations/seances/{id}` (`SeanceModification`) : corrige thème /
+  date / lieu / animateur / compétence — **uniquement tant que planifiée**
+  (409 après clôture, émargements et quiz déjà rattachés).
+Boutons « Modifier » + modales sur `DocumentsDesktopView` et
+`FormationsDesktopView`. Même piège Python 3.14 que `dechet.py` rencontré à
+nouveau sur `SeanceModification.date` (champ nommé comme son type, valeur par
+défaut) — qualifié `_dt.date`.
+
+**États de chargement** — dernier « Chargement… » en texte brut remplacé par
+un squelette (`SlamView`, `InspectionDetailView`) : plus aucun écran de
+l'application n'affiche ce texte brut.
+
+**Audits — décision documentée, pas un oubli** : cet écran n'a pas de liste
+plate (checklist par chapitre au sein d'une seule campagne ouverte, modale de
+revue en deux étapes) — le motif `useRechercheEtPagination` / tableau ne s'y
+applique pas sans dénaturer l'écran. Laissé tel quel.
+
+**Vérifié en conditions réelles** : tableau de bord → changement de site →
+les indicateurs se rechargent ; recherche « BKO » dans l'en-tête → menu avec
+« Équipement — BKO-AP-01 MikroTik hAP ac2 » ; document brouillon
+`TEST-PDF-…` → « Modifier » → modale → intitulé corrigé → visible
+immédiatement dans le tableau ; séance planifiée → bouton « Modifier »
+présent.
+
+373 tests back-end (+9 : 2 documents, 3 formations, 4 recherche), 55 Vitest,
+build de prod OK.
+
+---
+
+## 2026-09-10 (suite) — Module manquant dans la barre latérale : Paramètres
+
+Retour direct de l'utilisateur : « le système n'affiche pas tous les modules
+dans la barre latérale ». Vérification : la barre latérale rendait bien les
+17 écrans de gestion existants pour un administrateur (confirmé en
+conditions réelles, capture d'écran) — mais en comparant aux 19 écrans
+desktop de la maquette (`docs/maquettes/Maquettes_SHEQ_Desktop.html`, tous
+les `id="p-*"`), un seul n'avait **jamais été construit** : `#p-param`
+(Paramètres). C'était le module manquant.
+
+**Décision d'écart assumée** : la maquette montre des liens « Modifier » sur
+les référentiels et les seuils métier. Ces seuils (criticité 4/8/15,
+vérification EPI 12 mois, taux de conformité, délais…) sont des **règles
+appliquées côté serveur** (CLAUDE.md règle 6, jamais seulement côté
+interface — règle 7) : les rendre modifiables serait un changement de portée
+sur des règles de sécurité/qualité, à traiter explicitement plutôt que glissé
+dans cet écran. L'écran construit est donc **en lecture seule** — aucun
+bouton « Modifier » qui ne ferait rien.
+
+- **Backend** `GET /api/v1/parametres` (`app/api/v1/parametres.py`, réservé
+  administrateur — `GERER_UTILISATEURS`) : comptages réels (sites,
+  équipements, catégories de risques utilisées/total, types de déchets,
+  modèles de checklist, compétences de formation) + état réel de la
+  sauvegarde automatique (lot du 2026-09-10 — active/heure/rétention,
+  nombre d'archives, dernière sauvegarde lue depuis son manifeste JSON).
+  Quand aucune sauvegarde n'existe encore, l'écran l'affiche honnêtement
+  (« Aucune sauvegarde encore créée », orange) plutôt que d'inventer une date.
+- **Frontend** `ParametresDesktopView.vue` : Référentiels, Seuils et règles
+  métier (texte de référence, non éditable), Notifications (table statique,
+  reprise telle quelle de la maquette — les déclencheurs sont déjà fixes côté
+  serveur), Sécurité et sauvegarde. Route `gestion-parametres`, lien ajouté
+  dans la section ADMINISTRATION de la barre latérale (administrateur
+  uniquement, même périmètre que Utilisateurs & Sites).
+- 4 tests pytest : accès réservé admin, comptages réels non inventés,
+  état "aucune sauvegarde" honnête, état avec une archive réelle.
+
+**Vérifié en conditions réelles** : lien « Paramètres » présent et cliquable
+dans la barre latérale, écran affiche les comptages réels (2 sites, 1
+équipement, 3/12 catégories de risque utilisées, 5 modèles de checklist…) et
+l'état réel de la sauvegarde (aucune encore créée — honnête, le job
+planifié n'a pas encore tourné dans cet environnement de développement).
+
+---
+
+## 2026-09-10 (suite) — Gestion des rôles
+
+Retour direct de l'utilisateur : « je ne vois pas la gestion des rôles ».
+L'écran « Utilisateurs & rôles » existait déjà (lien admin-only, section
+ADMINISTRATION) mais sa carte « Rôles et périmètres » était un tableau
+statique de 5 lignes recopié de CLAUDE.md §6 — pas une gestion des rôles,
+juste un mémo. La vraie source de vérité, `app/core/permissions.py`
+(~20 constantes `Permissions.X`, chacune un tuple de rôles, vérifiées par
+chaque route via `Depends(require_role(*Permissions.X))`), portait déjà ce
+commentaire depuis un prompt antérieur : *« utile par exemple pour un futur
+écran "gestion des rôles" »* — jamais construit jusqu'ici.
+
+- **`GET /api/v1/roles`** (`app/api/v1/roles.py`, ouvert à tout utilisateur
+  authentifié — connaître les périmètres n'est pas sensible, contrairement à
+  la gestion des comptes eux-mêmes) : lit `Permissions` **par introspection**
+  (`vars(Permissions)`), pas une recopie qui pourrait se désynchroniser du
+  code qui applique réellement les droits. Un libellé lisible par clé
+  (`LIBELLE_PERMISSION`) est la seule duplication assumée — les rôles
+  titulaires de chaque permission sont toujours lus depuis le code réel.
+  Garde-fou : `test_permissions_refletent_reellement_permissions_py` compare
+  explicitement les clés renvoyées par l'API à celles de `Permissions`.
+- **`UtilisateursDesktopView`** : nouvelle carte **« Permissions par rôle »**
+  — grille réelle (21 permissions × 5 rôles, coche verte), remplace le
+  tableau statique. Volontairement en lecture seule : les rôles sont un
+  ensemble fermé de 5 valeurs et les permissions sont du code, pas des
+  données de configuration — les rendre éditables serait un changement
+  d'architecture (RBAC dynamique), pas un correctif d'affichage.
+- 4 tests pytest, dont le garde-fou anti-désynchronisation ci-dessus et la
+  vérification de deux permissions précises (`GERER_UTILISATEURS` →
+  administrateur seul ; `VALIDER_PERMIS` → responsable + administrateur).
+
+**Vérifié en conditions réelles** : `/gestion/utilisateurs` → 3 cartes
+(Utilisateurs, Rôles et périmètres, Permissions par rôle) → grille de 21
+lignes × 5 colonnes, cases cochées cohérentes avec le code (ex. « Valider
+les permis de travail en hauteur » coché Responsable + Administrateur
+seulement). 381 tests back-end (+4), 55 Vitest, build de prod OK.
+
+---
+
+## 2026-09-10 (suite) — Modules du sidebar qui ne s'affichaient pas (pour certains rôles)
+
+Retour direct de l'utilisateur : « mais ils n'affichent [pas] dans les
+écran[s] », précisé ensuite : « les modules du sidebar en général ».
+
+**Diagnostic** : pour un administrateur, la barre latérale affichait bien
+ses 19 liens (vérifié à plusieurs reprises cette session). Le problème
+n'était pas visible pour ce rôle. J'ai donc testé les 4 autres rôles (comptes
+de diagnostic créés puis désactivés en fin de vérification — jamais
+supprimés) en forçant la navigation vers `/gestion/*` : **4 liens montraient
+un module à des rôles qui ne pouvaient pas en charger les données**,
+provoquant un écran vide/en erreur (403) au clic — le symptôme observable
+correspond bien à « le module ne s'affiche pas » :
+
+| Lien | Route bloquait pour | Permission réelle exigée |
+|---|---|---|
+| Tableau de bord | technicien, collaborateur | `CONSULTER_TABLEAU_BORD` |
+| SLAM & permis | technicien, collaborateur | `CONSULTER_TABLEAU_BORD` (`GET /slam`) |
+| Formations | responsable, technicien, collaborateur | `GERER_FORMATIONS` (`GET /formations/competences`) |
+| Satisfaction | responsable, technicien, collaborateur | `TRAITER_SATISFACTION` |
+
+Le menu **mobile** (`MenuView.vue`, `peutVoirTableauBord`) avait déjà la
+bonne restriction pour le tableau de bord ; la barre latérale **desktop**
+(`GestionLayout.vue`) ne l'a jamais reçue — chaque écran a été construit
+« un module à la fois » (CLAUDE.md §9) sans revenir mettre à jour la liste
+de liens partagée à chaque fois qu'une permission serveur plus étroite que
+« tout le monde » était introduite.
+
+**Correctif structurel, pas un simple ravalement** : plutôt que de recopier
+à la main 4 listes de rôles de plus (le même geste qui a créé le bug),
+`stores/roles.js` (nouveau) devient la **source unique** : il lit
+`GET /api/v1/roles` (déjà construit pour la grille « Permissions par rôle »)
+et expose `rolesPour(cle)`. Chaque lien sensible du sidebar porte maintenant
+une clé `permission` (ex. `"CONSULTER_TABLEAU_BORD"`) au lieu d'une liste de
+rôles recopiée ; `UtilisateursDesktopView` a été basculé sur ce même store
+(elle avait son propre fetch local, source de duplication). Résultat : la
+visibilité de la barre latérale et la grille de permissions ne peuvent plus
+diverger l'une de l'autre, ni du code qui applique réellement les droits —
+toute permission ajoutée à un futur module apparaîtra correctement des deux
+côtés sans intervention manuelle. Coffre-fort (pas de permission unique,
+dépend du `role_requis` par secret) garde sa liste de rôles figée, assumé.
+
+Garde-fous ajoutés : une clé `permission` inconnue de l'API est traitée
+comme « pas de restriction connue » (lien visible), jamais comme « masqué »
+— une faute de frappe ne peut pas faire disparaître un module. Le rendu de
+la barre latérale attend que le chargement des permissions ait abouti
+(succès OU échec) avant de s'afficher, pour éviter qu'un lien apparaisse un
+instant puis disparaisse pour les rôles non habilités.
+
+4 tests Vitest (`stores/roles.test.js`) : un seul chargement par session,
+erreur consignée sans être masquée, clé connue vs inconnue.
+
+**Vérifié en conditions réelles** (5 rôles, comptes de diagnostic) :
+- administrateur : 19 liens, inchangé (pas de régression) ;
+- référent SHEQ : 15 liens, Tableau de bord/SLAM & permis/Formations/
+  Satisfaction tous visibles (habilité pour les 4) ;
+- responsable : 14 liens, Formations et Satisfaction **désormais masqués**
+  (n'y avait pas accès de toute façon) ; Tableau de bord/SLAM & permis
+  visibles ;
+- technicien : 12 liens, les 4 modules pilotage masqués, Coffre-fort visible ;
+- collaborateur : 11 liens, les 4 modules pilotage ET Coffre-fort masqués.
+
+Plus aucune erreur 403 déclenchée par un clic dans la barre latérale, pour
+aucun des 5 rôles. 381 tests back-end (inchangés, aucun code serveur modifié
+dans ce lot), 59 Vitest (+4), build de prod OK.
+
+**Correction (même jour)** : le gating `permission: "GERER_FORMATIONS"`
+appliqué à « Formations » dans le lot précédent était une erreur —
+vérification en conditions réelles à l'appui, `GET /formations/competences`
+est en fait **ouvert à tous** (seule sa création est réservée) ; seul
+`GET /formations/matrice` est restreint (`ROLES_VUE_ENSEMBLE`), et
+`FormationsDesktopView` l'appelle déjà dans son propre `try/catch` dédié
+(matrice vide affichée, pas d'erreur bloquante — décision déjà prise et
+commentée avant cette revue). L'écran fonctionne réellement pour tous les
+rôles ; la lecture statique du code qui m'avait fait croire le contraire
+confondait le `Depends` de la route `POST /competences` (restreinte) avec
+celui de `GET /competences` (ouverte), deux décorateurs voisins dans le
+fichier. Retiré ; « Formations » redevient visible à tous, comme sur mobile.
+Revérifié en conditions réelles avant et après (contenu affiché, pas de
+bannière d'erreur, pour un compte technicien). Tableau de bord, SLAM &
+permis et Satisfaction, eux, cassent réellement (bannière d'erreur, données
+à zéro) pour les rôles non habilités — confirmé indépendamment pour chacun,
+leur masquage reste justifié.
+
+---
+
+## 2026-09-10 (suite) — Déconnexion volontaire
+
+Retour direct de l'utilisateur : « on crée un module pour la déconnexion ».
+
+`auth.deconnecter()` existait déjà (utilisé automatiquement par
+`api.definirGestionnaireSessionExpiree` à l'expiration de session, voir
+`main.js`) mais n'était câblé à **aucun bouton** : impossible de se
+déconnecter volontairement sans vider le stockage du navigateur à la main.
+
+- Icône `i-logout` ajoutée au sprite (porte + flèche sortante, style trait
+  Lucide, cohérent avec le reste du jeu).
+- **Desktop** (`GestionLayout.vue`) : bouton dans le bloc profil en bas de la
+  barre latérale (`.user`), à côté du nom/rôle.
+- **Mobile** (`MenuView.vue`) : section « COMPTE » avec bouton « Se
+  déconnecter », sous le sélecteur de thème.
+- Les deux appellent `auth.deconnecter()` puis redirigent vers l'écran de
+  connexion — même geste que la déconnexion automatique. Pas de confirmation
+  : action non destructrice (aucune donnée perdue, il suffit de se
+  reconnecter).
+
+**Vérifié en conditions réelles** : bouton présent et cliquable sur les deux
+interfaces ; après clic, le jeton disparaît de `localStorage` et l'écran de
+connexion s'affiche, sur desktop comme sur mobile. 59 tests Vitest (aucune
+régression), build de prod OK.
+
+---
+
+## 2026-09-10 (suite) — Photo de profil
+
+Retour direct de l'utilisateur : « permettre à l'utilisateur d'insérer sa
+photo lors de la connexion ». Compris comme un ajout en libre-service une
+fois connecté (pas littéralement sur l'écran de connexion : aucune photo ne
+peut raisonnablement se rattacher à un compte avant que l'identifiant/mot de
+passe ne l'aient authentifié) — à confirmer avec l'utilisateur si l'intention
+était différente.
+
+**Backend** :
+- `Utilisateur.photo` (colonne nullable, chemin relatif sous `storage_dir` —
+  même convention que `Signalement.photos`/`Document.fichier`). Migration
+  `5b9a3eb3a30b`.
+- `POST /auth/moi/photo` (dépôt/remplacement, réutilise
+  `core/fichiers.enregistrer_photos` — mêmes règles que les photos de
+  signalement : JPEG/PNG/WebP, 5 Mo max) ; `POST /auth/moi/photo/retirer`.
+  Toujours en libre-service sur SON PROPRE compte — aucune route ne prend
+  d'`utilisateur_id`, impossible par construction de déposer la photo de
+  quelqu'un d'autre.
+- `auth_service.changer_photo()`/`retirer_photo()` suppriment l'ancien
+  fichier du disque au remplacement/retrait : pas une donnée métier tracée
+  (règle 2 CLAUDE.md, suppression physique interdite = pour les
+  enregistrements, pas pour un blob orphelin), simple nettoyage pour ne pas
+  accumuler indéfiniment des fichiers inutilisés.
+- `GET /auth/utilisateurs/{id}/photo` : sert le fichier, même visibilité que
+  `GET /auth/utilisateurs` (ouvert à tout utilisateur authentifié).
+- `UtilisateurSortie.photo` exposé (chemin relatif, jamais l'URL complète).
+- 8 tests pytest : dépôt, lecture, 404 sans photo, remplacement (ancien
+  fichier bien supprimé), retrait, type de fichier refusé, impossible de
+  déposer la photo de quelqu'un d'autre, authentification exigée.
+
+**Frontend** :
+- `composables/useAvatar.js` : charge la photo d'un utilisateur en URL objet
+  via la route authentifiée (même principe que `ApercuDocument.vue` pour les
+  documents — pas de montage statique) ; révoque proprement l'ancienne URL au
+  changement/démontage. 4 tests Vitest.
+- `components/ModalPhotoProfil.vue` : aperçu circulaire, sélection de
+  fichier, "Enregistrer"/"Retirer la photo"/"Annuler" — un seul composant
+  partagé entre desktop et mobile (pas de formulaire dupliqué).
+- **Desktop** (`GestionLayout.vue`) : l'avatar du bloc profil devient un
+  bouton cliquable qui ouvre la modale.
+- **Mobile** (`MenuView.vue`) : nouvelle section « COMPTE » avec l'avatar,
+  le nom/rôle et un bouton « Ma photo de profil » (au-dessus de « Se
+  déconnecter », ajouté juste avant dans le même lot).
+- `.av`/`.photo-apercu` (style.css) : `<img>` en `object-fit: cover`,
+  repli sur les initiales déjà en place si aucune photo.
+
+**Vérifié en conditions réelles** (desktop ET mobile) : avatar en initiales
+au départ → clic → modale → fichier JPEG réel choisi → aperçu affiché →
+Enregistrer → modale fermée, avatar affiche la photo → **rechargement complet
+de la page → la photo persiste** (confirme qu'elle est bien enregistrée côté
+serveur, pas un état local volatile) → Retirer la photo → retour aux
+initiales. 389 tests back-end (+8), 63 Vitest (+4), build de prod OK.
+
+## 2026-09-19 — Revue de compatibilité front/back : Signalements (lot 1/n de « tu corriges tout »)
+
+Suite à l'audit statique front/back du prompt précédent (158 routes backend
+comparées aux appels frontend) : ~49 routes existaient côté serveur sans
+jamais être appelées depuis l'écran, dont plusieurs représentant des
+fonctionnalités entières manquantes. Ce lot traite la première et la plus
+prioritaire — Signalements, module central du CDC (chapitre 7.2.3) — puis on
+descend la liste module par module.
+
+**Constat** : `PATCH /signalements/{id}/statut` et `POST
+/signalements/{id}/archiver` existaient depuis le tout premier prompt (1.1),
+testés côté serveur, jamais câblés à aucun bouton — un signalement restait
+éternellement « NOUVEAU » une fois créé, aucun moyen de le faire progresser
+ni de l'archiver depuis l'interface. Autre trou plus surprenant : aucune
+route ne permettait de RELIRE une photo jointe après l'envoi (seul son
+décompte s'affichait dans la liste, `POST /signalements` acceptait bien les
+fichiers mais rien ne les resservait).
+
+**Backend** (`app/api/v1/signalements.py`) :
+- Nouvelle route `GET /signalements/{id}/photos/{index}` : sert le fichier
+  via `FileResponse`, même règle de visibilité que la consultation du
+  signalement (`_visible_par` — 404, pas 403, pour ne pas confirmer
+  l'existence d'un signalement hors périmètre). 3 tests pytest : lecture
+  réussie, index hors bornes → 404, un technicien ne peut pas lire la photo
+  d'un signalement d'un autre technicien (même s'il connaît l'id) alors que
+  le référent SHEQ, qui voit tout, le peut.
+
+**Frontend** :
+- `stores/signalements.js` : actions `changerStatut(id, statut)`,
+  `archiver(id)` et `obtenir(id)` (fiche individuelle, distincte de `liste`
+  qui ne sert qu'à l'écran de liste).
+- `views/SignalementDetailView.vue` (nouveau, route `/signalements/:id`,
+  nom `signalement-detail`) : fiche mobile inspirée de la maquette desktop
+  `#p-detail` mais volontairement réduite à ce que les données réelles
+  supportent — **écart assumé** : pas de tableau de causes 5M (le champ
+  `Signalement.causes` est un texte libre qu'aucune route ne permet encore
+  de renseigner), pas d'historique/timeline (aucun modèle ne trace les
+  changements de statut), pas de rattachement automatique à un risque. La
+  fiche affiche : référence/type/statut, lieu/description, site/date/auteur
+  (ou « Anonyme »), miniatures des photos (fetch authentifié en blob, même
+  principe que `useAvatar.js`), et les boutons d'action pilotés par
+  `TRANSITIONS_AUTORISEES` (Prendre en charge → Marquer les actions
+  définies/Clôturer directement → Clôturer), réservés aux rôles habilités
+  (`referent_sheq`, `administrateur` — reflet de
+  `Permissions.TRAITER_SIGNALEMENTS`), plus Archiver (avec
+  `ModalConfirmation`, une fois clôturé) et le téléchargement PDF.
+- `views/SignalementsView.vue` : chaque ligne de la liste devient cliquable
+  (`role="button" tabindex="0" @keydown.enter`, même convention que
+  `ActionsView.vue`) et ouvre la fiche détail — sauf les éléments encore en
+  attente de réseau (`enAttente`), qui n'existent pas encore côté serveur.
+
+**Bug d'environnement rencontré pendant la vérification (pas un bug de
+code)** : la nouvelle route photo renvoyait 404 alors que le fichier existait
+bien sur disque. Cause : deux processus uvicorn zombies tournaient encore
+(trouvés via `Get-CimInstance Win32_Process`, survivants d'une session
+précédente), et `storage_dir` est configuré en chemin relatif (`./storage`)
+— résolu depuis le mauvais répertoire de travail. Un redémarrage propre
+depuis `backend/` a suffi ; aucune correction de code nécessaire.
+
+**Vérifié en conditions réelles** (compte de diagnostic `diag.signalements`,
+rôle référent SHEQ, créé avec mot de passe connu puis désactivé — jamais
+supprimé — une fois la vérification terminée) : liste → clic sur un
+signalement NOUVEAU avec photo → fiche détail affiche la photo (image réelle
+3048×4064 chargée sans erreur console) → Prendre en charge → EN ANALYSE,
+deux boutons proposés → Marquer les actions définies → ACTIONS DÉFINIES, un
+seul bouton → Clôturer → CLÔTURÉ, section Traitement disparaît, bouton
+Archiver apparaît → confirmation → retour à la liste, le signalement n'y
+figure plus, le compteur passe de 5 à 4. 392 tests back-end (+3), 63 Vitest
+(inchangé, pas de nouveau test JS ce lot-ci — logique restée côté store/vue
+sans branche testable isolément), build de prod OK.
+
+**Reste à traiter** (prochains lots de « tu corriges tout », par ordre de
+priorité déjà établi) : EPI (création/affectation/retrait/réforme/
+vérification avant utilisation), Formations (émargement, clôture de
+séance), Documents (nouvelle version), Permis (clôture), Parc (édition,
+import), Revues de direction (solder décision, historique, commentaire IA,
+export PDF), boutons PDF restants (Configurations, Revues, SLAM).
+
+## 2026-09-19 (suite) — Revue de compatibilité front/back : EPI (lot 2/n)
+
+Deuxième module de la campagne « tu corriges tout ». Les cinq routes du
+registre EPI (prompt 2.1) existaient et étaient testées côté serveur ;
+l'écran desktop n'était qu'un tableau de lecture, et le mobile ne câblait
+que la vérification périodique officielle.
+
+**Frontend uniquement** (aucune route backend manquante ni modifiée ici) :
+- `stores/epi.js` : actions `creer`, `affecter`, `retirer`, `reformer` et
+  `verifierAvantUtilisation`.
+- `views/EpiDesktopView.vue` : bouton « Nouvel EPI » (formulaire modal :
+  type, marque/modèle, dates, porteur optionnel) et, par ligne, « Affecter »
+  (sélecteur en ligne), « Retirer » (`ModalConfirmation`, réversible — masqué
+  une fois déjà retiré) et « Réformer » (modal avec motif obligatoire,
+  irréversible — masqué une fois déjà réformé). Le tout réservé à
+  `peutGerer` (referent_sheq/administrateur, reflet de
+  `Permissions.GERER_EPI`), même garde locale que le mobile.
+- `views/EpiView.vue` : `POST /epi/{id}/verification-avant-utilisation`
+  (contrôle léger par le porteur lui-même avant de monter, ouvert à tout
+  utilisateur authentifié côté serveur) n'était pas distingué de la
+  vérification périodique officielle — seule cette dernière était câblée,
+  réservée à `peutVerifier`. Ajout de `estPorteur(item)` : le porteur d'un
+  EPI qui n'a pas les droits de gestion voit désormais ce contrôle léger sur
+  SES EPI affectés, distinct visuellement (« Contrôle avant utilisation »)
+  de la vérification officielle.
+
+**Bug réel trouvé en vérifiant en conditions réelles** (pas dans le code
+touché lors des lots précédents, mais mis en évidence en câblant cette
+action pour la première fois) : `etat()` (mobile) et `statutTag()`
+(desktop) déduisaient le badge « À vérifier » uniquement de la proximité de
+`prochaine_verification`, jamais du champ `statut` lui-même. Or un contrôle
+NON CONFORME — qu'il soit avant utilisation ou périodique — peut passer
+l'EPI à `a_verifier` sans rapprocher cette date (`enregistrer_verification_
+avant_utilisation` ne la touche même pas du tout). Résultat observé : un
+EPI tout juste déclaré non conforme continuait de s'afficher « EN SERVICE »
+partout (liste mobile, tableau desktop, indicateurs « Vérifications dues »/
+« dépassées »), alors que `Epi.est_conforme` (utilisé par le blocage réel
+des permis, lui, correct) le considérait déjà non conforme. Corrigé dans
+les deux écrans : `statut === "a_verifier"` est maintenant vérifié en
+priorité, avant le calcul par date.
+
+**Vérifié en conditions réelles** (comptes de diagnostic `diag.epi.referent`
+et `diag.epi.tech`, créés puis désactivés) : création d'un EPI (C-002,
+casque, affecté au technicien) → affectation modifiée puis rétablie →
+retrait (H-001, statut passe à Retiré, bouton Retirer disparaît, compteur
+« En service » diminue) → réforme (motif obligatoire rejeté vide, accepté
+rempli, statut Réformé, plus aucune action possible, compteur Réformés
+augmente) → côté mobile, connecté comme le porteur (pas de droits de
+gestion) : la ligne C-002 est cliquable (celle d'un autre EPI ne l'est pas),
+panneau « Contrôle avant utilisation » distinct → Non conforme → **badge
+passé à « À VÉRIFIER » et bandeau d'alerte apparu** (après correction du
+bug ci-dessus — avant, il restait à tort « EN SERVICE ») → confirmé côté
+desktop : indicateur « Vérifications dues » passé de 0 à 1, « dont 1
+dépassée ». 392 tests back-end (inchangés, aucune route backend touchée),
+63 Vitest (inchangés — actions du store trop simples pour justifier un test
+isolé, même principe que Signalements), build de prod OK.
+
+**Reste à traiter** : Formations (émargement, clôture de séance), Documents
+(nouvelle version), Permis (clôture), Parc (édition, import), Revues de
+direction, boutons PDF restants (Configurations, Revues, SLAM).
+
+## 2026-09-19 (suite) — Revue de compatibilité front/back : Formations (lot 3/n)
+
+Troisième module. `POST .../emargement` et `POST .../cloturer` (prompt 4.2)
+existaient et étaient testés côté serveur ; l'écran desktop ne permettait
+que de créer/corriger des séances, jamais de les faire progresser. En
+creusant, deux autres routes déjà écrites mais jamais atteintes : `POST
+/formations/competences` (le référentiel de compétences ne pouvait jamais
+être alimenté) et la sélection de `competence_id` à la création d'une
+séance (le champ existait dans `SeanceCreation` mais aucun `<select>` ne le
+proposait).
+
+**Backend** :
+- `GET /formations/seances/{id}/emargements` (nouvelle route + service
+  `lister_emargements`) : sans elle, un écran d'émargement rouvert perdait
+  toute trace des présences déjà enregistrées — seule l'écriture existait.
+  1 test pytest (liste vide, puis relit deux présences dont une absence).
+- **Bug réel trouvé en vérifiant en conditions réelles** (pas dans le
+  périmètre initial de ce lot, découvert en testant le premier bout à bout
+  émargement→clôture→matrice) : `GET /formations/matrice` renvoyait des
+  `Habilitation` brutes (`HabilitationSortie`), sans jamais résoudre
+  `libelle_competence` — la colonne « Compétence » du tableau desktop
+  s'affichait vide pour toute la matrice, alors qu'un schéma
+  `LigneMatriceCompetence` prévu pour exactement ce besoin existait dans
+  `schemas/formation.py` sans jamais être utilisé nulle part. Corrigé en
+  séparant `matrice_competences()` (inchangée, réutilisée par
+  `/mes-habilitations` qui a besoin de l'`id`) d'une nouvelle
+  `matrice_avec_libelles()` dédiée à `/matrice`, qui résout le libellé par
+  une seule requête (pas de N+1). Renforcé le test existant
+  (`test_matrice_restreinte_mais_mes_habilitations_ouvertes`) pour vérifier
+  `libelle_competence` plutôt que la seule longueur de la liste.
+
+**Frontend** :
+- `stores/formations.js` : actions `listerEmargements` et `cloturerSeance`
+  (`emarger()` existait déjà mais n'était appelée nulle part).
+- `views/FormationsDesktopView.vue` : bouton « Nouvelle compétence »
+  (modal libellé + périodicité) ; champ « Compétence liée » ajouté au
+  formulaire de séance ; par séance encore planifiée, boutons « Émarger »
+  (modal à cases à cocher, une par utilisateur, préremplie depuis la
+  nouvelle route de lecture, chaque clic enregistre immédiatement) et
+  « Clôturer » (`ModalConfirmation`, message qui prévient si des
+  habilitations seront renouvelées ou non selon que la séance est liée à
+  une compétence). Le tout, ainsi que « Nouvelle séance »/« Modifier »
+  déjà existants, réservé à `peutGerer` (referent_sheq/administrateur,
+  reflet de GERER_FORMATIONS) — ils ne l'étaient pas jusqu'ici, alors que
+  le lien de la barre latérale n'a pas de garde de permission (même classe
+  de bug que EPI ce jour).
+
+**Incident d'environnement rencontré pendant la vérification** (pas un bug
+de code) : après avoir relancé uvicorn "proprement", la route corrigée
+continuait à renvoyer l'ancienne forme. Cause : sur Windows, `uvicorn
+--reload` (et plus généralement les process lancés en arrière-plan depuis
+Git Bash) peuvent laisser des processus enfants `multiprocessing.spawn`
+orphelins qui gardent la socket d'écoute ouverte même après la mort du
+parent — `netstat`/`Get-NetTCPConnection` continuaient de rapporter le PID
+du parent déjà mort comme propriétaire du port 8000. Identifié en
+remontant `parent_pid` depuis la ligne de commande des processus orphelins
+(`Get-CimInstance Win32_Process`), puis tué explicitement ; un redémarrage
+propre a suffi, aucune correction de code nécessaire.
+
+**Vérifié en conditions réelles** (compte de diagnostic
+`diag.form.referent`, créé puis désactivé) : création d'une compétence
+(« Travail en hauteur », 12 mois) → création d'une séance liée à cette
+compétence → émargement de deux participants présents → fermeture et
+réouverture de la modale d'émargement (les cases cochées sont bien
+préremplies depuis le serveur) → clôture (message d'avertissement exact
+affiché, confirmé) → séance passée « Réalisée », boutons d'action
+disparus → matrice de compétences : deux nouvelles lignes « Valide »,
+20/09/2026 → 20/09/2027, **avec le libellé de compétence maintenant
+affiché** (après correction du bug ci-dessus). 393 tests back-end (+1),
+63 Vitest (inchangés — logique de store trop simple pour un test isolé,
+même principe que les lots précédents), build de prod OK.
+
+**Reste à traiter** : Documents (nouvelle version), Permis (clôture), Parc
+(édition, import), Revues de direction, boutons PDF restants
+(Configurations, Revues, SLAM).
+
+## 2026-09-19 (suite) — Revue de compatibilité front/back : Documents et Permis (lots 4-5/n)
+
+Deux lots plus courts, chacun une seule action manquante — aucune route
+backend créée ni modifiée, uniquement du câblage frontend vers des routes
+déjà écrites et testées.
+
+**Documents — nouvelle version** :
+- `stores/documents.js` : action `nouvelleVersion(id, fichier)`. Contrairement
+  aux autres actions du store, ne remplace PAS la fiche existante dans la
+  liste (`_remplacer`) mais en ajoute une nouvelle (`unshift`) : `POST
+  .../nouvelle-version` crée un enregistrement distinct (nouvel id, reparti
+  en brouillon), l'ancienne version en vigueur reste inchangée et
+  consultable — c'est l'immutabilité des documents en vigueur (le pendant,
+  pour ce module, de la règle 5 de CLAUDE.md sur les configurations).
+- `views/DocumentsDesktopView.vue` : bouton « Nouvelle version » sur tout
+  document `en_vigueur`, réservé à `peutGerer` (referent_sheq/
+  administrateur) ; modal avec fichier optionnel (reprend l'ancien si omis,
+  comportement déjà géré côté serveur). Pas ajouté à l'écran mobile
+  (`DocumentsDossierView.vue`) : la création/révision de documents est déjà,
+  par construction de cet écran, une action desktop uniquement (« Nouveau
+  document » n'existe pas non plus côté mobile).
+
+**Permis — clôture** :
+- `stores/permis.js` : action `cloturer(id)`.
+- `views/PermisValidationView.vue` : bouton « Clôturer le permis » quand le
+  permis est `delivre`, réservé à un rôle habilité à valider
+  (responsable/administrateur, reflet de VALIDER_PERMIS — même garde que
+  Valider/Refuser sur ce même écran). Nouvel état d'affichage pour
+  `statut === "cloture"` (« Ce permis est clôturé »), qui n'existait pas
+  avant (un permis clôturé tombait dans la branche générique et
+  réaffichait à tort le formulaire de validation).
+
+**Vérifié en conditions réelles** :
+- Documents (compte de diagnostic `diag.form.referent`, réactivé puis
+  redésactivé) : clic sur « Nouvelle version » de FOR-SHEQ-001 (v01, en
+  vigueur) → message de confirmation correct → création sans nouveau
+  fichier → une seconde ligne FOR-SHEQ-001 apparaît, v02, statut brouillon,
+  avec Modifier/Soumettre ; la v01 reste en vigueur, inchangée.
+- Permis (compte de diagnostic `diag.permis.resp`, créé puis désactivé) :
+  permis 2026-001 (délivré) → bouton « Clôturer le permis » visible →
+  clic → statut passe à clôturé en base, écran affiche « Ce permis est
+  clôturé », plus aucune action proposée.
+- Build de prod OK, 63 Vitest inchangés (aucune branche nouvelle isolément
+  testable — même principe que les lots précédents), suite pytest complète
+  relancée par hygiène malgré l'absence de changement backend.
+
+**Reste à traiter** : Parc (édition, import), Revues de direction, boutons
+PDF restants (Configurations, Revues, SLAM).
+
+## 2026-09-19 (suite) — Revue de compatibilité front/back : Parc d'équipements (lot 6/n)
+
+`PATCH /equipements/{id}` et `POST /equipements/import` existaient côté
+serveur (testés, prompt 3.1) sans aucune UI — le tableau desktop était en
+lecture pour la correction, et l'import en masse (le point d'entrée normal
+pour alimenter le parc au démarrage d'un chantier, depuis le gabarit
+INV-SHEQ-001) n'était atteignable par aucun bouton.
+
+**Découverte en creusant les permissions** : `Permissions.GERER_PARC =
+(TECHNICIEN, ADMINISTRATEUR)` — pas `(REFERENT_SHEQ, ADMINISTRATEUR)` comme
+la majorité des autres modules de gestion. C'est cohérent avec CLAUDE.md
+§6 (« technicien : saisit configurations, inspections… ») mais ça change la
+garde locale à poser côté desktop. Le bouton « Nouvel équipement », déjà
+présent, n'avait lui-même **aucune** garde jusqu'ici — un référent SHEQ ou
+un responsable atteignant l'écran desktop (le lien de la barre latérale n'a
+pas de clé de permission) le voyait et essuyait un 403 au clic. Corrigé au
+passage avec les deux mêmes lots.
+
+**Frontend** (aucune route backend créée ni modifiée) :
+- `stores/parc.js` : actions `modifierEquipement(id, donnees)` et
+  `importerParc(fichier)`.
+- `views/ParcDesktopView.vue` : bouton « Nouvel équipement » désormais
+  gardé par `peutGerer` (technicien/administrateur, reflet exact de
+  GERER_PARC) ; bouton « Modifier » par ligne (même garde), modal de
+  correction identique au formulaire de création ; bouton « Importer »
+  séparé, gardé par `peutImporter` (responsable/administrateur, reflet
+  d'IMPORTER_PARC — rôle distinct et plus restrictif, aucun chevauchement
+  avec GERER_PARC) : modal avec sélection de fichier .csv/.xlsx et rapport
+  d'import affiché ligne par ligne (nombre importé/en erreur, motif de
+  chaque rejet).
+
+**Incident d'environnement rencontré pendant la vérification** (pas un bug
+de code) : l'outil de navigateur automatisé a échoué au premier essai
+(`ENOENT` sur chrome.exe) — l'extension VSCode dont il dépend s'était mise à
+jour pendant l'interruption de session (3.24.64 → 3.24.71), avec une
+version de patchright attendant une révision de Chromium différente
+(1243) de celle déjà installée (1228). Résolu en installant la révision
+manquante (`node node_modules/patchright/cli.js install chromium` depuis le
+dossier de la nouvelle version) ; aucune correction de code nécessaire.
+
+**Vérifié en conditions réelles** (comptes de diagnostic
+`diag.parc.tech`/`diag.parc.resp`, créés puis désactivés) :
+- Technicien : voit « Nouvel équipement » et « Modifier », pas
+  « Importer » — modification de l'emplacement d'un équipement existant,
+  changement reflété immédiatement dans le tableau.
+- Responsable : voit « Importer », ni « Nouvel équipement » ni
+  « Modifier » (confirmant l'absence de chevauchement des deux rôles) —
+  import d'un CSV à deux lignes (gabarit réel) : 1 équipement importé,
+  1 rejeté avec le message exact du serveur (« Site « Antenne Inexistante »
+  introuvable »), le nouvel équipement apparaît dans le tableau après
+  fermeture de la modale.
+- 393 tests back-end (inchangés), 63 Vitest (inchangés), build de prod OK.
+
+**Reste à traiter** : Revues de direction (solder décision, historique,
+commentaire IA, export PDF), boutons PDF restants (Configurations, Revues,
+SLAM).
+
+## 2026-09-19 (suite) — Revue de compatibilité front/back : Revues de direction et derniers boutons PDF (lots 7-8/n, fin de campagne)
+
+Dernier module substantiel de la campagne « tu corriges tout », plus les
+trois boutons PDF encore manquants (Configurations, SLAM, Revues).
+
+**Backend** — `GET /revues` (nouvelle route + service `lister_revues`,
+réservée à GERER_REVUES) : aucune route ne permettait jusqu'ici de lister
+les revues déjà créées — seules la création et la lecture par id
+existaient, rendant une revue invisible dès l'écran de création quitté.
+1 test pytest (liste vide, puis contient la revue créée, 403 pour un rôle
+non habilité).
+
+**Frontend** :
+- `stores/audits.js` : `chargerRevueDetail`, `genererCommentaire`,
+  `modifierCommentaire`, `validerCommentaire`, `solderDecision` — toutes
+  ces routes (prompt 6.4 et 4.2) existaient côté serveur, testées, sans
+  aucune UI pour les atteindre.
+- `views/AuditsDesktopView.vue` : la carte « Revue de direction » n'était
+  qu'un bouton « Nouvelle revue » sans aucune liste. Ajout d'un tableau des
+  revues (référence, date, période, statut du commentaire, PDF) et d'une
+  fiche détail (clic sur une ligne) avec commentaire de synthèse
+  (génération/édition/validation, banner distinct si validé) et décisions
+  (solde). Bouton « Nouvelle revue » et fiche détail réservés à
+  `peutGererRevues` (referent_sheq/responsable/administrateur, reflet de
+  GERER_REVUES) — même classe de bug que les lots précédents (aucune garde
+  locale jusqu'ici, alors que le lien de la barre latérale n'en a pas non
+  plus).
+- Boutons PDF : `views/ParcFicheView.vue` (configurations,
+  `GET /configurations/{id}/export-pdf`) et `views/PermisDesktopView.vue`
+  (SLAM, `GET /slam/{id}/export-pdf`) — les deux dernières routes PDF
+  jamais atteintes par un bouton.
+
+**Bug réel trouvé et corrigé en vérifiant en conditions réelles** — le plus
+sérieux de cette campagne, et le plus long à isoler : après avoir cliqué
+« Générer » (commentaire IA), le bouton restait indéfiniment grisé et
+aucun message d'erreur ne s'affichait, alors que la requête serveur
+réussissait bel et bien (200, vérifié par capture réseau). Isolé par
+instrumentation directe du composant (marqueurs `document.title` pour
+contourner les artefacts de synchronisation des outils de test) : l'état
+réactif local (`actionEnCours`, `erreurDetail`) était correctement mis à
+jour en mémoire immédiatement après l'appel, mais **le DOM ne se
+mettait jamais à jour pour le refléter** — un vrai bug de rendu Vue, pas
+une erreur JS (aucune exception, aucun log). Cause : `genererCommentaire`/
+`modifierCommentaire`/`validerCommentaire` **réaffectaient** `this.
+revueDetail` à un tout nouvel objet à chaque appel (`this.revueDetail =
+await api.requete(...)`), au lieu de muter l'objet existant — cette
+réaffectation semble perturber la réconciliation de Vue pour l'ensemble du
+sous-arbre `<template v-else-if="audits.revueDetail">` qui l'englobe, y
+compris pour des refs locales du composant totalement indépendantes de
+`revueDetail` (bouton disabled, banner d'erreur). Corrigé en remplaçant la
+réaffectation par `Object.assign(this.revueDetail, resultat)` dans les
+trois actions concernées (`solderDecision` était déjà correcte, elle
+mutait `decisions[i]` en place) — comportement confirmé résolu par un
+test complet en conditions réelles après correctif (voir ci-dessous).
+Signalé ici en détail car la cause n'est pas évidente et pourrait
+resurgir ailleurs si le même motif de réaffectation d'objet imbriqué est
+réutilisé.
+
+**Incidents d'environnement distincts rencontrés pendant l'investigation**
+(qui ont considérablement allongé la recherche, mais ne sont pas liés au
+bug ci-dessus) : (1) 18 sessions de navigateur automatisé laissées
+ouvertes en parallèle sans être fermées ont épuisé les ressources système
+(`ERR_INSUFFICIENT_RESOURCES`), provoquant des échecs intermittents sans
+rapport avec le code (CORS, chargements de 30 à 70 s) — nettoyé en fermant
+toutes les sessions et en tuant les processus Chrome orphelins ; (2) une
+route testée par erreur (`/gestion/slam-permis` au lieu du vrai chemin
+`/gestion/permis`, nom de route `gestion-permis`) a fait croire un instant
+à un écran vide — erreur de frappe dans le test, pas un bug.
+
+**Vérifié en conditions réelles** (comptes de diagnostic
+`diag.revues.resp`, `diag.parc.tech`, `diag.permis.resp`, tous créés puis
+désactivés) : création d'une revue avec une décision → fiche détail
+ouverte → Générer (assistant indisponible en environnement de
+développement, sans clé configurée — bandeau d'indisponibilité affiché
+correctement, **bouton reste utilisable**, plus de blocage) → commentaire
+rédigé manuellement → Enregistrer → Valider (bandeau « Commentaire validé »
+affiché) → Solder la décision (statut passé à « Soldée ») → tableau des
+revues reflète le nouveau statut « Validé » → téléchargement du PDF de la
+revue réussi. Téléchargement PDF de configuration
+(`ENR-SHEQ-2026-002.pdf`) et de SLAM (`slam-7.pdf`) confirmés également.
+394 tests back-end (+1), 63 Vitest (inchangés), build de prod OK.
+
+**Fin de la campagne « tu corriges tout »** : les 8 lots identifiés lors de
+l'audit de compatibilité front/back sont traités (Signalements, EPI,
+Formations, Documents, Permis, Parc, Revues de direction, boutons PDF
+restants). Chaque route backend jusqu'ici jamais atteinte par un écran a
+été soit câblée à une UI, soit — quand aucune UI n'existait pour la lire
+(matrice de compétences, liste des revues) — complétée côté serveur par la
+route de lecture manquante. Au passage, plusieurs boutons déjà existants
+mais sans garde de permission locale ont été corrigés (EPI, Formations,
+Parc, Revues) pour éviter des 403 à des rôles atteignant l'écran desktop
+sans avoir le droit d'agir.

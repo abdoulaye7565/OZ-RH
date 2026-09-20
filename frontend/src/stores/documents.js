@@ -33,6 +33,14 @@ export const useDocumentsStore = defineStore("documents", {
       return document;
     },
 
+    // Corrige les métadonnées d'un brouillon (revue d'ensemble 2026-09-10) —
+    // refusé serveur au-delà du brouillon (409).
+    async modifier(id, donnees) {
+      const d = await api.requete(`/api/v1/documents/${id}`, { methode: "PATCH", corps: donnees });
+      this._remplacer(d);
+      return d;
+    },
+
     async soumettreApprobation(id) {
       const d = await api.requete(`/api/v1/documents/${id}/soumettre-approbation`, { methode: "POST" });
       this._remplacer(d);
@@ -46,6 +54,21 @@ export const useDocumentsStore = defineStore("documents", {
     async accuserLecture(id) {
       const d = await api.requete(`/api/v1/documents/${id}/accuser-lecture`, { methode: "POST" });
       this._remplacer(d);
+    },
+
+    // POST .../nouvelle-version existait côté serveur (testé) sans aucune UI
+    // (2026-09-19, "tu corriges tout") : un document en vigueur ne pouvait
+    // jamais être révisé — seule une correction de brouillon (modifier())
+    // était possible. Crée une NOUVELLE fiche (nouvel id, repart en
+    // brouillon), ne remplace pas l'ancienne dans la liste : les deux
+    // versions restent consultables, comme l'exige l'immutabilité des
+    // documents en vigueur (règle 5, CLAUDE.md).
+    async nouvelleVersion(id, fichier) {
+      const donnees = new FormData();
+      if (fichier) donnees.set("fichier", fichier);
+      const nouveau = await api.requete(`/api/v1/documents/${id}/nouvelle-version`, { methode: "POST", corps: donnees });
+      this.liste.unshift(nouveau);
+      return nouveau;
     },
 
     _remplacer(document) {

@@ -79,11 +79,30 @@ def test_signalement_non_anonyme_reference_bien_son_auteur(client, db_session, t
     )
     corps = reponse.json()
     assert corps["auteur_id"] == technicien.id
+    # Noms résolus côté serveur (revue d'ensemble 2026-09-10).
+    assert corps["auteur_nom"] == f"{technicien.prenom} {technicien.nom}"
+    assert corps["site_nom"] == site.nom
 
     ligne_brute = db_session.execute(
         text("SELECT cree_par_id FROM signalement WHERE id = :id"), {"id": corps["id"]}
     ).one()
     assert ligne_brute.cree_par_id == technicien.id
+
+
+def test_auteur_nom_reste_vide_pour_un_signalement_anonyme(client, technicien, referent_sheq, site):
+    """L'anonymat est garanti côté serveur : `auteur_nom` ne doit jamais
+    trahir l'auteur d'un signalement anonyme, ni à la création ni en liste
+    (ici vue par un référent, qui voit tous les signalements)."""
+    reponse = client.post(
+        "/api/v1/signalements",
+        headers=_entete(technicien),
+        data=_champs_formulaire(site, anonyme="true"),
+    )
+    assert reponse.json()["auteur_nom"] is None
+
+    liste = client.get("/api/v1/signalements", headers=_entete(referent_sheq)).json()
+    anonymes = [s for s in liste if s["anonyme"]]
+    assert anonymes and all(s["auteur_nom"] is None and s["auteur_id"] is None for s in anonymes)
 
 
 def test_plus_de_cinq_photos_refuse(client, technicien, site):
@@ -292,3 +311,59 @@ def test_aucune_route_de_suppression_n_existe(client):
 def test_creation_sans_authentification_refusee(client, site):
     reponse = client.post("/api/v1/signalements", data=_champs_formulaire(site))
     assert reponse.status_code == 401
+
+
+def test_photo_jointe_accessible_via_la_route_dediee(client, technicien, site, tmp_path, monkeypatch):
+    """Revue de compatibilité front/back 2026-09-19 : aucune route ne
+    permettait de revoir une photo déjà envoyée."""
+    from app.core import config
+
+    monkeypatch.setattr(config.settings, "storage_dir", str(tmp_path))
+
+    fichiers = [("photos", ("photo0.jpg", io.BytesIO(b"\xff\xd8\xff-jpeg-un"), "image/jpeg"))]
+    cree = client.post(
+        "/api/v1/signalements", headers=_entete(technicien), data=_champs_formulaire(site), files=fichiers
+    ).json()
+
+    reponse = client.get(f"/api/v1/signalements/{cree['id']}/photos/0", headers=_entete(technicien))
+    assert reponse.status_code == 200
+    assert reponse.content == b"\xff\xd8\xff-jpeg-un"
+
+
+def test_photo_hors_index_renvoie_404(client, technicien, site):
+    cree = client.post("/api/v1/signalements", headers=_entete(technicien), data=_champs_formulaire(site)).json()
+    reponse = client.get(f"/api/v1/signalements/{cree['id']}/photos/0", headers=_entete(technicien))
+    assert reponse.status_code == 404
+
+
+def test_photo_respecte_la_visibilite_du_signalement(client, db_session, technicien, referent_sheq, site, tmp_path, monkeypatch):
+    """Un technicien qui n'a pas accès à un signalement d'un autre ne doit
+    pas non plus accéder à ses photos (même règle que la consultation du
+    signalement lui-même) ; le référent SHEQ, qui voit tout, y accède."""
+    from app.core import config
+    from app.core.security import hacher_mot_de_passe
+    from app.models.enums import RoleUtilisateur
+    from app.models.utilisateur import Utilisateur
+
+    monkeypatch.setattr(config.settings, "storage_dir", str(tmp_path))
+    autre_technicien = Utilisateur(
+        nom="Autre",
+        prenom="Technicien",
+        identifiant="autre.tech3",
+        mot_de_passe=hacher_mot_de_passe("PeuImporte!123"),
+        role=RoleUtilisateur.TECHNICIEN,
+        site_id=site.id,
+    )
+    db_session.add(autre_technicien)
+    db_session.commit()
+
+    fichiers = [("photos", ("photo0.jpg", io.BytesIO(b"\xff\xd8\xff"), "image/jpeg"))]
+    cree = client.post(
+        "/api/v1/signalements", headers=_entete(autre_technicien), data=_champs_formulaire(site), files=fichiers
+    ).json()
+
+    reponse_intrus = client.get(f"/api/v1/signalements/{cree['id']}/photos/0", headers=_entete(technicien))
+    assert reponse_intrus.status_code == 404
+
+    reponse_referent = client.get(f"/api/v1/signalements/{cree['id']}/photos/0", headers=_entete(referent_sheq))
+    assert reponse_referent.status_code == 200

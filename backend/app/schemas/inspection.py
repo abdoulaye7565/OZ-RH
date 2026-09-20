@@ -19,6 +19,10 @@ class InspectionCreation(BaseModel):
     # (FOR-SHEQ-010 : "une même fiche est remplie par équipement ou par
     # baie/site selon le contexte") — laissé optionnel pour les 4 autres types.
     equipement_id: int | None = None
+    # Objet précis inspecté quand ce n'est pas un équipement du parc
+    # (extincteur, tableau électrique, ligne de vie, poste…) — retour
+    # utilisateur 2026-09-10. Texte court, facultatif.
+    objet_inspecte: str | None = None
     points: list[PointInspectionEntree]
 
     @field_validator("points")
@@ -49,6 +53,7 @@ class InspectionSortie(BaseModel):
     modele: TypeInspection
     site_id: int
     equipement_id: int | None
+    objet_inspecte: str | None
     inspecteur_id: int
     date: date
     points: list[PointInspectionSortie]

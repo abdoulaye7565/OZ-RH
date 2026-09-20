@@ -21,10 +21,12 @@ from app.schemas.formation import (
     EmargementSortie,
     HabilitationCreation,
     HabilitationSortie,
+    LigneMatriceCompetence,
     QuestionQuizAdminSortie,
     QuestionQuizCreation,
     QuestionQuizSortie,
     SeanceCreation,
+    SeanceModification,
     SeanceSortie,
     TentativeQuizEntree,
     TentativeQuizSortie,
@@ -36,10 +38,13 @@ from app.services.formation_service import (
     creer_habilitation,
     creer_question,
     creer_seance,
+    modifier_seance,
     emarger,
     lister_competences,
+    lister_emargements,
     lister_questions,
     lister_seances,
+    matrice_avec_libelles,
     matrice_competences,
     obtenir_seance,
     passer_quiz,
@@ -89,15 +94,17 @@ def creer_habilitation_route(
     return creer_habilitation(db, payload, cree_par_id=utilisateur.id)
 
 
-@router.get("/matrice", response_model=list[HabilitationSortie])
+@router.get("/matrice", response_model=list[LigneMatriceCompetence])
 def matrice_route(
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(require_role(*ROLES_VUE_ENSEMBLE)),
 ):
-    """Renvoie la matrice complète des habilitations de tous les utilisateurs.
-    Réservé aux rôles ayant une vue d'ensemble (gestion des formations,
-    responsable)."""
-    return matrice_competences(db)
+    """Renvoie la matrice complète des habilitations de tous les utilisateurs,
+    avec le libellé de compétence résolu côté serveur (2026-09-19 — la route
+    renvoyait jusqu'ici des habilitations brutes sans libellé, voir
+    matrice_competences). Réservé aux rôles ayant une vue d'ensemble (gestion
+    des formations, responsable)."""
+    return matrice_avec_libelles(db)
 
 
 @router.get("/mes-habilitations", response_model=list[HabilitationSortie])
@@ -146,6 +153,19 @@ def creer_seance_route(
     return creer_seance(db, payload, cree_par_id=utilisateur.id)
 
 
+@router.patch("/seances/{seance_id}", response_model=SeanceSortie)
+def modifier_seance_route(
+    seance_id: int,
+    payload: SeanceModification,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_FORMATIONS)),
+) -> Seance:
+    """Corrige une séance encore planifiée (thème, date, lieu, animateur,
+    compétence)."""
+    seance = obtenir_seance(db, seance_id)
+    return modifier_seance(db, seance, payload, modifie_par_id=utilisateur.id)
+
+
 @router.get("/seances", response_model=list[SeanceSortie])
 def lister_seances_route(
     db: Session = Depends(get_db),
@@ -175,6 +195,19 @@ def emarger_route(
     """Enregistre l'émargement des participants à une séance de formation."""
     seance = _recuperer_seance(db, seance_id)
     return emarger(db, seance, payload, cree_par_id=utilisateur.id)
+
+
+@router.get("/seances/{seance_id}/emargements", response_model=list[EmargementSortie])
+def lister_emargements_route(
+    seance_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> list:
+    """Relit les présences déjà enregistrées pour une séance (2026-09-19) —
+    sans cette route, un écran d'émargement rouvert ne peut pas savoir qui a
+    déjà signé."""
+    _recuperer_seance(db, seance_id)
+    return lister_emargements(db, seance_id)
 
 
 @router.post("/seances/{seance_id}/cloturer", response_model=SeanceSortie)

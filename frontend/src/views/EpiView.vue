@@ -8,6 +8,16 @@
  * (Conforme / Non conforme), plus rapide sur le terrain qu'un sélecteur
  * séparé — cohérent avec le principe general "deux minutes suffisent" déjà
  * appliqué à NouveauSignalementView.
+ *
+ * Vérification avant utilisation (2026-09-19, "tu corriges tout") :
+ * POST /epi/{id}/verification-avant-utilisation existait côté serveur
+ * depuis ce même prompt 2.1, ouvert à tout utilisateur authentifié (le
+ * contrôle léger que le porteur fait lui-même juste avant de monter),
+ * jamais câblé — seule la vérification périodique officielle (réservée à
+ * GERER_EPI) l'était. Le porteur d'un EPI qui n'a pas les droits de gestion
+ * voit désormais ce contrôle léger sur SES EPI affectés ; il ne touche pas
+ * au cycle de vérification périodique (voir enregistrer_verification_avant_
+ * utilisation côté serveur), seul un contrôle NON CONFORME a un effet.
  */
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -25,6 +35,13 @@ const epiEnAction = ref(null);
 onMounted(() => epi.charger());
 
 const peutVerifier = computed(() => ["referent_sheq", "administrateur"].includes(auth.utilisateur?.role));
+
+function estPorteur(item) {
+  return item.porteur_id != null && item.porteur_id === auth.utilisateur?.id;
+}
+function peutOuvrir(item) {
+  return peutVerifier.value || estPorteur(item);
+}
 
 const ICONES_TYPE = {
   harnais: "vest",
@@ -49,6 +66,13 @@ const joursRestants = joursRestantsCivil;
 function etat(item) {
   if (item.statut === "reforme") return { lead: "gy", tag: "t-gy", libelle: "RÉFORMÉ", icone: "x" };
   if (item.statut === "retire") return { lead: "gy", tag: "t-gy", libelle: "RETIRÉ", icone: "x" };
+  // `statut === "a_verifier"` est prioritaire sur l'échéance de date : un
+  // contrôle avant utilisation (ou une vérification périodique) NON CONFORME
+  // passe l'EPI à ce statut sans forcément rapprocher `prochaine_verification`
+  // (voir enregistrer_verification_avant_utilisation côté serveur, qui ne
+  // touche pas du tout aux dates) — bug réel trouvé en vérifiant en conditions
+  // réelles ce lot-ci : un EPI non conforme s'affichait « EN SERVICE ».
+  if (item.statut === "a_verifier") return { lead: "red", tag: "t-red", libelle: "À VÉRIFIER", icone: "vest" };
   const jours = joursRestants(item.prochaine_verification);
   if (jours !== null && jours < 0) return { lead: "red", tag: "t-red", libelle: "À VÉRIFIER", icone: "vest" };
   if (jours !== null && jours <= 7) return { lead: "or", tag: "t-or", libelle: `J−${jours}`, icone: "clock" };
@@ -56,7 +80,7 @@ function etat(item) {
 }
 
 const nombreAAgir = computed(
-  () => epi.liste.filter((e) => e.statut !== "reforme" && e.statut !== "retire" && (joursRestants(e.prochaine_verification) ?? 99) <= 7).length
+  () => epi.liste.filter((e) => e.statut === "a_verifier" || (e.statut !== "reforme" && e.statut !== "retire" && (joursRestants(e.prochaine_verification) ?? 99) <= 7)).length
 );
 
 const formaterDate = formaterDateCivile;
@@ -67,6 +91,15 @@ function basculerAction(item) {
 
 async function verifier(item, conforme) {
   await epi.enregistrerVerification(item.id, conforme);
+  epiEnAction.value = null;
+}
+
+async function verifierAvantUtilisation(item, conforme) {
+  try {
+    await epi.verifierAvantUtilisation(item.id, conforme);
+  } catch (e) {
+    epi.erreur = e?.message ?? "Impossible d'enregistrer le contrôle";
+  }
   epiEnAction.value = null;
 }
 </script>
@@ -97,10 +130,10 @@ async function verifier(item, conforme) {
             <div
               class="row"
               :style="etat(item).tag === 't-red' ? 'border-color:#F5C6C2' : ''"
-              :role="peutVerifier ? 'button' : undefined"
-              :tabindex="peutVerifier ? 0 : undefined"
-              @click="peutVerifier && basculerAction(item)"
-              @keydown.enter="peutVerifier && basculerAction(item)"
+              :role="peutOuvrir(item) ? 'button' : undefined"
+              :tabindex="peutOuvrir(item) ? 0 : undefined"
+              @click="peutOuvrir(item) && basculerAction(item)"
+              @keydown.enter="peutOuvrir(item) && basculerAction(item)"
             >
               <span class="lead" :class="etat(item).lead"><Icone :nom="etat(item).icone" /></span>
               <div class="tx">
@@ -114,10 +147,20 @@ async function verifier(item, conforme) {
               <span class="tag" :class="etat(item).tag">{{ etat(item).libelle }}</span>
             </div>
             <div v-if="epiEnAction === item.id" class="card" style="padding: 11px; margin: -4px 0 10px">
-              <div class="btnrow">
-                <button class="btn pri sm" style="width: auto" @click.stop="verifier(item, true)">Conforme</button>
-                <button class="btn gh sm" style="width: auto" @click.stop="verifier(item, false)">Non conforme</button>
-              </div>
+              <template v-if="peutVerifier">
+                <div class="sub" style="margin-bottom: 6px">Vérification périodique officielle</div>
+                <div class="btnrow">
+                  <button class="btn pri sm" style="width: auto" @click.stop="verifier(item, true)">Conforme</button>
+                  <button class="btn gh sm" style="width: auto" @click.stop="verifier(item, false)">Non conforme</button>
+                </div>
+              </template>
+              <template v-else-if="estPorteur(item)">
+                <div class="sub" style="margin-bottom: 6px">Contrôle avant utilisation</div>
+                <div class="btnrow">
+                  <button class="btn pri sm" style="width: auto" @click.stop="verifierAvantUtilisation(item, true)">Conforme</button>
+                  <button class="btn gh sm" style="width: auto" @click.stop="verifierAvantUtilisation(item, false)">Non conforme</button>
+                </div>
+              </template>
             </div>
           </div>
 

@@ -3,7 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-from app.models.enums import StatutPermis, SupportPermis
+from app.models.enums import DecisionSlam, StatutPermis, SupportPermis
 
 
 class PermisCreation(BaseModel):
@@ -36,6 +36,22 @@ class PermisCreation(BaseModel):
 
 class RefusEntree(BaseModel):
     motif: str
+
+
+class EvaluationSlamLiee(BaseModel):
+    """Évaluation SLAM rattachée à un permis (revue d'ensemble 2026-09-10) —
+    montrée sur l'écran de validation pour que le responsable voie
+    concrètement quelle SLAM justifie l'intervention de chaque personne."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    reference: str | None
+    utilisateur_id: int
+    utilisateur_nom: str | None = None
+    decision: DecisionSlam
+    date: datetime
+    motif: str | None
 
 
 class ControleDetail(BaseModel):
@@ -76,16 +92,36 @@ class PermisSortie(BaseModel):
     modifie_le: datetime
     modifie_par_id: int | None
     intervenant_ids: list[int] = []
+    # Évaluations SLAM rattachées (revue d'ensemble 2026-09-10). Vide tant
+    # qu'aucune n'a été rapprochée (aucun intervenant n'a de SLAM le jour du
+    # créneau) — c'est alors la ligne de contrôle « slam » de `controles.details`
+    # qui porte le blocage.
+    evaluations_slam: list[EvaluationSlamLiee] = []
 
     @model_validator(mode="before")
     @classmethod
-    def _extraire_intervenant_ids(cls, obj):
-        # `intervenants` est une relation ORM (liste d'objets Utilisateur) ; la
-        # sortie API n'expose que les identifiants, pas les profils complets
-        # (déjà accessibles via /auth/utilisateurs si besoin).
+    def _extraire_relations(cls, obj):
+        # `intervenants` / `evaluations_slam` sont des relations ORM ; la sortie
+        # API n'expose que ce qui est utile aux écrans (identifiants
+        # d'intervenants ; SLAM avec nom résolu).
         if hasattr(obj, "intervenants"):
+            evaluations = []
+            for ev in getattr(obj, "evaluations_slam", []):
+                u = ev.utilisateur
+                evaluations.append(
+                    {
+                        "id": ev.id,
+                        "reference": ev.reference,
+                        "utilisateur_id": ev.utilisateur_id,
+                        "utilisateur_nom": f"{u.prenom} {u.nom}" if u else None,
+                        "decision": ev.decision,
+                        "date": ev.date,
+                        "motif": ev.motif,
+                    }
+                )
             return {
                 **{c.name: getattr(obj, c.name) for c in obj.__table__.columns},
                 "intervenant_ids": [u.id for u in obj.intervenants],
+                "evaluations_slam": evaluations,
             }
         return obj

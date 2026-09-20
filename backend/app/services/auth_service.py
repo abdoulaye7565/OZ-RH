@@ -1,13 +1,19 @@
 """Logique métier de l'authentification, indépendante de FastAPI (testable sans
 client HTTP)."""
+import logging
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.security import hacher_mot_de_passe, verifier_mot_de_passe
+from app.models.enums import RoleUtilisateur
 from app.models.utilisateur import Utilisateur
-from app.schemas.auth import UtilisateurCreation
+from app.schemas.auth import UtilisateurCreation, UtilisateurModification
+
+logger = logging.getLogger("app.auth")
 
 # Protection contre le brute-force sur /auth/connexion (revue de sécurité du
 # 2026-09-08, CLAUDE.md point 10 : "le coffre-fort et l'authentification font
@@ -75,6 +81,30 @@ def creer_utilisateur(db: Session, donnees: UtilisateurCreation, cree_par: Utili
     return utilisateur
 
 
+def modifier_utilisateur(
+    db: Session, cible: Utilisateur, donnees: UtilisateurModification, modifie_par: Utilisateur
+) -> Utilisateur:
+    """Modifie nom/prénom/rôle/site/courriel d'un compte existant — jamais
+    l'identifiant ni le mot de passe (voir UtilisateurModification). Même
+    garde-fou que desactiver_utilisateur : un administrateur ne peut pas se
+    retirer à lui-même son propre rôle d'administrateur, ce qui laisserait
+    l'application sans personne habilité à gérer les comptes."""
+    champs = donnees.model_dump(exclude_unset=True)
+    if (
+        "role" in champs
+        and cible.id == modifie_par.id
+        and cible.role == RoleUtilisateur.ADMINISTRATEUR
+        and champs["role"] != RoleUtilisateur.ADMINISTRATEUR
+    ):
+        raise ValueError("Vous ne pouvez pas retirer votre propre rôle d'administrateur")
+    for champ, valeur in champs.items():
+        setattr(cible, champ, valeur)
+    cible.modifie_par_id = modifie_par.id
+    db.commit()
+    db.refresh(cible)
+    return cible
+
+
 def desactiver_utilisateur(db: Session, cible: Utilisateur, modifie_par: Utilisateur) -> Utilisateur:
     """Désactive un compte (point 2, CLAUDE.md : jamais de suppression
     physique — `actif=False`, le compte et son historique restent en base).
@@ -96,3 +126,46 @@ def activer_utilisateur(db: Session, cible: Utilisateur, modifie_par: Utilisateu
     db.commit()
     db.refresh(cible)
     return cible
+
+
+def changer_photo(db: Session, utilisateur: Utilisateur, chemin: str) -> Utilisateur:
+    """Remplace la photo de profil (2026-09-10, retour direct de
+    l'utilisateur — "insérer sa photo"). Toujours en libre-service : chacun
+    ne peut changer QUE sa propre photo (vérifié par la route, pas ici — ce
+    service ne fait aucune hypothèse sur qui appelle). L'ancien fichier est
+    supprimé du disque s'il existe : ce n'est pas une donnée métier tracée
+    (contrairement à un signalement ou une action, règle 2 CLAUDE.md), juste
+    un blob orphelin qu'il est inutile d'accumuler indéfiniment."""
+    ancien = utilisateur.photo
+    utilisateur.photo = chemin
+    utilisateur.modifie_par_id = utilisateur.id
+    db.commit()
+    db.refresh(utilisateur)
+    if ancien:
+        _supprimer_fichier_le_cas_echeant(ancien)
+    return utilisateur
+
+
+def retirer_photo(db: Session, utilisateur: Utilisateur) -> Utilisateur:
+    """Revient aux initiales (aucune photo) — voir changer_photo pour la
+    justification de la suppression du fichier sur disque."""
+    ancien = utilisateur.photo
+    utilisateur.photo = None
+    utilisateur.modifie_par_id = utilisateur.id
+    db.commit()
+    db.refresh(utilisateur)
+    if ancien:
+        _supprimer_fichier_le_cas_echeant(ancien)
+    return utilisateur
+
+
+def _supprimer_fichier_le_cas_echeant(chemin_relatif: str) -> None:
+    chemin = Path(settings.storage_dir) / chemin_relatif
+    try:
+        chemin.unlink(missing_ok=True)
+    except OSError:
+        # Un fichier qu'on n'arrive pas à supprimer n'est jamais une raison de
+        # faire échouer le changement de photo lui-même (règle 9, CLAUDE.md —
+        # ne pas masquer une erreur, mais ne pas non plus la laisser bloquer
+        # une opération sans rapport) ; il reste simplement orphelin sur disque.
+        logger.warning("Impossible de supprimer l'ancienne photo de profil : %s", chemin, exc_info=True)

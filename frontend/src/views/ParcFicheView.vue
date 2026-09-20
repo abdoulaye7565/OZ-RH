@@ -15,9 +15,11 @@
 import { onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useParcStore } from "../stores/parc";
 import { formaterDateCivile } from "../utils/dates";
+import { telechargerPdf } from "../utils/telechargement";
 
 const route = useRoute();
 const router = useRouter();
@@ -25,6 +27,20 @@ const parc = useParcStore();
 const equipementId = Number(route.params.id);
 
 onMounted(() => parc.chargerFiche(equipementId));
+
+// GET /configurations/{id}/export-pdf existait côté serveur sans bouton
+// (2026-09-19, "tu corriges tout").
+const pdfEnCours = ref(null);
+async function telechargerConfiguration(c) {
+  pdfEnCours.value = c.id;
+  try {
+    await telechargerPdf(`/api/v1/configurations/${c.id}/export-pdf`, `${c.reference ?? "configuration-" + c.id}.pdf`);
+  } catch (e) {
+    parc.erreur = e?.message ?? "Téléchargement du PDF impossible";
+  } finally {
+    pdfEnCours.value = null;
+  }
+}
 
 const TYPES_INTERVENTION = ["installation", "reconfiguration", "mise_a_jour", "depannage", "alignement"];
 
@@ -98,6 +114,9 @@ async function soumettre() {
                 <b>{{ c.reference }}</b>
                 <div class="meta"><span>{{ c.type_intervention }}</span><span>{{ new Date(c.date_intervention).toLocaleDateString("fr-FR") }}</span></div>
               </div>
+              <button class="btn gh sm" style="width: auto" :disabled="pdfEnCours === c.id" aria-label="Télécharger le PDF" @click.stop="telechargerConfiguration(c)">
+                <Icone nom="dl" taille="sm" />
+              </button>
             </div>
             <p v-if="!parc.fiche.configurations.length" style="font-size: 12px; color: var(--mut)">Aucune fiche de configuration.</p>
 
@@ -113,16 +132,15 @@ async function soumettre() {
               <div class="tx"><b>{{ s.reference ?? "en attente" }}</b><div class="meta"><span>{{ s.description.slice(0, 60) }}</span></div></div>
             </div>
 
-            <div v-if="!formulaireOuvert" style="height: 12px"></div>
-            <button v-if="!formulaireOuvert && parc.fiche.equipement.marque === 'MikroTik'" class="btn pri" @click="formulaireOuvert = true">
+            <div style="height: 12px"></div>
+            <button v-if="parc.fiche.equipement.marque === 'MikroTik'" class="btn pri" @click="formulaireOuvert = true">
               <Icone nom="plus" taille="sm" />Nouvelle configuration
             </button>
-            <p v-else-if="!formulaireOuvert" style="font-size: 11.5px; color: var(--mut)">
+            <p v-else style="font-size: 11.5px; color: var(--mut)">
               Formulaire de configuration disponible pour MikroTik uniquement pour l'instant.
             </p>
 
-            <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-              <div class="sec" style="margin-bottom: 8px">FICHE DE CONFIGURATION — MIKROTIK</div>
+            <Modal v-if="formulaireOuvert" titre="Fiche de configuration — MikroTik" @fermer="formulaireOuvert = false">
               <label class="f">Type d'intervention</label>
               <select v-model="config.type_intervention" class="inp">
                 <option v-for="t in TYPES_INTERVENTION" :key="t" :value="t">{{ t }}</option>
@@ -148,7 +166,7 @@ async function soumettre() {
                 <button class="btn gold sm" style="width: auto" @click="soumettre">Enregistrer la fiche</button>
                 <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
               </div>
-            </div>
+            </Modal>
           </template>
 
           <div style="height: 56px"></div>

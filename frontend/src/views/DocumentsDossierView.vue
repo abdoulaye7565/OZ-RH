@@ -4,14 +4,14 @@
  * l'ancien écran Documents (unique jusqu'ici), désormais filtré par dossier
  * (voir DocumentsView.vue pour l'écran de dossiers et la justification).
  */
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import ApercuDocument from "../components/ApercuDocument.vue";
 import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { useDocumentsStore } from "../stores/documents";
 import { DOSSIERS, dossierDe } from "../utils/dossiersDocuments";
-import api from "../services/api";
 
 const route = useRoute();
 const router = useRouter();
@@ -32,14 +32,9 @@ const STYLE_STATUT = {
   archive: { tag: "t-gy", libelle: "ARCHIVE" },
 };
 
-async function ouvrirFichier(id) {
-  try {
-    const reponse = await api.requete(`/api/v1/documents/${id}/fichier`, { brut: true });
-    const blob = await reponse.blob();
-    window.open(URL.createObjectURL(blob), "_blank");
-  } catch {
-    // Aucun fichier joint, ou droits insuffisants : rien ne s'ouvre.
-  }
+const documentApercu = ref(null);
+function ouvrirApercu(d) {
+  documentApercu.value = d;
 }
 </script>
 
@@ -76,7 +71,7 @@ async function ouvrirFichier(id) {
                 <button v-if="d.statut === 'brouillon' && peutGerer" class="tag t-gd" style="border: 0; cursor: pointer" @click="documents.soumettreApprobation(d.id)">Soumettre</button>
                 <button v-if="d.statut === 'en_approbation' && peutApprouver" class="tag t-gr" style="border: 0; cursor: pointer" @click="documents.approuver(d.id)">Approuver</button>
                 <button v-if="d.statut === 'en_vigueur'" class="tag t-bl" style="border: 0; cursor: pointer" @click="documents.accuserLecture(d.id)">Accuser lecture</button>
-                <button v-if="d.fichier" class="tag t-gy" style="border: 0; cursor: pointer" @click="ouvrirFichier(d.id)">Ouvrir le fichier</button>
+                <button v-if="d.fichier" class="tag t-gy" style="border: 0; cursor: pointer" @click="ouvrirApercu(d)">Aperçu</button>
               </div>
             </div>
             <span class="tag" :class="STYLE_STATUT[d.statut].tag">{{ STYLE_STATUT[d.statut].libelle }}</span>
@@ -99,5 +94,13 @@ async function ouvrirFichier(id) {
       <button class="tb" @click="router.push({ name: 'tableau-de-bord' })"><Icone nom="chart" />Tableau</button>
       <button class="tb" @click="router.push({ name: 'menu' })"><Icone nom="grid" />Menu</button>
     </nav>
+
+    <ApercuDocument
+      v-if="documentApercu"
+      :document-id="documentApercu.id"
+      :titre="`${documentApercu.reference} · ${documentApercu.intitule}`"
+      :nom-fichier="documentApercu.fichier"
+      @fermer="documentApercu = null"
+    />
   </div>
 </template>

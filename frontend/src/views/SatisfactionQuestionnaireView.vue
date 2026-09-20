@@ -70,7 +70,7 @@ async function envoyer() {
   <div class="ecran-mobile">
     <div class="net online"><Icone nom="wifi" taille="sm" />En ligne<span class="sp">Lien client</span></div>
     <header class="hd">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <div>
         <h1>Votre avis</h1>
         <div class="sub" v-if="questionnaire">Intervention du {{ questionnaire.intervention }} — {{ questionnaire.client }}</div>

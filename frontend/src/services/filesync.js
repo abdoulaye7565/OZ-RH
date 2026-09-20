@@ -56,12 +56,21 @@ export async function ajouterEnAttente(type, champs, fichiers = []) {
   const { tx, magasin } = await transaction("readwrite");
   const enregistrement = {
     type,
-    // Copies simples : `champs`/`fichiers` viennent typiquement d'un ref()
-    // Vue (Proxy), qu'IndexedDB ne sait pas cloner (DataCloneError, "[object
-    // Array] could not be cloned") — les objets/fichiers qu'ils contiennent
-    // ne sont pas concernés (Vue ne rend pas réactifs les File/Blob), seul
-    // le conteneur Proxy pose problème.
-    champs: { ...champs },
+    // `champs` vient typiquement d'un ref()/reactive() Vue (Proxy), qu'IndexedDB
+    // ne sait pas cloner (DataCloneError, "[object Array] could not be
+    // cloned"). Une copie superficielle (`{ ...champs }`) ne suffit PAS dès
+    // que `champs` contient une valeur imbriquée elle-même réactive (ex.
+    // SLAM : `etapes_validees` est un tableau de tableaux de booléens, ref()
+    // à part entière) — bug réel trouvé le 2026-09-09 en testant le SLAM
+    // hors connexion, une deuxième fois après celui des signalements la
+    // veille : un clonage structuré JSON, récursif par nature, retire toute
+    // réactivité à n'importe quelle profondeur. Ne fonctionnerait pas pour
+    // des valeurs non sérialisables (Date, Map...) mais tout ce qui transite
+    // ici part de toute façon en JSON vers l'API — jamais de File/Blob dans
+    // `champs`, ceux-là vivent exclusivement dans `fichiers`.
+    champs: JSON.parse(JSON.stringify(champs)),
+    // Les fichiers eux-mêmes ne sont jamais rendus réactifs par Vue (seul le
+    // tableau qui les contient l'est) : Array.from() suffit à en sortir.
     fichiers: Array.from(fichiers ?? []),
     dateCreation: new Date().toISOString(),
     tentatives: 0,
@@ -90,6 +99,32 @@ export async function compterEnAttente() {
     const requete = magasin.count();
     requete.onsuccess = () => resoudre(requete.result);
     requete.onerror = () => rejeter(requete.error);
+  });
+}
+
+/**
+ * Remplace les `champs` d'un élément déjà en file, sans en créer un nouveau.
+ * Ajouté pour Inspections (2026-09-09) : contrairement à un signalement ou
+ * une décision SLAM (un seul envoi, terminé), une inspection saisie hors
+ * connexion évolue point par point pendant toute sa durée — sans ceci,
+ * chaque coche créerait un nouvel élément en file, et la synchronisation les
+ * rejouerait tous dans l'ordre au lieu de n'envoyer que le dernier état
+ * (déjà complet à chaque fois, voir stores/inspections.js).
+ */
+export async function mettreAJourEnAttente(id, champs) {
+  const { tx, magasin } = await transaction("readwrite");
+  return new Promise((resoudre, rejeter) => {
+    const lecture = magasin.get(id);
+    lecture.onsuccess = () => {
+      const enregistrement = lecture.result;
+      if (!enregistrement) return rejeter(new Error(`Élément en attente introuvable (id ${id})`));
+      enregistrement.champs = JSON.parse(JSON.stringify(champs));
+      const ecriture = magasin.put(enregistrement);
+      ecriture.onsuccess = () => resoudre(enregistrement);
+      ecriture.onerror = () => rejeter(ecriture.error);
+    };
+    lecture.onerror = () => rejeter(lecture.error);
+    tx.onerror = () => rejeter(tx.error);
   });
 }
 
@@ -166,4 +201,4 @@ export async function synchroniser(gestionnaires) {
   return { reussis, echoues };
 }
 
-export default { ajouterEnAttente, listerEnAttente, compterEnAttente, synchroniser };
+export default { ajouterEnAttente, listerEnAttente, compterEnAttente, mettreAJourEnAttente, synchroniser };

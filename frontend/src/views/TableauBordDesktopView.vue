@@ -22,14 +22,46 @@
  *   banane technique en pied de page, un utilisateur final n'a pas à
  *   connaître l'état d'avancement du développement.
  */
-import { computed, onMounted } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import Icone from "../components/Icone.vue";
+import api from "../services/api";
 import { useTableauBordStore } from "../stores/tableauBord";
 import { joursRestantsCivil } from "../utils/dates";
 
 const tdb = useTableauBordStore();
 
-onMounted(() => tdb.charger());
+// Filtres (revue d'ensemble 2026-09-10) : le back-end acceptait déjà site_id /
+// date_debut / date_fin, l'écran ne les exposait pas.
+const sites = ref([]);
+const siteChoisi = ref("");
+const PERIODES = [
+  { valeur: "30", libelle: "30 derniers jours" },
+  { valeur: "90", libelle: "90 derniers jours" },
+  { valeur: "365", libelle: "12 derniers mois" },
+  { valeur: "", libelle: "Depuis le début" },
+];
+const periodeChoisie = ref("90");
+
+function rechargerAvecFiltres() {
+  const params = {};
+  if (siteChoisi.value) params.siteId = Number(siteChoisi.value);
+  if (periodeChoisie.value) {
+    const debut = new Date();
+    debut.setDate(debut.getDate() - Number(periodeChoisie.value));
+    params.dateDebut = debut.toISOString();
+  }
+  tdb.charger(params);
+}
+
+onMounted(async () => {
+  rechargerAvecFiltres();
+  try {
+    sites.value = await api.requete("/api/v1/sites");
+  } catch {
+    sites.value = [];
+  }
+});
+watch([siteChoisi, periodeChoisie], rechargerAvecFiltres);
 
 const MOIS = ["Jan", "Fév", "Mar", "Avr", "Mai", "Juin", "Juil", "Août", "Sep", "Oct", "Nov", "Déc"];
 
@@ -42,10 +74,16 @@ const plan = computed(() => {
   const total = Object.values(a.par_statut).reduce((s, n) => s + n, 0);
   return { ...a, total };
 });
-
-function pourcent(n, total) {
-  return total ? Math.round((n / total) * 100) : 0;
-}
+// Histogramme "Avancement du plan d'action" (2026-09-09, retour direct de
+// l'utilisateur — "le tableau de bord doit avoir des histogrammes") : les 3
+// colonnes ne totalisent pas forcément `plan.total` (nombre_en_retard n'est
+// pas un statut à part, c'est un sous-ensemble d'actions déjà ouvertes/en
+// cours dépassant leur échéance) — le maximum des 3 valeurs sert donc
+// d'échelle, pas le total.
+const maxPlan = computed(() => {
+  if (!plan.value) return 1;
+  return Math.max(1, plan.value.par_statut.cloturee, plan.value.par_statut.en_cours, plan.value.nombre_en_retard);
+});
 
 function formaterDateCourte(iso) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
@@ -77,7 +115,19 @@ const conformiteInspectionsPourcent = computed(() => {
 
 <template>
   <div>
+    <div class="filters">
+      <select v-model="siteChoisi" class="inp" style="width: auto; height: 32px; padding: 0 10px">
+        <option value="">Tous les sites</option>
+        <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
+      </select>
+      <select v-model="periodeChoisie" class="inp" style="width: auto; height: 32px; padding: 0 10px">
+        <option v-for="p in PERIODES" :key="p.valeur" :value="p.valeur">{{ p.libelle }}</option>
+      </select>
+      <span v-if="tdb.chargement" class="sub" style="align-self: center">Actualisation…</span>
+    </div>
+
     <div v-if="tdb.erreur" class="banner err">{{ tdb.erreur }}</div>
+    <div v-else-if="!tdb.donnees && tdb.chargement" class="skel" style="height: 120px"></div>
 
     <template v-if="tdb.donnees">
       <div class="mets">
@@ -150,24 +200,24 @@ const conformiteInspectionsPourcent = computed(() => {
         <div class="card">
           <div class="ch"><Icone nom="check" /><h3>Avancement du plan d'action</h3></div>
           <div class="cb" v-if="plan">
-            <div style="margin-bottom: 12px">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px">
-                <b>Réalisées</b><span style="color: var(--mut)">{{ plan.par_statut.cloturee }} / {{ plan.total }}</span>
+            <div class="bars">
+              <div class="bcol">
+                <span class="val">{{ plan.par_statut.cloturee }}</span>
+                <div class="bar g" :style="{ height: (plan.par_statut.cloturee / maxPlan) * 130 + 'px' }"></div>
+                <span class="lbl">Réalisées</span>
               </div>
-              <div class="trk"><div class="fl g" :style="{ width: pourcent(plan.par_statut.cloturee, plan.total) + '%' }"></div></div>
-            </div>
-            <div style="margin-bottom: 12px">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px">
-                <b>En cours</b><span style="color: var(--mut)">{{ plan.par_statut.en_cours }} / {{ plan.total }}</span>
+              <div class="bcol">
+                <span class="val">{{ plan.par_statut.en_cours }}</span>
+                <div class="bar gd" :style="{ height: (plan.par_statut.en_cours / maxPlan) * 130 + 'px' }"></div>
+                <span class="lbl">En cours</span>
               </div>
-              <div class="trk"><div class="fl gd" :style="{ width: pourcent(plan.par_statut.en_cours, plan.total) + '%' }"></div></div>
-            </div>
-            <div style="margin-bottom: 0">
-              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 5px">
-                <b>En retard</b><span style="color: var(--red); font-weight: 650">{{ plan.nombre_en_retard }} / {{ plan.total }}</span>
+              <div class="bcol">
+                <span class="val" :style="plan.nombre_en_retard ? 'color:var(--red)' : ''">{{ plan.nombre_en_retard }}</span>
+                <div class="bar o" :style="{ height: (plan.nombre_en_retard / maxPlan) * 130 + 'px' }"></div>
+                <span class="lbl">En retard</span>
               </div>
-              <div class="trk"><div class="fl o" :style="{ width: pourcent(plan.nombre_en_retard, plan.total) + '%' }"></div></div>
             </div>
+            <p style="font-size: 11px; color: var(--mut); margin: 6px 0 0; text-align: center">{{ plan.total }} actions au total</p>
           </div>
         </div>
       </div>

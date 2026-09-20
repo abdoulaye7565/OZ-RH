@@ -296,6 +296,155 @@ def test_technicien_ne_peut_pas_desactiver_un_compte(client, technicien, referen
     assert reponse.status_code == 403
 
 
+def test_administrateur_peut_modifier_un_utilisateur(client, administrateur, referent_sheq, site, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{referent_sheq.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"nom": "Nouveau Nom", "role": "responsable", "courriel": "nouveau@hirondelles-it-lab.local"},
+    )
+
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["nom"] == "Nouveau Nom"
+    assert corps["role"] == "responsable"
+    assert corps["courriel"] == "nouveau@hirondelles-it-lab.local"
+    assert corps["prenom"] == referent_sheq.prenom  # champ non envoyé : inchangé
+
+
+def test_modification_partielle_ne_touche_pas_les_autres_champs(client, administrateur, referent_sheq, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+    role_avant = referent_sheq.role.value
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{referent_sheq.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"prenom": "Seul le prénom change"},
+    )
+
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["prenom"] == "Seul le prénom change"
+    assert corps["role"] == role_avant
+
+
+def test_modification_peut_effacer_explicitement_site_et_courriel(client, administrateur, technicien, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+    assert technicien.site_id is not None  # précondition : le compte a bien un site avant le test
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{technicien.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"site_id": None, "courriel": None},
+    )
+
+    assert reponse.status_code == 200
+    assert reponse.json()["site_id"] is None
+    assert reponse.json()["courriel"] is None
+
+
+def test_administrateur_ne_peut_pas_retirer_son_propre_role_administrateur(client, administrateur, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{administrateur.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"role": "responsable"},
+    )
+
+    assert reponse.status_code == 400
+
+
+def test_administrateur_peut_modifier_son_propre_nom_sans_toucher_au_role(client, administrateur, mot_de_passe_clair):
+    """Le garde-fou ne bloque que le changement de RÔLE sur soi-même, pas
+    toute modification de son propre compte."""
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{administrateur.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"nom": "Nouveau nom admin"},
+    )
+
+    assert reponse.status_code == 200
+    assert reponse.json()["nom"] == "Nouveau nom admin"
+
+
+def test_technicien_ne_peut_pas_modifier_un_utilisateur(client, technicien, referent_sheq, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": technicien.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{referent_sheq.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"nom": "Tentative refusée"},
+    )
+
+    assert reponse.status_code == 403
+
+
+def test_modifier_un_compte_inexistant_renvoie_404(client, administrateur, mot_de_passe_clair):
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+
+    reponse = client.patch(
+        "/api/v1/auth/utilisateurs/999999",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"nom": "Peu importe"},
+    )
+
+    assert reponse.status_code == 404
+
+
+def test_modification_ne_permet_pas_de_changer_l_identifiant_ou_le_mot_de_passe(
+    client, administrateur, technicien, mot_de_passe_clair
+):
+    """UtilisateurModification n'expose délibérément pas ces deux champs —
+    les envoyer quand même ne doit avoir aucun effet (Pydantic les ignore,
+    non déclarés dans le schéma), pas une erreur silencieuse qui les
+    appliquerait quand même."""
+    jeton = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": administrateur.identifiant, "mot_de_passe": mot_de_passe_clair},
+    ).json()["access_token"]
+    identifiant_avant = technicien.identifiant
+
+    reponse = client.patch(
+        f"/api/v1/auth/utilisateurs/{technicien.id}",
+        headers={"Authorization": f"Bearer {jeton}"},
+        json={"identifiant": "nouvel-identifiant", "mot_de_passe": "NouveauMotDePasse!99", "nom": "Test"},
+    )
+
+    assert reponse.status_code == 200
+    assert reponse.json()["identifiant"] == identifiant_avant
+    # Le mot de passe n'a pas changé : l'ancien fonctionne toujours.
+    connexion = client.post(
+        "/api/v1/auth/connexion",
+        json={"identifiant": identifiant_avant, "mot_de_passe": mot_de_passe_clair},
+    )
+    assert connexion.status_code == 200
+
+
 def test_cinq_mots_de_passe_faux_verrouillent_le_compte(client, administrateur, mot_de_passe_clair):
     """Revue de sécurité du 2026-09-08 (CLAUDE.md point 10) : avant ce
     verrouillage, /auth/connexion n'avait aucune limite de tentatives."""

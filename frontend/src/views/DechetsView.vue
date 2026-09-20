@@ -12,6 +12,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useDechetsStore } from "../stores/dechets";
 import { formaterDateCivile } from "../utils/dates";
@@ -112,12 +113,12 @@ async function confirmerEnlevement(item) {
             <b>Aucun déchet enregistré</b>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true">
             <Icone nom="plus" taille="sm" />Enregistrer un déchet
           </button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
+          <Modal v-if="formulaireOuvert" titre="Enregistrer un déchet" @fermer="formulaireOuvert = false">
             <label class="f">Date</label><input v-model="nouveau.date" type="date" class="inp" />
             <label class="f">Type</label><input v-model="nouveau.type" class="inp" placeholder="DEEE, Batteries, Cartouches…" />
             <label class="f">Description</label><input v-model="nouveau.description" class="inp" />
@@ -133,7 +134,7 @@ async function confirmerEnlevement(item) {
               <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div class="banner info" style="margin-top: 11px">
             <Icone nom="recycle" taille="sm" style="margin-top: 1px" />

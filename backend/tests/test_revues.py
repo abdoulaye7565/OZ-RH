@@ -85,6 +85,25 @@ def test_detail_revue_liste_ses_decisions(client, responsable):
     assert len(detail["decisions"]) == 1
 
 
+def test_liste_les_revues_deja_creees(client, responsable, technicien):
+    """2026-09-19 : sans cette route, aucun moyen de retrouver une revue une
+    fois l'écran de création quitté — seules la création et la lecture par
+    id existaient."""
+    vide = client.get("/api/v1/revues", headers=_entete(responsable))
+    assert vide.status_code == 200
+    assert vide.json() == []
+
+    revue = client.post("/api/v1/revues", headers=_entete(responsable), json=_donnees_revue()).json()
+
+    reponse = client.get("/api/v1/revues", headers=_entete(responsable))
+    assert reponse.status_code == 200
+    references = [r["id"] for r in reponse.json()]
+    assert revue["id"] in references
+
+    refuse = client.get("/api/v1/revues", headers=_entete(technicien))
+    assert refuse.status_code == 403
+
+
 def test_referent_sheq_peut_gerer_les_revues(client, referent_sheq):
     """Rapprochement documenté (permissions.py) : le référent SHEQ n'est pas cité
     dans les Acteurs du CDC pour ce module, mais FOR-SHEQ-016 le désigne comme

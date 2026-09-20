@@ -10,6 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useRisquesStore } from "../stores/risques";
 
@@ -119,13 +120,12 @@ async function soumettre() {
             <b>Aucun risque enregistré</b>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true">
             <Icone nom="plus" taille="sm" />Ajouter ou réévaluer
           </button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-            <div class="sec" style="margin-bottom: 8px">NOUVEAU RISQUE</div>
+          <Modal v-if="formulaireOuvert" titre="Nouveau risque" @fermer="formulaireOuvert = false">
             <label class="f">Danger</label>
             <input v-model="nouveau.danger" class="inp" placeholder="Ex. Chute de hauteur" />
             <label class="f">Catégorie</label>
@@ -151,7 +151,7 @@ async function soumettre() {
               <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div style="height: 56px"></div>
         </div>

@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user
+from app.core.pagination import Pagination, pagination
 from app.core.fichiers import enregistrer_photos
 from app.db.session import get_db
 from app.models.action import Action
@@ -51,20 +52,24 @@ def creer(
 def lister(
     modele: TypeInspection | None = None,
     site_id: int | None = None,
+    equipement_id: int | None = None,
     statut: StatutInspection | None = None,
+    page: Pagination = Depends(pagination),
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Inspection]:
-    """Liste les inspections non archivées, avec filtres optionnels par modèle,
-    site et statut."""
+    """Liste les inspections non archivées, avec filtres optionnels (modèle,
+    site, équipement, statut) et pagination (`limite`/`decalage`)."""
     requete = select(Inspection).where(Inspection.archive.is_(False))
     if modele is not None:
         requete = requete.where(Inspection.modele == modele)
     if site_id is not None:
         requete = requete.where(Inspection.site_id == site_id)
+    if equipement_id is not None:
+        requete = requete.where(Inspection.equipement_id == equipement_id)
     if statut is not None:
         requete = requete.where(Inspection.statut == statut)
-    return list(db.scalars(requete.order_by(Inspection.date.desc())))
+    return list(db.scalars(page.appliquer(requete.order_by(Inspection.date.desc()))))
 
 
 @router.get("/planification", response_model=list[PlanificationSortie])

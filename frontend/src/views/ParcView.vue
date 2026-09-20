@@ -5,6 +5,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { useParcStore } from "../stores/parc";
@@ -50,7 +51,7 @@ async function soumettre() {
   <div class="ecran-mobile">
     <BandeauReseau />
     <header class="hd">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <div>
         <h1>Parc &amp; configurations</h1>
         <div class="sub">{{ parc.liste.length }} équipements</div>
@@ -92,11 +93,10 @@ async function soumettre() {
             <span v-if="peutVoirCoffreFort" class="act" @click="router.push({ name: 'coffre-fort' })">Ouvrir</span>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouvel équipement</button>
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouvel équipement</button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-            <div class="sec" style="margin-bottom: 8px">NOUVEL ÉQUIPEMENT</div>
+          <Modal v-if="formulaireOuvert" titre="Nouvel équipement" @fermer="formulaireOuvert = false">
             <label class="f">Identity (SITE-FONCTION-NN)</label>
             <input v-model="nouveau.identity" class="inp" placeholder="Ex. KAT-ST-01" />
             <label class="f">Marque</label>
@@ -119,7 +119,7 @@ async function soumettre() {
               <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div style="height: 56px"></div>
         </div>

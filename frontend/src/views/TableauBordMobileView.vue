@@ -57,7 +57,7 @@ const conformiteInspections = computed(() => {
   <div class="ecran-mobile">
     <BandeauReseau />
     <header class="hd">
-      <div class="mk">H</div>
+      <div class="mk"><Icone nom="hirondelle" taille="lg" /></div>
       <div>
         <h1>Tableau de bord</h1>
         <div class="sub">Vue d'ensemble de la prévention</div>

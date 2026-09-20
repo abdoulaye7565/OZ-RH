@@ -4,7 +4,7 @@ Ce module gère la création et les transitions de statut ; l'évaluation des
 quatre conditions de blocage vit exclusivement dans
 app/services/regle_blocage_permis.py — jamais dupliquée ici."""
 import logging
-from datetime import datetime, timezone
+from datetime import datetime, time, timezone
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 
 from app.core.pdf import DocumentPDF
 from app.models.enums import StatutPermis
+from app.models.evaluation_slam import EvaluationSlam
 from app.models.permis import Permis
 from app.models.utilisateur import Utilisateur
 from app.schemas.permis import PermisCreation
@@ -32,6 +33,53 @@ def _generer_reference(db: Session) -> str:
     )
     prochain_numero = int(dernier.rsplit("-", 1)[-1]) + 1 if dernier else 1
     return f"{prefixe}{prochain_numero:03d}"
+
+
+def lier_evaluations_slam(db: Session, permis: Permis) -> None:
+    """Rattache à `permis` l'évaluation SLAM la plus récente du jour du créneau,
+    pour chaque intervenant (revue d'ensemble 2026-09-10 : "ils ne sont pas
+    liés"). Idempotent : on détache d'abord les évaluations actuellement
+    rattachées à ce permis qui ne correspondent plus (intervenant retiré, SLAM
+    plus récente entre-temps), puis on rattache les bonnes. Le rapprochement se
+    fait par date — c'est la seule clé disponible côté terrain (la SLAM se
+    saisit le jour de l'intervention, avant que le permis existe), mais le lien
+    est désormais **enregistré**, plus seulement recalculé à la volée.
+
+    N'établit AUCUN blocage : la règle de délivrance
+    (regle_blocage_permis.evaluer_controles) reste seule juge. Ici on ne fait
+    que tracer le rattachement.
+    """
+    jour = permis.debut_validite
+    debut_jour = datetime.combine(jour.date(), time.min, tzinfo=timezone.utc)
+    fin_jour = datetime.combine(jour.date(), time.max, tzinfo=timezone.utc)
+    intervenant_ids = {u.id for u in permis.intervenants}
+
+    a_rattacher_ids: set[int] = set()
+    for intervenant_id in intervenant_ids:
+        derniere = db.scalar(
+            select(EvaluationSlam)
+            .where(
+                EvaluationSlam.utilisateur_id == intervenant_id,
+                EvaluationSlam.date >= debut_jour,
+                EvaluationSlam.date <= fin_jour,
+            )
+            .order_by(EvaluationSlam.date.desc())
+            .limit(1)
+        )
+        if derniere is not None:
+            a_rattacher_ids.add(derniere.id)
+
+    deja_liees = db.scalars(select(EvaluationSlam).where(EvaluationSlam.permis_id == permis.id))
+    for ev in deja_liees:
+        if ev.id not in a_rattacher_ids:
+            ev.permis_id = None  # détache ce qui ne correspond plus
+
+    for ev_id in a_rattacher_ids:
+        ev = db.get(EvaluationSlam, ev_id)
+        if ev is not None:
+            ev.permis_id = permis.id
+
+    db.commit()
 
 
 def creer_permis(db: Session, donnees: PermisCreation, cree_par_id: int) -> Permis:
@@ -71,6 +119,12 @@ def creer_permis(db: Session, donnees: PermisCreation, cree_par_id: int) -> Perm
             continue
         db.refresh(permis)
         break
+
+    # Rattache les évaluations SLAM du jour, dès la création (même si le permis
+    # est bloqué : la trace de ce qui EXISTE est utile pour comprendre le
+    # blocage).
+    lier_evaluations_slam(db, permis)
+    db.refresh(permis)
 
     if permis.statut == StatutPermis.BLOQUE:
         logger.warning("Permis %s bloqué à la création : %s", permis.reference, controles.motifs)
@@ -113,6 +167,10 @@ def valider(db: Session, permis: Permis, validateur_id: int) -> Permis:
     permis.validateur_id = validateur_id
     permis.modifie_par_id = validateur_id
     db.commit()
+    # Re-rattache les évaluations SLAM : une SLAM plus récente a pu être saisie
+    # entre la demande et la validation ; le permis délivré doit pointer vers
+    # celle qui a effectivement servi de justificatif.
+    lier_evaluations_slam(db, permis)
     db.refresh(permis)
     logger.info("Permis %s délivré par utilisateur id=%s — intervenants à notifier", permis.reference, validateur_id)
     return permis

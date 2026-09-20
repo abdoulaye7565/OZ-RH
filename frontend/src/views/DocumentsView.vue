@@ -15,6 +15,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { useDocumentsStore } from "../stores/documents";
@@ -93,10 +94,9 @@ async function soumettre() {
           </div>
 
           <div v-if="peutGerer">
-            <div v-if="!formulaireOuvert" style="height: 12px"></div>
-            <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouveau document</button>
-            <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-              <div class="sec" style="margin-bottom: 8px">NOUVEAU DOCUMENT</div>
+            <div style="height: 12px"></div>
+            <button class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouveau document</button>
+            <Modal v-if="formulaireOuvert" titre="Nouveau document" @fermer="formulaireOuvert = false">
               <label class="f">Référence</label>
               <input v-model="nouveau.reference" class="inp" placeholder="Ex. PRO-SHEQ-010" />
               <label class="f">Intitulé</label>
@@ -120,7 +120,7 @@ async function soumettre() {
                 <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
                 <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
               </div>
-            </div>
+            </Modal>
           </div>
 
           <div style="height: 56px"></div>

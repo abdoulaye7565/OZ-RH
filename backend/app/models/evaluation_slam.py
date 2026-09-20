@@ -13,12 +13,17 @@ montée d'aujourd'hui). Choix à confirmer avec le référent SHEQ si la réalit
 terrain diffère.
 """
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, JSON, String
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import BaseModel, enum_column
 from app.models.enums import DecisionSlam
+
+if TYPE_CHECKING:
+    from app.models.permis import Permis
+    from app.models.utilisateur import Utilisateur
 
 
 class EvaluationSlam(BaseModel):
@@ -37,3 +42,13 @@ class EvaluationSlam(BaseModel):
     # Obligatoire si décision NO_GO uniquement (règle de service, pas de contrainte SQL).
     motif: Mapped[str | None] = mapped_column(String(300), nullable=True)
     date: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Permis auquel cette évaluation a servi de justificatif SLAM (revue
+    # d'ensemble 2026-09-10 : "ils ne sont pas liés"). Le rattachement se fait
+    # à la création / re-validation du permis — pour chaque intervenant, son
+    # évaluation la plus récente du jour du créneau. Nullable : une évaluation
+    # SLAM peut exister sans permis (saisie en amont, ou intervention au sol).
+    permis_id: Mapped[int | None] = mapped_column(ForeignKey("permis.id"), nullable=True)
+    permis: Mapped["Permis | None"] = relationship("Permis", back_populates="evaluations_slam")
+    # `foreign_keys` explicite : BaseModel ajoute aussi cree_par_id /
+    # modifie_par_id (FK vers utilisateur), le lien serait sinon ambigu.
+    utilisateur: Mapped["Utilisateur"] = relationship("Utilisateur", foreign_keys=[utilisateur_id])

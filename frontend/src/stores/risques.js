@@ -37,5 +37,12 @@ export const useRisquesStore = defineStore("risques", {
       await api.requete(`/api/v1/risques/${risqueId}/reevaluer`, { methode: "POST", corps: cotation });
       await this.charger();
     },
+
+    // Corrige les champs descriptifs (danger, catégorie, unité, personnes
+    // exposées) — pas la cotation, qui passe par reevaluer(). 2026-09-10.
+    async modifier(risqueId, donnees) {
+      await api.requete(`/api/v1/risques/${risqueId}`, { methode: "PATCH", corps: donnees });
+      await this.charger();
+    },
   },
 });

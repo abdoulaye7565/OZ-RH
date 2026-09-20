@@ -4,6 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.core.deps import get_current_user, require_role
+from app.core.pagination import Pagination, pagination
 from app.core.permissions import Permissions
 from app.db.session import get_db
 from app.models.enums import StatutPermis
@@ -41,17 +42,18 @@ def creer(
 def lister(
     statut: StatutPermis | None = None,
     site_id: int | None = None,
+    page: Pagination = Depends(pagination),
     db: Session = Depends(get_db),
     utilisateur: Utilisateur = Depends(get_current_user),
 ) -> list[Permis]:
     """Liste les permis non archivés, avec filtres optionnels par statut et
-    site."""
+    site, et pagination (`limite`/`decalage`)."""
     requete = select(Permis).where(Permis.archive.is_(False))
     if statut is not None:
         requete = requete.where(Permis.statut == statut)
     if site_id is not None:
         requete = requete.where(Permis.site_id == site_id)
-    return list(db.scalars(requete.order_by(Permis.debut_validite.desc())))
+    return list(db.scalars(page.appliquer(requete.order_by(Permis.debut_validite.desc()))))
 
 
 @router.get("/{permis_id}", response_model=PermisSortie)

@@ -150,6 +150,18 @@ def obtenir_revue(db: Session, revue_id: int) -> RevueDirection:
     return revue
 
 
+def lister_revues(db: Session) -> list[RevueDirection]:
+    """Ajoutée le 2026-09-19 (revue de compatibilité front/back, "tu corriges
+    tout") : aucune route ne permettait jusqu'ici de retrouver les revues
+    déjà créées — seule la création et la lecture par id existaient, sans
+    moyen de découvrir cet id une fois l'écran de création quitté."""
+    return list(
+        db.scalars(
+            select(RevueDirection).where(RevueDirection.archive.is_(False)).order_by(RevueDirection.date.desc())
+        )
+    )
+
+
 def decisions_de(db: Session, revue_id: int) -> list[DecisionRevue]:
     return list(db.scalars(select(DecisionRevue).where(DecisionRevue.revue_id == revue_id)))
 

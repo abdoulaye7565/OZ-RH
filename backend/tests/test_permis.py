@@ -233,3 +233,64 @@ def test_intervenant_ids_vide_refuse(client, technicien, referent_sheq, site, in
 def test_aucune_route_de_suppression(client):
     reponse = client.delete("/api/v1/permis/1")
     assert reponse.status_code == 405
+
+
+def test_creation_lie_l_evaluation_slam_du_jour_au_permis(client, technicien, referent_sheq, site, intervenant_conforme, db_session):
+    """Revue d'ensemble 2026-09-10 ("ils ne sont pas liés") : à la création,
+    l'évaluation SLAM GO du jour de chaque intervenant est rattachée au permis
+    (colonne evaluation_slam.permis_id + sortie API)."""
+    reponse = client.post(
+        "/api/v1/permis",
+        headers=_entete(technicien),
+        json=_donnees_permis(site, intervenant_conforme, referent_sheq),
+    )
+    assert reponse.status_code == 201
+    corps = reponse.json()
+
+    # Sortie API
+    assert len(corps["evaluations_slam"]) == 1
+    ev = corps["evaluations_slam"][0]
+    assert ev["utilisateur_id"] == intervenant_conforme.id
+    assert ev["decision"] == "GO"
+    assert ev["utilisateur_nom"] == f"{intervenant_conforme.prenom} {intervenant_conforme.nom}"
+
+    # Colonne en base
+    ligne = db_session.scalars(
+        __import__("sqlalchemy").select(EvaluationSlam).where(EvaluationSlam.utilisateur_id == intervenant_conforme.id)
+    ).one()
+    assert ligne.permis_id == corps["id"]
+
+
+def test_revalidation_rattache_une_slam_plus_recente(client, technicien, referent_sheq, responsable, site, intervenant_conforme, db_session):
+    """Si une SLAM plus récente (même jour) est saisie entre la demande et la
+    validation, le permis délivré doit pointer vers celle-ci."""
+    from sqlalchemy import select
+
+    reponse = client.post(
+        "/api/v1/permis",
+        headers=_entete(technicien),
+        json=_donnees_permis(site, intervenant_conforme, referent_sheq),
+    )
+    permis_id = reponse.json()["id"]
+    ev_initiale = reponse.json()["evaluations_slam"][0]["id"]
+
+    # Nouvelle SLAM GO, plus récente, le même jour.
+    db_session.add(
+        EvaluationSlam(
+            utilisateur_id=intervenant_conforme.id,
+            etapes_validees=[[True] * 4] * 4,
+            decision=DecisionSlam.GO,
+            date=datetime.now(timezone.utc) + timedelta(minutes=5),
+        )
+    )
+    db_session.commit()
+
+    valide = client.post(f"/api/v1/permis/{permis_id}/valider", headers=_entete(responsable))
+    assert valide.status_code == 200
+    liees = valide.json()["evaluations_slam"]
+    assert len(liees) == 1
+    assert liees[0]["id"] != ev_initiale  # la plus récente
+
+    # L'ancienne évaluation n'est plus rattachée à ce permis.
+    ancienne = db_session.get(EvaluationSlam, ev_initiale)
+    assert ancienne.permis_id is None

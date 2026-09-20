@@ -5,12 +5,12 @@
  *
  * Écarts assumés par rapport à la maquette, faute de champ prévu pour ça dans
  * son formulaire :
- * - `site_id` : pas de sélecteur de site dans la maquette (elle ne montre que
- *   "Lieu", un champ texte libre). Utilisé à la place : le site de rattachement
- *   du compte connecté (auth.utilisateur.site_id) — cohérent avec l'objectif de
- *   saisie en moins de deux minutes, mais à confirmer : un technicien qui
- *   intervient sur le site d'un client différent de son site de rattachement ne
- *   peut pas le signaler ici.
+ * - `site_id` : la maquette ne montre qu'un "Lieu" texte libre. Un sélecteur
+ *   de site a été ajouté le 2026-09-10 (revue d'ensemble — un technicien
+ *   intervient sur plusieurs sites) : pré-rempli avec le site de rattachement
+ *   du compte, modifiable. La liste des sites est mise en cache localStorage
+ *   pour rester utilisable hors connexion (cet écran est le pilote du mode
+ *   hors ligne).
  * - `date_constat` : pas de sélecteur de date/heure non plus ; fixée à l'instant
  *   de l'envoi.
  *
@@ -28,7 +28,7 @@
  * et services/filesync.js) : envoyer() ne distingue plus lui-même le cas
  * hors ligne, c'est signalements.creer() qui met en file au besoin.
  */
-import { computed, ref } from "vue";
+import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
@@ -39,6 +39,33 @@ import api from "../services/api";
 const router = useRouter();
 const auth = useAuthStore();
 const signalements = useSignalementsStore();
+
+// Liste des sites (sélecteur ajouté 2026-09-10) : mise en cache localStorage
+// pour rester disponible hors connexion — cet écran est le pilote du mode
+// hors ligne, il ne doit pas dépendre du réseau pour proposer un site.
+const CLE_CACHE_SITES = "sheq_sites_cache";
+const sites = ref([]);
+const siteChoisi = ref(auth.utilisateur?.site_id ?? "");
+
+onMounted(async () => {
+  try {
+    sites.value = await api.requete("/api/v1/sites");
+    try {
+      localStorage.setItem(CLE_CACHE_SITES, JSON.stringify(sites.value));
+    } catch {
+      // Stockage indisponible : pas bloquant.
+    }
+  } catch {
+    try {
+      const cache = localStorage.getItem(CLE_CACHE_SITES);
+      if (cache) sites.value = JSON.parse(cache);
+    } catch {
+      sites.value = [];
+    }
+  }
+  // Repli si le site du compte n'est pas dans la liste (ou liste vide).
+  if (!siteChoisi.value && sites.value.length) siteChoisi.value = sites.value[0].id;
+});
 
 const TYPES = [
   { valeur: "situation_dangereuse", libelle: "Situation dangereuse" },
@@ -76,6 +103,7 @@ function retirerPhoto(index) {
 
 function valider() {
   const e = {};
+  if (!siteChoisi.value) e.site = "Le site est obligatoire";
   if (!lieu.value.trim()) e.lieu = "Le lieu est obligatoire";
   if (!description.value.trim()) e.description = "La description est obligatoire";
   // Validation de confort côté client : la validation qui compte reste celle du
@@ -92,7 +120,7 @@ async function envoyer() {
     await signalements.creer(
       {
         type: type.value,
-        site_id: auth.utilisateur?.site_id ?? "",
+        site_id: siteChoisi.value,
         lieu: lieu.value,
         description: description.value,
         anonyme: anonyme.value,
@@ -134,13 +162,20 @@ async function envoyer() {
           </button>
         </div>
 
-        <label class="f" for="lieu">Lieu</label>
+        <label class="f" for="site">Site</label>
+        <select id="site" v-model="siteChoisi" class="inp" :class="{ 'champ-erreur': erreurs.site }">
+          <option value="" disabled>Choisir…</option>
+          <option v-for="s in sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
+        </select>
+        <div v-if="erreurs.site" class="msg-erreur">{{ erreurs.site }}</div>
+
+        <label class="f" for="lieu">Lieu précis</label>
         <input
           id="lieu"
           v-model="lieu"
           class="inp"
           :class="{ 'champ-erreur': erreurs.lieu }"
-          placeholder="Local technique, pylône, site client…"
+          placeholder="Local technique, pylône, baie A…"
         />
         <div v-if="erreurs.lieu" class="msg-erreur">{{ erreurs.lieu }}</div>
 

@@ -12,7 +12,10 @@
  * qu'à l'aspect de la maquette, qui reste illustratif sur ce point précis.
  */
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
+import BarrePagination from "../components/BarrePagination.vue";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
+import { useRechercheEtPagination } from "../composables/useRechercheEtPagination";
 import { useAuthStore } from "../stores/auth";
 import { DELAI_MASQUAGE_MS, ROLES_SECRET, TYPES_ACCES, useSecretsStore } from "../stores/secrets";
 
@@ -21,6 +24,16 @@ const secrets = useSecretsStore();
 onMounted(() => secrets.charger());
 
 const peutGerer = computed(() => ["responsable", "administrateur"].includes(auth.utilisateur?.role));
+
+function correspond(s, terme) {
+  return (
+    s.libelle?.toLowerCase().includes(terme) ||
+    s.identifiant?.toLowerCase().includes(terme) ||
+    (s.equipement_id ? (secrets.nomEquipement(s.equipement_id) ?? "") : "").toLowerCase().includes(terme)
+  );
+}
+const { recherche, page, totalPages, resultats, elementsPage, allerPage } =
+  useRechercheEtPagination(computed(() => secrets.liste), correspond, 15);
 
 const revelations = ref({});
 async function basculerAffichage(secret) {
@@ -102,52 +115,57 @@ async function soumettre() {
     </div>
     <div v-if="secrets.erreur" class="banner err">{{ secrets.erreur }}</div>
 
-    <div v-if="formulaireOuvert" class="card">
-      <div class="ch"><h3>Nouveau secret</h3></div>
-      <div class="cb">
-        <div class="grid2">
-          <div>
-            <label class="f">Libellé</label><input v-model="nouveau.libelle" class="inp" placeholder="Ex. Admin RouterOS" />
-            <label class="f">Équipement (facultatif)</label>
-            <select v-model="nouveau.equipement_id" class="inp">
-              <option value="">Aucun</option>
-              <option v-for="e in secrets.equipements" :key="e.id" :value="e.id">{{ e.identity }}</option>
-            </select>
-            <label class="f">Type d'accès</label>
-            <select v-model="nouveau.type_acces" class="inp">
-              <option v-for="t in TYPES_ACCES" :key="t.valeur" :value="t.valeur">{{ t.libelle }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="f">Identifiant (facultatif)</label><input v-model="nouveau.identifiant" class="inp" placeholder="Ex. admin" />
-            <label class="f">Valeur du secret</label>
-            <div style="display: flex; gap: 6px">
-              <input v-model="nouveau.valeur" class="inp" placeholder="Mot de passe, clé…" />
-              <button class="btn gh sm" style="width: auto; white-space: nowrap" :disabled="generationEnCours" @click="genererMotDePasse">Générer</button>
-            </div>
-            <label class="f">Rôle minimal requis</label>
-            <select v-model="nouveau.role_requis" class="inp">
-              <option v-for="r in ROLES_SECRET" :key="r.valeur" :value="r.valeur">{{ r.libelle }}</option>
-            </select>
-          </div>
+    <Modal v-if="formulaireOuvert" titre="Nouveau secret" @fermer="formulaireOuvert = false">
+      <div class="grid2">
+        <div>
+          <label class="f">Libellé</label><input v-model="nouveau.libelle" class="inp" placeholder="Ex. Admin RouterOS" />
+          <label class="f">Équipement (facultatif)</label>
+          <select v-model="nouveau.equipement_id" class="inp">
+            <option value="">Aucun</option>
+            <option v-for="e in secrets.equipements" :key="e.id" :value="e.id">{{ e.identity }}</option>
+          </select>
+          <label class="f">Type d'accès</label>
+          <select v-model="nouveau.type_acces" class="inp">
+            <option v-for="t in TYPES_ACCES" :key="t.valeur" :value="t.valeur">{{ t.libelle }}</option>
+          </select>
         </div>
-        <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
-        <button class="btn pri" style="width: auto; margin-top: 10px" @click="soumettre">Enregistrer</button>
+        <div>
+          <label class="f">Identifiant (facultatif)</label><input v-model="nouveau.identifiant" class="inp" placeholder="Ex. admin" />
+          <label class="f">Valeur du secret</label>
+          <div style="display: flex; gap: 6px">
+            <input v-model="nouveau.valeur" class="inp" placeholder="Mot de passe, clé…" />
+            <button class="btn gh sm" style="width: auto; white-space: nowrap" :disabled="generationEnCours" @click="genererMotDePasse">Générer</button>
+          </div>
+          <label class="f">Rôle minimal requis</label>
+          <select v-model="nouveau.role_requis" class="inp">
+            <option v-for="r in ROLES_SECRET" :key="r.valeur" :value="r.valeur">{{ r.libelle }}</option>
+          </select>
+        </div>
       </div>
-    </div>
+      <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
+      <div style="display: flex; gap: 8px; margin-top: 10px">
+        <button class="btn pri" style="width: auto" @click="soumettre">Enregistrer</button>
+        <button class="btn gh" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
+      </div>
+    </Modal>
 
     <div class="split">
       <div class="card">
         <div class="ch">
           <Icone nom="key" style="color: var(--navy2)" /><h3>Secrets enregistrés</h3>
-          <span v-if="peutGerer" class="r" style="cursor: pointer" role="button" tabindex="0" @click="formulaireOuvert = !formulaireOuvert" @keydown.enter="formulaireOuvert = !formulaireOuvert">
+          <span style="flex: 1"></span>
+          <div class="srch">
+            <Icone nom="search" taille="sm" />
+            <input v-model="recherche" placeholder="Rechercher un secret, un équipement…" />
+          </div>
+          <span v-if="peutGerer" class="r" style="cursor: pointer" role="button" tabindex="0" @click="formulaireOuvert = true" @keydown.enter="formulaireOuvert = true">
             Ajouter un secret
           </span>
         </div>
         <table>
           <thead><tr><th>Équipement / Libellé</th><th>Type</th><th>Identifiant</th><th>Secret</th><th>Modifié</th><th>Rôle requis</th></tr></thead>
           <tbody>
-            <tr v-for="s in secrets.liste" :key="s.id" :style="peutGerer ? 'cursor: pointer' : ''" @click="selectionner(s)">
+            <tr v-for="s in elementsPage" :key="s.id" :style="peutGerer ? 'cursor: pointer' : ''" @click="selectionner(s)">
               <td>
                 <div class="cellrow">
                   <span class="mini m-nv"><Icone nom="key" taille="sm" /></span>
@@ -168,9 +186,12 @@ async function soumettre() {
               <td><span class="tag" :class="secrets.infoRole(s.role_requis).tag">{{ secrets.infoRole(s.role_requis).libelle }}</span></td>
             </tr>
             <tr v-if="!secrets.chargement && !secrets.liste.length"><td colspan="6" style="color: var(--mut)">Aucun secret accessible à votre rôle.</td></tr>
+            <tr v-if="secrets.liste.length && !resultats.length"><td colspan="6" style="color: var(--mut)">Aucun secret ne correspond à la recherche.</td></tr>
           </tbody>
         </table>
-        <div class="pagin"><span>{{ secrets.liste.length }} secret{{ secrets.liste.length > 1 ? "s" : "" }} · 2FA recommandée sur les comptes cloud</span></div>
+        <BarrePagination :page="page" :total-pages="totalPages" @changer="allerPage">
+          {{ resultats.length }} sur {{ secrets.liste.length }} secret{{ secrets.liste.length > 1 ? "s" : "" }} · 2FA recommandée sur les comptes cloud
+        </BarrePagination>
       </div>
 
       <div class="card">

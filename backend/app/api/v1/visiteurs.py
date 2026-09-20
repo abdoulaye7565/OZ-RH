@@ -8,6 +8,7 @@ from app.models.utilisateur import Utilisateur
 from app.models.visiteur import Visiteur
 from app.schemas.visiteur import VisiteurCreation, VisiteurSortie
 from app.services.visiteur_service import (
+    archiver_visiteur,
     enregistrer_depart,
     enregistrer_visiteur,
     lister_visiteurs,
@@ -63,3 +64,15 @@ def enregistrer_depart_route(
     """Enregistre le départ d'un visiteur."""
     visiteur = obtenir_visiteur(db, visiteur_id)
     return enregistrer_depart(db, visiteur, modifie_par_id=utilisateur.id)
+
+
+@router.post("/{visiteur_id}/archiver", response_model=VisiteurSortie)
+def archiver_visiteur_route(
+    visiteur_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Visiteur:
+    """Archive un visiteur déjà parti (jamais de suppression physique, point 2
+    de CLAUDE.md — retour direct de l'utilisateur, 2026-09-09)."""
+    visiteur = obtenir_visiteur(db, visiteur_id)
+    return archiver_visiteur(db, visiteur, modifie_par_id=utilisateur.id)

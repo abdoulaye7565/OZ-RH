@@ -10,8 +10,15 @@ from app.core.permissions import Permissions
 from app.db.session import get_db
 from app.models.dechet import Dechet
 from app.models.utilisateur import Utilisateur
-from app.schemas.dechet import DechetCreation, DechetSortie
-from app.services.dechet_service import creer_dechet, enregistrer_enlevement, lister_dechets, obtenir_dechet
+from app.schemas.dechet import DechetCreation, DechetModification, DechetSortie
+from app.services.dechet_service import (
+    archiver_dechet,
+    creer_dechet,
+    enregistrer_enlevement,
+    lister_dechets,
+    modifier_dechet,
+    obtenir_dechet,
+)
 
 router = APIRouter(prefix="/dechets", tags=["dechets"])
 
@@ -33,6 +40,29 @@ def lister_dechets_route(
 ) -> list[Dechet]:
     """Liste les lots de déchets enregistrés."""
     return lister_dechets(db)
+
+
+@router.patch("/{dechet_id}", response_model=DechetSortie)
+def modifier_dechet_route(
+    dechet_id: int,
+    payload: DechetModification,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DECHETS)),
+) -> Dechet:
+    """Corrige un lot de déchets (faute de saisie)."""
+    dechet = obtenir_dechet(db, dechet_id)
+    return modifier_dechet(db, dechet, payload, modifie_par_id=utilisateur.id)
+
+
+@router.post("/{dechet_id}/archiver", response_model=DechetSortie)
+def archiver_dechet_route(
+    dechet_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DECHETS)),
+) -> Dechet:
+    """Archive un lot de déchets (jamais de suppression physique)."""
+    dechet = obtenir_dechet(db, dechet_id)
+    return archiver_dechet(db, dechet, modifie_par_id=utilisateur.id)
 
 
 @router.post("/{dechet_id}/enlevement", response_model=DechetSortie)

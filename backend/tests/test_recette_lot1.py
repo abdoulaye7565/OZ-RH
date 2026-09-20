@@ -243,12 +243,13 @@ def test_cas_14_action_aucune_suppression_possible(client):
 
 
 def test_cas_14_utilisateur_aucune_suppression_possible(client):
-    # 404, pas 405 : contrairement à signalements/actions, aucune route
-    # /auth/utilisateurs/{id} n'existe DU TOUT (même pas en lecture) — la
-    # suppression est donc impossible par construction, pas seulement bloquée
-    # sur une route existante.
+    # 405, comme pour actions/signalements : PATCH /auth/utilisateurs/{id}
+    # existe depuis le 2026-09-09 (modification de profil), donc le chemin
+    # est reconnu — seul DELETE reste absent, aucune suppression possible
+    # par construction (point 2, CLAUDE.md), pas seulement bloquée par un
+    # contrôle applicatif.
     reponse = client.delete("/api/v1/auth/utilisateurs/1")
-    assert reponse.status_code == 404
+    assert reponse.status_code == 405
 
 
 def test_cas_14_seul_archivage_disponible_pour_signalement(client, technicien, referent_sheq, site):

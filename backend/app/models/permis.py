@@ -12,6 +12,7 @@ from app.db.base import Base, BaseModel, enum_column
 from app.models.enums import StatutPermis, SupportPermis
 
 if TYPE_CHECKING:
+    from app.models.evaluation_slam import EvaluationSlam
     from app.models.utilisateur import Utilisateur
 
 permis_intervenants = Table(
@@ -31,6 +32,12 @@ class Permis(BaseModel):
     support: Mapped[SupportPermis] = mapped_column(enum_column(SupportPermis, "support_permis"), nullable=False)
     hauteur_estimee: Mapped[float | None] = mapped_column(Numeric(4, 1), nullable=True)
     intervenants: Mapped[list["Utilisateur"]] = relationship("Utilisateur", secondary=permis_intervenants)
+    # Évaluations SLAM qui justifient ce permis (revue d'ensemble 2026-09-10) —
+    # rattachées à la création / re-validation, une par intervenant (la plus
+    # récente du jour du créneau). Voir permis_service.lier_evaluations_slam.
+    evaluations_slam: Mapped[list["EvaluationSlam"]] = relationship(
+        "EvaluationSlam", back_populates="permis"
+    )
     # Rendu nullable au prompt 2.2 (posé NOT NULL au 0.2) : "aucun surveillant
     # désigné" est l'une des quatre causes de blocage évaluées ENSEMBLE par le
     # service dédié, au même titre que l'EPI ou le SLAM — une contrainte NOT

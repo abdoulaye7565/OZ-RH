@@ -9,6 +9,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { useFormationsStore } from "../stores/formations";
@@ -139,10 +140,9 @@ async function soumettreSeance() {
           </div>
 
           <div v-if="peutGerer">
-            <div v-if="!formulaireOuvert" style="height: 12px"></div>
-            <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouvelle séance</button>
-            <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-              <div class="sec" style="margin-bottom: 8px">NOUVELLE SÉANCE</div>
+            <div style="height: 12px"></div>
+            <button class="btn pri" @click="formulaireOuvert = true"><Icone nom="plus" taille="sm" />Nouvelle séance</button>
+            <Modal v-if="formulaireOuvert" titre="Nouvelle séance" @fermer="formulaireOuvert = false">
               <label class="f">Thème</label>
               <input v-model="nouvelle.theme" class="inp" />
               <label class="f">Date</label>
@@ -164,7 +164,7 @@ async function soumettreSeance() {
                 <button class="btn pri sm" style="width: auto" @click="soumettreSeance">Enregistrer</button>
                 <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
               </div>
-            </div>
+            </Modal>
           </div>
 
           <div style="height: 56px"></div>

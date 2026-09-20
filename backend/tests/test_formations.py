@@ -71,7 +71,12 @@ def test_matrice_restreinte_mais_mes_habilitations_ouvertes(client, referent_she
     # Le responsable ("direction") voit la matrice complète.
     reponse_responsable = client.get("/api/v1/formations/matrice", headers=_entete(responsable))
     assert reponse_responsable.status_code == 200
-    assert len(reponse_responsable.json()) == 1
+    corps = reponse_responsable.json()
+    assert len(corps) == 1
+    # Libellé résolu côté serveur (2026-09-19) : la route renvoyait jusqu'ici
+    # des habilitations brutes, sans libellé de compétence exploitable par
+    # l'écran (colonne "Compétence" vide en conditions réelles).
+    assert corps[0]["libelle_competence"] == "SLAM"
 
 
 def test_alerte_recyclage_detecte_une_habilitation_bientot_expiree(client, referent_sheq, technicien):
@@ -147,6 +152,39 @@ def test_emargement_est_idempotent_par_participant(client, referent_sheq, techni
     assert e2["present"] is True
 
 
+def test_liste_emargements_relit_les_presences_deja_enregistrees(client, referent_sheq, technicien, responsable):
+    """2026-09-19 : sans cette route, un écran d'émargement rouvert ne peut
+    pas savoir qui a déjà signé — seule l'écriture existait jusqu'ici."""
+    seance = client.post(
+        "/api/v1/formations/seances",
+        headers=_entete(referent_sheq),
+        json={"theme": "X", "date": str(date.today()), "lieu": "Y", "animateur_id": referent_sheq.id},
+    ).json()
+
+    vide = client.get(f"/api/v1/formations/seances/{seance['id']}/emargements", headers=_entete(referent_sheq))
+    assert vide.status_code == 200
+    assert vide.json() == []
+
+    client.post(
+        f"/api/v1/formations/seances/{seance['id']}/emargement",
+        headers=_entete(referent_sheq),
+        json={"participant_id": technicien.id, "present": True},
+    )
+    client.post(
+        f"/api/v1/formations/seances/{seance['id']}/emargement",
+        headers=_entete(referent_sheq),
+        json={"participant_id": responsable.id, "present": False},
+    )
+
+    reponse = client.get(f"/api/v1/formations/seances/{seance['id']}/emargements", headers=_entete(referent_sheq))
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert len(corps) == 2
+    presences = {e["participant_id"]: e["present"] for e in corps}
+    assert presences[technicien.id] is True
+    assert presences[responsable.id] is False
+
+
 def test_liste_questions_ne_revele_jamais_la_reponse(client, technicien):
     reponse = client.get("/api/v1/formations/questions-quiz", headers=_entete(technicien))
     assert reponse.status_code == 200
@@ -186,3 +224,50 @@ def test_quiz_refuse_une_reponse_manquante(client, referent_sheq, technicien):
         json={"seance_id": seance["id"], "reponses": [{"question_id": 1, "reponse": "a"}]},
     )
     assert reponse.status_code == 400
+
+
+def test_modification_seance_planifiee(client, referent_sheq, technicien):
+    """Revue d'ensemble 2026-09-10 : PATCH /formations/seances/{id} corrige
+    une séance encore planifiée (aucune route ne le permettait)."""
+    seance = client.post(
+        "/api/v1/formations/seances",
+        headers=_entete(referent_sheq),
+        json={"theme": "Sensibilisation", "date": str(date.today()), "lieu": "Siège", "animateur_id": referent_sheq.id},
+    ).json()
+
+    reponse = client.patch(
+        f"/api/v1/formations/seances/{seance['id']}",
+        headers=_entete(referent_sheq),
+        json={"theme": "Sensibilisation annuelle SHEQ", "lieu": "Antenne Kayes"},
+    )
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["theme"] == "Sensibilisation annuelle SHEQ"
+    assert corps["lieu"] == "Antenne Kayes"
+    assert corps["animateur_id"] == referent_sheq.id  # non fourni => inchangé
+
+
+def test_modification_refusee_apres_cloture(client, referent_sheq, technicien):
+    seance = client.post(
+        "/api/v1/formations/seances",
+        headers=_entete(referent_sheq),
+        json={"theme": "Sensibilisation", "date": str(date.today()), "lieu": "Siège", "animateur_id": referent_sheq.id},
+    ).json()
+    client.post(f"/api/v1/formations/seances/{seance['id']}/cloturer", headers=_entete(referent_sheq))
+
+    reponse = client.patch(
+        f"/api/v1/formations/seances/{seance['id']}", headers=_entete(referent_sheq), json={"theme": "trop tard"}
+    )
+    assert reponse.status_code == 409
+
+
+def test_modification_seance_refusee_a_un_technicien(client, referent_sheq, technicien):
+    seance = client.post(
+        "/api/v1/formations/seances",
+        headers=_entete(referent_sheq),
+        json={"theme": "Sensibilisation", "date": str(date.today()), "lieu": "Siège", "animateur_id": referent_sheq.id},
+    ).json()
+    reponse = client.patch(
+        f"/api/v1/formations/seances/{seance['id']}", headers=_entete(technicien), json={"theme": "x"}
+    )
+    assert reponse.status_code == 403

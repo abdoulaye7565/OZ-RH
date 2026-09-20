@@ -36,6 +36,12 @@ export const useHorsConnexionStore = defineStore("horsConnexion", {
       return element;
     },
 
+    // Remplace l'état d'un élément déjà en file plutôt que d'en ajouter un
+    // nouveau (Inspections, 2026-09-09) — voir services/filesync.js.
+    async mettreAJourEnAttente(id, champs) {
+      return filesync.mettreAJourEnAttente(id, champs);
+    },
+
     async synchroniser() {
       if (this.synchronisationEnCours || !navigator.onLine) return;
       this.synchronisationEnCours = true;

@@ -11,6 +11,12 @@
  * clic, puis chaque clic suivant renvoie l'état complet des réponses
  * (PATCH /points remplace le tableau entier, ne fusionne pas — service
  * mettre_a_jour_points).
+ *
+ * Mode hors connexion (2026-09-09) : cet écran ne gère lui-même aucun cas
+ * réseau — toute la mécanique (créer/coter/clôturer hors ligne, un seul
+ * élément en file remplacé à chaque coche) vit dans
+ * stores/inspections.js (`_mettreEnFile`), pour que `coter()`/`terminer()`
+ * ici restent identiques que le réseau soit là ou non.
  */
 import { computed, onMounted, ref } from "vue";
 import { useRoute, useRouter } from "vue-router";
@@ -18,6 +24,7 @@ import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useInspectionsStore } from "../stores/inspections";
 import { useAuthStore } from "../stores/auth";
+import { formaterDateCivile } from "../utils/dates";
 import api from "../services/api";
 
 const route = useRoute();
@@ -54,6 +61,36 @@ onMounted(async () => {
   }
 });
 
+// En-tête « quel équipement, où, par qui, quand » (2026-09-10, retour direct
+// de l'utilisateur). Pour une inspection en cours de création,
+// `inspections.inspection` est encore null : on lit alors la query ; pour
+// l'inspecteur, c'est forcément l'utilisateur connecté tant que la fiche
+// n'existe pas côté serveur.
+const equipementInspecte = computed(() => {
+  const id = estNouvelle.value
+    ? (route.query.equipement_id ? Number(route.query.equipement_id) : null)
+    : inspections.inspection?.equipement_id;
+  return id ? inspections.nomEquipement(id) : null;
+});
+// Objet précis inspecté quand ce n'est pas un équipement du parc (extincteur,
+// tableau électrique, ligne de vie…). Pour une inspection en création, il
+// vient de la query ; ensuite de l'objet chargé.
+const objetInspecte = computed(() =>
+  estNouvelle.value ? (route.query.objet_inspecte || null) : (inspections.inspection?.objet_inspecte || null)
+);
+const cibleInspection = computed(() => equipementInspecte.value || objetInspecte.value);
+const dateInspection = computed(() => {
+  const d = estNouvelle.value ? null : inspections.inspection?.date;
+  return d ? formaterDateCivile(d) : null;
+});
+const nomInspecteur = computed(() => {
+  if (!estNouvelle.value && inspections.inspection?.inspecteur_id) {
+    return inspections.nomUtilisateur(inspections.inspection.inspecteur_id)
+      ?? `Inspecteur #${inspections.inspection.inspecteur_id}`;
+  }
+  return auth.utilisateur ? `${auth.utilisateur.prenom} ${auth.utilisateur.nom}` : null;
+});
+
 const nombreConformes = computed(() => Object.values(reponses.value).filter((v) => v === "C").length);
 const nombreCotes = computed(() => Object.values(reponses.value).filter((v) => v === "C" || v === "NC").length);
 const tauxAffiche = computed(() => (nombreCotes.value ? Math.round((nombreConformes.value / nombreCotes.value) * 100) : null));
@@ -77,6 +114,7 @@ async function coter(pointId, valeur) {
         modele: route.query.modele,
         site_id: Number(route.query.site_id),
         equipement_id: route.query.equipement_id ? Number(route.query.equipement_id) : null,
+        objet_inspecte: route.query.objet_inspecte || null,
         points: construirePoints(),
       });
       // Remplace l'URL "nouvelle" par l'URL réelle : un rechargement de page
@@ -127,16 +165,18 @@ async function terminer() {
       <button class="back" aria-label="Retour" @click="router.push({ name: 'inspections' })"><Icone nom="back" /></button>
       <div>
         <h1>{{ inspections.libelleType(estNouvelle ? route.query.modele : inspections.inspection?.modele) }}</h1>
+        <div v-if="cibleInspection" class="sub"><b>{{ cibleInspection }}</b></div>
         <div class="sub">
           {{ inspections.nomSite(Number(estNouvelle ? route.query.site_id : inspections.inspection?.site_id)) ?? "" }}
-          <template v-if="auth.utilisateur"> · {{ auth.utilisateur.prenom }} {{ auth.utilisateur.nom }}</template>
+          <template v-if="dateInspection"> · {{ dateInspection }}</template>
+          <template v-if="nomInspecteur"> · {{ nomInspecteur }}</template>
         </div>
       </div>
     </header>
 
     <div class="body">
       <div class="pad">
-        <div v-if="chargement">Chargement…</div>
+        <div v-if="chargement" class="skel" style="height: 200px"></div>
 
         <template v-else>
           <div class="statbar">
@@ -172,6 +212,11 @@ async function terminer() {
           </div>
 
           <div v-if="erreur" class="banner err" style="margin-top: 10px">{{ erreur }}</div>
+
+          <div v-if="inspections.inspection?.enAttente" class="banner info" style="margin-top: 10px">
+            <Icone nom="sync" taille="sm" style="margin-top: 1px" />
+            <div>Enregistrée localement, en attente du retour du réseau pour être synchronisée.</div>
+          </div>
 
           <template v-if="inspections.inspection?.statut === 'cloturee'">
             <div class="banner info" style="margin-top: 10px">Cette inspection est clôturée.</div>

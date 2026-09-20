@@ -27,6 +27,10 @@ PERIMETRE_PAR_ROLE: dict[R, str] = {
 
 class Permissions:
     GERER_UTILISATEURS: tuple[R, ...] = (R.ADMINISTRATEUR,)
+    # Les sites (lieux d'intervention) relèvent des « paramètres » du périmètre
+    # administrateur (tableau des rôles, CLAUDE.md §6). La consultation reste
+    # ouverte à tout le personnel (résolution d'un site_id en nom).
+    GERER_SITES: tuple[R, ...] = (R.ADMINISTRATEUR,)
     # Section 5.2.1 du CDC, "Acteurs" : "Traitement : référent SHEQ". L'administrateur
     # est ajouté par application du principe "Tout" de son propre périmètre (point 6
     # de CLAUDE.md), pas par une mention explicite de la section 5.2.1.

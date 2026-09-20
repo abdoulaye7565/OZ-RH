@@ -76,6 +76,35 @@ export const useSignalementsStore = defineStore("signalements", {
       }
     },
 
+    // Fiche détail (2026-09-19, même campagne) : chargement individuel, à
+    // ne pas confondre avec `liste` qui ne sert qu'à l'écran de liste — la
+    // fiche détail doit refléter l'état serveur exact après chaque action.
+    async obtenir(id) {
+      return api.requete(`/api/v1/signalements/${id}`);
+    },
+
+    // Workflow de traitement (2026-09-19, retour direct de l'utilisateur —
+    // "tu corriges tout" suite à l'audit de compatibilité front/back) :
+    // PATCH /signalements/{id}/statut existait côté serveur (avec ses
+    // transitions vérifiées, voir TRANSITIONS_AUTORISEES) depuis le tout
+    // premier prompt, jamais câblé à un bouton. Réservé aux rôles habilités
+    // (TRAITER_SIGNALEMENTS) — un rôle non habilité qui tenterait quand même
+    // se voit renvoyer le message serveur tel quel.
+    async changerStatut(id, statut) {
+      const mis_a_jour = await api.requete(`/api/v1/signalements/${id}/statut`, {
+        methode: "PATCH",
+        corps: { statut },
+      });
+      const i = this.liste.findIndex((s) => s.id === id);
+      if (i !== -1) this.liste[i] = mis_a_jour;
+      return mis_a_jour;
+    },
+
+    async archiver(id) {
+      await api.requete(`/api/v1/signalements/${id}/archiver`, { methode: "POST" });
+      await this.charger();
+    },
+
     definirFiltre(statut) {
       this.filtreStatut = statut;
       return this.charger();

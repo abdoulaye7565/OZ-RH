@@ -12,10 +12,26 @@
  */
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
+import BarrePagination from "../components/BarrePagination.vue";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
+import { useRechercheEtPagination } from "../composables/useRechercheEtPagination";
 import { usePermisStore } from "../stores/permis";
+import { telechargerPdf } from "../utils/telechargement";
 
 const router = useRouter();
+
+const pdfEnCours = ref(null);
+async function telechargerPermis(p) {
+  pdfEnCours.value = p.id;
+  try {
+    await telechargerPdf(`/api/v1/permis/${p.id}/export-pdf`, `${p.reference ?? "permis-" + p.id}.pdf`);
+  } catch (e) {
+    permis.erreur = e?.message ?? "Téléchargement du PDF impossible";
+  } finally {
+    pdfEnCours.value = null;
+  }
+}
 const permis = usePermisStore();
 onMounted(() => permis.charger());
 
@@ -37,6 +53,31 @@ const LIBELLE_STATUT = { demande: "À valider", bloque: "Bloqué", delivre: "En 
 
 const slamRecentes = computed(() => permis.evaluationsSlam.slice(0, 6));
 const nombreNoGo = computed(() => permis.evaluationsSlam.filter((e) => e.decision === "NO_GO").length);
+
+// GET /slam/{id}/export-pdf existait côté serveur sans bouton (2026-09-19,
+// "tu corriges tout").
+const pdfSlamEnCours = ref(null);
+async function telechargerSlam(e) {
+  pdfSlamEnCours.value = e.id;
+  try {
+    await telechargerPdf(`/api/v1/slam/${e.id}/export-pdf`, `slam-${e.id}.pdf`);
+  } catch (err) {
+    permis.erreur = err?.message ?? "Téléchargement du PDF impossible";
+  } finally {
+    pdfSlamEnCours.value = null;
+  }
+}
+
+function correspond(p, terme) {
+  return (
+    String(p.reference ?? "").toLowerCase().includes(terme) ||
+    p.nature_travaux?.toLowerCase().includes(terme) ||
+    (permis.nomSite(p.site_id) ?? "").toLowerCase().includes(terme) ||
+    (LIBELLE_STATUT[p.statut] ?? "").toLowerCase().includes(terme)
+  );
+}
+const { recherche, page, totalPages, resultats, elementsPage, allerPage } =
+  useRechercheEtPagination(computed(() => permis.liste), correspond, 12);
 
 function formaterCreneau(p) {
   const debut = new Date(p.debut_validite);
@@ -116,77 +157,82 @@ async function soumettre() {
       </div>
     </div>
 
-    <div v-if="formulaireOuvert" class="card">
-      <div class="ch"><h3>Demander un permis</h3></div>
-      <div class="cb">
-        <div class="grid2">
-          <div>
-            <label class="f">Site</label>
-            <select v-model="nouveau.site_id" class="inp">
-              <option value="" disabled>Choisir…</option>
-              <option v-for="s in permis.sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
-            </select>
-            <label class="f">Nature des travaux</label>
-            <input v-model="nouveau.nature_travaux" class="inp" placeholder="Ex. Pose LiteBeam 5AC" />
-            <label class="f">Support</label>
-            <select v-model="nouveau.support" class="inp">
-              <option v-for="s in SUPPORTS" :key="s.valeur" :value="s.valeur">{{ s.libelle }}</option>
-            </select>
-            <label class="f">Hauteur estimée (m, facultatif)</label>
-            <input v-model="nouveau.hauteur_estimee" type="number" min="0" step="0.5" class="inp" />
-          </div>
-          <div>
-            <label class="f">Date</label>
-            <input v-model="nouveau.date" type="date" class="inp" />
-            <div class="grid2">
-              <div>
-                <label class="f">Début</label>
-                <input v-model="nouveau.heure_debut" type="time" class="inp" />
-              </div>
-              <div>
-                <label class="f">Fin</label>
-                <input v-model="nouveau.heure_fin" type="time" class="inp" />
-              </div>
+    <Modal v-if="formulaireOuvert" titre="Demander un permis" @fermer="formulaireOuvert = false">
+      <div class="grid2">
+        <div>
+          <label class="f">Site</label>
+          <select v-model="nouveau.site_id" class="inp">
+            <option value="" disabled>Choisir…</option>
+            <option v-for="s in permis.sites" :key="s.id" :value="s.id">{{ s.nom }}</option>
+          </select>
+          <label class="f">Nature des travaux</label>
+          <input v-model="nouveau.nature_travaux" class="inp" placeholder="Ex. Pose LiteBeam 5AC" />
+          <label class="f">Support</label>
+          <select v-model="nouveau.support" class="inp">
+            <option v-for="s in SUPPORTS" :key="s.valeur" :value="s.valeur">{{ s.libelle }}</option>
+          </select>
+          <label class="f">Hauteur estimée (m, facultatif)</label>
+          <input v-model="nouveau.hauteur_estimee" type="number" min="0" step="0.5" class="inp" />
+        </div>
+        <div>
+          <label class="f">Date</label>
+          <input v-model="nouveau.date" type="date" class="inp" />
+          <div class="grid2">
+            <div>
+              <label class="f">Début</label>
+              <input v-model="nouveau.heure_debut" type="time" class="inp" />
             </div>
-            <label class="f">Surveillant (facultatif)</label>
-            <select v-model="nouveau.surveillant_id" class="inp">
-              <option value="">Aucun</option>
-              <option v-for="u in permis.utilisateurs" :key="u.id" :value="u.id">{{ u.prenom }} {{ u.nom }}</option>
-            </select>
-            <label class="f">Intervenants</label>
-            <div style="max-height: 110px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px">
-              <div v-for="u in permis.utilisateurs" :key="u.id" style="font-size: 12.5px; padding: 3px 0">
-                <label style="display: flex; align-items: center; gap: 6px">
-                  <input type="checkbox" :checked="nouveau.intervenant_ids.includes(u.id)" @change="basculerIntervenant(u.id)" />
-                  {{ u.prenom }} {{ u.nom }}
-                </label>
-              </div>
+            <div>
+              <label class="f">Fin</label>
+              <input v-model="nouveau.heure_fin" type="time" class="inp" />
+            </div>
+          </div>
+          <label class="f">Surveillant (facultatif)</label>
+          <select v-model="nouveau.surveillant_id" class="inp">
+            <option value="">Aucun</option>
+            <option v-for="u in permis.utilisateurs" :key="u.id" :value="u.id">{{ u.prenom }} {{ u.nom }}</option>
+          </select>
+          <label class="f">Intervenants</label>
+          <div style="max-height: 110px; overflow-y: auto; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px">
+            <div v-for="u in permis.utilisateurs" :key="u.id" style="font-size: 12.5px; padding: 3px 0">
+              <label style="display: flex; align-items: center; gap: 6px">
+                <input type="checkbox" :checked="nouveau.intervenant_ids.includes(u.id)" @change="basculerIntervenant(u.id)" />
+                {{ u.prenom }} {{ u.nom }}
+              </label>
             </div>
           </div>
         </div>
-        <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
-        <button class="btn pri" style="width: auto; margin-top: 10px" @click="soumettre">Envoyer la demande</button>
       </div>
-    </div>
+      <div v-if="erreurFormulaire" class="banner err" style="margin-top: 8px">{{ erreurFormulaire }}</div>
+      <div style="display: flex; gap: 8px; margin-top: 10px">
+        <button class="btn pri" style="width: auto" @click="soumettre">Envoyer la demande</button>
+        <button class="btn gh" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
+      </div>
+    </Modal>
 
     <div class="grid2">
       <div class="card">
         <div class="ch">
           <Icone nom="clip" style="color: var(--navy2)" /><h3>Permis de travail en hauteur</h3>
+          <span style="flex: 1"></span>
+          <div class="srch">
+            <Icone nom="search" taille="sm" />
+            <input v-model="recherche" placeholder="Rechercher un permis, un site…" />
+          </div>
           <span
             class="r"
             style="cursor: pointer"
             role="button"
             tabindex="0"
-            @click="formulaireOuvert = !formulaireOuvert"
-            @keydown.enter="formulaireOuvert = !formulaireOuvert"
+            @click="formulaireOuvert = true"
+            @keydown.enter="formulaireOuvert = true"
           >Demander un permis</span>
         </div>
         <table>
-          <thead><tr><th>N°</th><th>Site</th><th>Créneau</th><th>Statut</th></tr></thead>
+          <thead><tr><th>N°</th><th>Site</th><th>Créneau</th><th>Statut</th><th></th></tr></thead>
           <tbody>
             <tr
-              v-for="p in permis.liste"
+              v-for="p in elementsPage"
               :key="p.id"
               style="cursor: pointer"
               @click="router.push({ name: 'permis-validation', params: { id: p.id } })"
@@ -195,10 +241,19 @@ async function soumettre() {
               <td>{{ permis.nomSite(p.site_id) ?? `Site #${p.site_id}` }}<div class="sub">{{ p.nature_travaux }}</div></td>
               <td>{{ formaterCreneau(p) }}</td>
               <td><span class="tag" :class="STYLE_STATUT[p.statut] ?? 't-gy'">{{ LIBELLE_STATUT[p.statut] ?? p.statut }}</span></td>
+              <td style="text-align: right">
+                <button class="btn gh sm" style="width: auto" :disabled="pdfEnCours === p.id" @click.stop="telechargerPermis(p)">
+                  <Icone nom="dl" taille="sm" />PDF
+                </button>
+              </td>
             </tr>
-            <tr v-if="!permis.chargement && !permis.liste.length"><td colspan="4" style="color: var(--mut)">Aucun permis.</td></tr>
+            <tr v-if="!permis.chargement && !permis.liste.length"><td colspan="5" style="color: var(--mut)">Aucun permis.</td></tr>
+            <tr v-if="permis.liste.length && !resultats.length"><td colspan="5" style="color: var(--mut)">Aucun permis ne correspond à la recherche.</td></tr>
           </tbody>
         </table>
+        <BarrePagination :page="page" :total-pages="totalPages" @changer="allerPage">
+          {{ resultats.length }} sur {{ permis.liste.length }} permis
+        </BarrePagination>
       </div>
       <div class="card">
         <div class="ch"><Icone nom="climb" style="color: var(--gold)" /><h3>Décisions SLAM récentes</h3></div>
@@ -214,7 +269,12 @@ async function soumettre() {
                   </div>
                 </div>
               </td>
-              <td style="text-align: right"><span class="tag" :class="e.decision === 'GO' ? 't-gr' : 't-red'">{{ e.decision.replace('_', ' ') }}</span></td>
+              <td style="text-align: right; white-space: nowrap">
+                <span class="tag" :class="e.decision === 'GO' ? 't-gr' : 't-red'">{{ e.decision.replace('_', ' ') }}</span>
+                <button class="btn gh sm" style="width: auto; margin-left: 6px" :disabled="pdfSlamEnCours === e.id" aria-label="Télécharger le PDF" @click="telechargerSlam(e)">
+                  <Icone nom="dl" taille="sm" />
+                </button>
+              </td>
             </tr>
             <tr v-if="!slamRecentes.length"><td style="color: var(--mut)">Aucune évaluation SLAM.</td></tr>
           </tbody>

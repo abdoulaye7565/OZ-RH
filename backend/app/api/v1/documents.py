@@ -14,13 +14,19 @@ from app.db.session import get_db
 from app.models.document import Document
 from app.models.enums import ConfidentialiteDocument
 from app.models.utilisateur import Utilisateur
-from app.schemas.document import AlerteRevueDocumentSortie, DocumentCreation, DocumentSortie
+from app.schemas.document import (
+    AlerteRevueDocumentSortie,
+    DocumentCreation,
+    DocumentModification,
+    DocumentSortie,
+)
 from app.services.document_service import (
     accuser_lecture,
     alertes_revue,
     approuver,
     creer_document,
     lister_documents,
+    modifier_document,
     nouvelle_version,
     obtenir_document,
     soumettre_approbation,
@@ -92,6 +98,19 @@ def lire_document_route(
     document n'est pas encore en vigueur et que l'appelant n'est ni rédacteur ni
     approbateur, pour ne pas révéler son existence."""
     return _recuperer_visible(db, document_id, utilisateur)
+
+
+@router.patch("/{document_id}", response_model=DocumentSortie)
+def modifier_document_route(
+    document_id: int,
+    payload: DocumentModification,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_DOCUMENTS)),
+) -> Document:
+    """Corrige les métadonnées d'un document en brouillon (référence, intitulé,
+    niveau, confidentialité, date de revue)."""
+    document = obtenir_document(db, document_id)
+    return modifier_document(db, document, payload, modifie_par_id=utilisateur.id)
 
 
 @router.get("/{document_id}/fichier")

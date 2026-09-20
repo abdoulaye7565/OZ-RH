@@ -48,6 +48,25 @@ export const useParcStore = defineStore("parc", {
       return equipement;
     },
 
+    // PATCH /equipements/{id} et POST /equipements/import existaient côté
+    // serveur (testés) sans aucune UI (2026-09-19, "tu corriges tout") : un
+    // équipement mal saisi ne pouvait jamais être corrigé, et le parc ne
+    // pouvait être alimenté qu'un équipement à la fois.
+    async modifierEquipement(id, donnees) {
+      const equipement = await api.requete(`/api/v1/equipements/${id}`, { methode: "PATCH", corps: donnees });
+      const i = this.liste.findIndex((e) => e.id === id);
+      if (i !== -1) this.liste[i] = equipement;
+      return equipement;
+    },
+
+    async importerParc(fichier) {
+      const donnees = new FormData();
+      donnees.set("fichier", fichier);
+      const rapport = await api.requete("/api/v1/equipements/import", { methode: "POST", corps: donnees });
+      for (const equipement of rapport.equipements) this.liste.unshift(equipement);
+      return rapport;
+    },
+
     async creerConfiguration(equipementId, champs) {
       const donnees = new FormData();
       donnees.set("equipement_id", equipementId);

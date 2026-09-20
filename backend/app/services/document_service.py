@@ -77,6 +77,23 @@ def lister_documents(db: Session, utilisateur: Utilisateur) -> list[Document]:
     return [d for d in documents if visible_par(d, utilisateur)]
 
 
+def modifier_document(db: Session, document: Document, donnees, modifie_par_id: int) -> Document:
+    """Corrige les métadonnées d'un brouillon (revue d'ensemble 2026-09-10).
+    Refusé au-delà du brouillon : un document en approbation ou en vigueur ne
+    se corrige que par une nouvelle version (traçabilité, §5.3.5)."""
+    if document.statut != StatutDocument.BROUILLON:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Seul un document en brouillon peut être corrigé — au-delà, créez une nouvelle version",
+        )
+    for champ, valeur in donnees.model_dump(exclude_unset=True).items():
+        setattr(document, champ, valeur)
+    document.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(document)
+    return document
+
+
 def soumettre_approbation(db: Session, document: Document, modifie_par_id: int) -> Document:
     if document.statut != StatutDocument.BROUILLON:
         raise HTTPException(

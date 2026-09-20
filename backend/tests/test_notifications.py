@@ -65,8 +65,12 @@ def test_permis_en_attente_notifie_le_responsable(client, technicien, responsabl
             "support": "pylone",
             "intervenant_ids": [technicien.id],
             "surveillant_id": referent_sheq.id,
-            "debut_validite": str(datetime.now(timezone.utc).isoformat()),
-            "fin_validite": str((datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()),
+            # Créneau ancré à 08h-12h du jour même : `now() + 4h` seul basculait
+            # au lendemain quand la suite tournait après 20h, ce qui déclenchait
+            # légitimement la règle "un permis ne couvre qu'une seule journée"
+            # (422) — test rendu instable, corrigé le 2026-09-10.
+            "debut_validite": str(datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0).isoformat()),
+            "fin_validite": str(datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0).isoformat()),
         },
     )
     assert reponse.status_code == 201

@@ -3,6 +3,7 @@ import AccueilView from "../views/AccueilView.vue";
 import ConnexionView from "../views/ConnexionView.vue";
 import NouveauSignalementView from "../views/NouveauSignalementView.vue";
 import SignalementsView from "../views/SignalementsView.vue";
+import SignalementDetailView from "../views/SignalementDetailView.vue";
 import TableauBordMobileView from "../views/TableauBordMobileView.vue";
 import TableauBordDesktopView from "../views/TableauBordDesktopView.vue";
 import SlamView from "../views/SlamView.vue";
@@ -35,6 +36,8 @@ import SatisfactionDesktopView from "../views/SatisfactionDesktopView.vue";
 import PermisView from "../views/PermisView.vue";
 import PermisDesktopView from "../views/PermisDesktopView.vue";
 import UtilisateursDesktopView from "../views/UtilisateursDesktopView.vue";
+import SitesDesktopView from "../views/SitesDesktopView.vue";
+import ParametresDesktopView from "../views/ParametresDesktopView.vue";
 import InspectionsView from "../views/InspectionsView.vue";
 import CoffreFortView from "../views/CoffreFortView.vue";
 import CoffreFortDesktopView from "../views/CoffreFortDesktopView.vue";
@@ -58,6 +61,12 @@ const router = createRouter({
       path: "/signalements/nouveau",
       name: "nouveau-signalement",
       component: NouveauSignalementView,
+      meta: { necessiteAuth: true },
+    },
+    {
+      path: "/signalements/:id",
+      name: "signalement-detail",
+      component: SignalementDetailView,
       meta: { necessiteAuth: true },
     },
     {
@@ -218,6 +227,8 @@ const router = createRouter({
         { path: "satisfaction", name: "gestion-satisfaction", component: SatisfactionDesktopView, meta: { titre: "Satisfaction client" } },
         { path: "permis", name: "gestion-permis", component: PermisDesktopView, meta: { titre: "SLAM & permis" } },
         { path: "utilisateurs", name: "gestion-utilisateurs", component: UtilisateursDesktopView, meta: { titre: "Utilisateurs & rôles" } },
+        { path: "sites", name: "gestion-sites", component: SitesDesktopView, meta: { titre: "Sites" } },
+        { path: "parametres", name: "gestion-parametres", component: ParametresDesktopView, meta: { titre: "Paramètres" } },
         { path: "inspections", name: "gestion-inspections", component: InspectionsDesktopView, meta: { titre: "Inspections" } },
         { path: "coffre-fort", name: "gestion-coffre-fort", component: CoffreFortDesktopView, meta: { titre: "Coffre-fort" } },
       ],

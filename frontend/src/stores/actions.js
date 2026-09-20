@@ -46,10 +46,25 @@ export const useActionsStore = defineStore("actions", {
       return action;
     },
 
+    // Corrige libellé / type de mesure / responsable / échéance (refusé sur une
+    // action clôturée, revérifié serveur). 2026-09-10.
+    async modifier(actionId, donnees) {
+      const mis_a_jour = await api.requete(`/api/v1/actions/${actionId}`, { methode: "PATCH", corps: donnees });
+      const i = this.liste.findIndex((a) => a.id === actionId);
+      if (i !== -1) this.liste[i] = mis_a_jour;
+      return mis_a_jour;
+    },
+
     async mettreAJourAvancement(actionId, avancement, indicateur) {
+      // `indicateur` omis (et non `null`/`""`) quand il est vide : le serveur ne
+      // l'écrase alors pas, et une chaîne vide bloquerait ensuite la clôture
+      // (action_service.changer_statut refuse une clôture sans indicateur).
+      const corps = { avancement };
+      const indicateurNettoye = indicateur?.trim();
+      if (indicateurNettoye) corps.indicateur = indicateurNettoye;
       const mis_a_jour = await api.requete(`/api/v1/actions/${actionId}/avancement`, {
         methode: "PATCH",
-        corps: { avancement, indicateur },
+        corps,
       });
       const index = this.liste.findIndex((a) => a.id === actionId);
       if (index !== -1) this.liste[index] = mis_a_jour;

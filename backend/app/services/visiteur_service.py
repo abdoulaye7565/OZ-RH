@@ -52,7 +52,32 @@ def enregistrer_depart(db: Session, visiteur: Visiteur, modifie_par_id: int) -> 
 
 
 def lister_visiteurs(db: Session) -> list[Visiteur]:
-    return list(db.scalars(select(Visiteur).order_by(Visiteur.heure_arrivee.desc())))
+    # archive.is_(False) : trouvé manquant en ajoutant archiver_visiteur()
+    # (2026-09-09) — sans ce filtre, un visiteur archivé restait visible
+    # dans le registre général, l'archivage n'aurait servi à rien.
+    return list(
+        db.scalars(select(Visiteur).where(Visiteur.archive.is_(False)).order_by(Visiteur.heure_arrivee.desc()))
+    )
+
+
+def archiver_visiteur(db: Session, visiteur: Visiteur, modifie_par_id: int) -> Visiteur:
+    """Jamais de suppression physique (point 2, CLAUDE.md) — un visiteur
+    archivé disparaît du registre général mais reste consultable en base
+    (traçabilité intégrale, point 3). Réservé à un visiteur déjà parti :
+    archiver quelqu'un encore présent le ferait disparaître de la liste
+    d'évacuation (visiteurs_presents ne filtre pas sur `archive` — elle n'a
+    pas besoin de le faire, mais un visiteur présent n'a de toute façon
+    aucune raison légitime d'être archivé avant son départ)."""
+    if visiteur.heure_depart is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Impossible d'archiver un visiteur encore présent sur site",
+        )
+    visiteur.archive = True
+    visiteur.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(visiteur)
+    return visiteur
 
 
 def visiteurs_presents(db: Session) -> list[Visiteur]:

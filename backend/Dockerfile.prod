@@ -14,4 +14,10 @@ COPY . .
 # d'une coordination multi-worker (APScheduler en tâche de fond dans le même
 # processus, prompt 4.4 — plusieurs workers dupliqueraient les rappels
 # planifiés sans coordination prévue pour l'éviter).
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+#
+# Migrations appliquées au démarrage du conteneur (alembic upgrade head) :
+# nécessaire sur les plateformes gérées (ex. Render) où il n'y a pas d'étape
+# de déploiement séparée pour les lancer à la main. $PORT : certaines
+# plateformes (Render) imposent le port d'écoute via cette variable ; 8000
+# reste la valeur par défaut (docker-compose.prod.yml la fixe explicitement).
+CMD alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8000}

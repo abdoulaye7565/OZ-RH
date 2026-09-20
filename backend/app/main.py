@@ -20,7 +20,10 @@ from app.api.v1.notifications import router as notifications_router
 from app.api.v1.permis import router as permis_router
 from app.api.v1.points_checklist import router as points_checklist_router
 from app.api.v1.revues import router as revues_router
+from app.api.v1.parametres import router as parametres_router
+from app.api.v1.recherche import router as recherche_router
 from app.api.v1.risques import router as risques_router
+from app.api.v1.roles import router as roles_router
 from app.api.v1.satisfaction import router as satisfaction_router
 from app.api.v1.secrets import router as secrets_router
 from app.api.v1.signalements import router as signalements_router
@@ -88,6 +91,9 @@ app.include_router(satisfaction_router, prefix="/api/v1")
 app.include_router(notifications_router, prefix="/api/v1")
 app.include_router(assistance_router, prefix="/api/v1")
 app.include_router(sites_router, prefix="/api/v1")
+app.include_router(recherche_router, prefix="/api/v1")
+app.include_router(parametres_router, prefix="/api/v1")
+app.include_router(roles_router, prefix="/api/v1")
 app.include_router(secrets_router, prefix="/api/v1")
 
 

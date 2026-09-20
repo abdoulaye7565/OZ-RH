@@ -54,3 +54,36 @@ def test_depart_deja_enregistre_est_refuse(client, technicien):
     client.post(f"/api/v1/visiteurs/{visiteur['id']}/depart", headers=_entete(technicien))
     reponse = client.post(f"/api/v1/visiteurs/{visiteur['id']}/depart", headers=_entete(technicien))
     assert reponse.status_code == 409
+
+
+def test_archiver_un_visiteur_parti_le_retire_du_registre_general(client, technicien):
+    visiteur = client.post(
+        "/api/v1/visiteurs",
+        headers=_entete(technicien),
+        json={"nom": "À archiver", "motif": "Y", "consignes_lues": True},
+    ).json()
+    client.post(f"/api/v1/visiteurs/{visiteur['id']}/depart", headers=_entete(technicien))
+
+    reponse = client.post(f"/api/v1/visiteurs/{visiteur['id']}/archiver", headers=_entete(technicien))
+    assert reponse.status_code == 200
+
+    registre = client.get("/api/v1/visiteurs", headers=_entete(technicien)).json()
+    assert visiteur["id"] not in [v["id"] for v in registre]
+
+
+def test_archiver_un_visiteur_encore_present_est_refuse(client, technicien):
+    """Jamais archiver quelqu'un encore présent : il disparaîtrait du
+    registre général (pas de la liste d'évacuation, qui ne filtre pas sur
+    l'archivage — mais un visiteur présent n'a de toute façon aucune
+    raison légitime d'être archivé avant son départ)."""
+    visiteur = client.post(
+        "/api/v1/visiteurs",
+        headers=_entete(technicien),
+        json={"nom": "Encore présent", "motif": "Y", "consignes_lues": True},
+    ).json()
+
+    reponse = client.post(f"/api/v1/visiteurs/{visiteur['id']}/archiver", headers=_entete(technicien))
+    assert reponse.status_code == 400
+
+    registre = client.get("/api/v1/visiteurs", headers=_entete(technicien)).json()
+    assert visiteur["id"] in [v["id"] for v in registre]

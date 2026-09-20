@@ -1,0 +1,45 @@
+# Blueprint Render (https://render.com/docs/blueprint-spec) pour héberger
+# gratuitement l'API backend, à des fins de test uniquement (voir README.md,
+# section « Déploiement en production », pour le déploiement Docker complet
+# visé par le CDC — ce fichier est un raccourci de test, pas un remplacement).
+#
+# Le frontend n'est pas déclaré ici : il est déployé séparément sur Netlify
+# (fichiers statiques, voir README.md). La base de données n'est pas non plus
+# déclarée ici : le plan gratuit PostgreSQL de Render est limité dans le temps,
+# une base gratuite externe (Neon, Supabase) est recommandée pour les tests —
+# son URL se renseigne manuellement dans DATABASE_URL ci-dessous.
+#
+# Utilisation : sur render.com, « New » → « Blueprint », sélectionner ce dépôt.
+# Render détecte ce fichier et propose de créer le service ; les variables
+# marquées `sync: false` sont à renseigner dans le tableau de bord Render
+# (jamais dans ce fichier, qui est versionné).
+
+services:
+  - type: web
+    name: sheq-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile.prod
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      # postgresql+psycopg://... — connexion vers une base PostgreSQL gratuite
+      # externe (ex. Neon, Supabase). Ne pas utiliser SQLite : le disque de
+      # Render gratuit n'est pas persistant entre les redéploiements.
+      - key: DATABASE_URL
+        sync: false
+      # Génération : python -c "import secrets; print(secrets.token_hex(32))"
+      - key: JWT_SECRET_KEY
+        sync: false
+      # Génération : python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - key: FERNET_MASTER_KEY
+        sync: false
+      # URL publique Netlify du frontend, ex. ["https://sheq-hirondelle.netlify.app"]
+      - key: CORS_ORIGINS
+        sync: false
+      - key: STORAGE_DIR
+        value: /app/storage
+      - key: SCHEDULER_ACTIF
+        value: "true"

@@ -96,6 +96,44 @@ def test_taux_conformite_uniquement_sans_objet_est_nul(client, db_session, techn
     assert reponse.json()["taux_conformite"] is None
 
 
+def test_objet_inspecte_est_enregistre_et_ressorti(client, db_session, technicien, site):
+    """Retour utilisateur 2026-09-10 : "après inspection d'un extincteur on ne
+    sait pas lequel a été inspecté". Le champ libre objet_inspecte doit être
+    persisté et renvoyé par l'API pour lever l'ambiguïté."""
+    point = _points_pour(db_session, "incendie", 1)[0]
+    reponse = client.post(
+        "/api/v1/inspections",
+        headers=_entete(technicien),
+        json={
+            "modele": "incendie",
+            "site_id": site.id,
+            "objet_inspecte": "Extincteur EXT-03, hall RDC",
+            "points": [{"point_checklist_id": point.id, "cotation": "C"}],
+        },
+    )
+    assert reponse.status_code == 201
+    assert reponse.json()["objet_inspecte"] == "Extincteur EXT-03, hall RDC"
+
+    inspection_id = reponse.json()["id"]
+    relu = client.get(f"/api/v1/inspections/{inspection_id}", headers=_entete(technicien))
+    assert relu.json()["objet_inspecte"] == "Extincteur EXT-03, hall RDC"
+
+
+def test_objet_inspecte_est_facultatif(client, db_session, technicien, site):
+    point = _points_pour(db_session, "locaux", 1)[0]
+    reponse = client.post(
+        "/api/v1/inspections",
+        headers=_entete(technicien),
+        json={
+            "modele": "locaux",
+            "site_id": site.id,
+            "points": [{"point_checklist_id": point.id, "cotation": "C"}],
+        },
+    )
+    assert reponse.status_code == 201
+    assert reponse.json()["objet_inspecte"] is None
+
+
 def test_point_hors_modele_refuse(client, db_session, technicien, site):
     point_incendie = _points_pour(db_session, "incendie", 1)[0]
     reponse = client.post(

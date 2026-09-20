@@ -36,6 +36,16 @@ export const useUtilisateursStore = defineStore("utilisateurs", {
       return utilisateur;
     },
 
+    // Ni l'identifiant ni le mot de passe ne se modifient par cette route
+    // (voir schemas/auth.py, UtilisateurModification) — `donnees` ne doit
+    // porter que nom/prenom/role/site_id/courriel.
+    async modifier(id, donnees) {
+      const mis_a_jour = await api.requete(`/api/v1/auth/utilisateurs/${id}`, { methode: "PATCH", corps: donnees });
+      const i = this.liste.findIndex((u) => u.id === id);
+      if (i !== -1) this.liste[i] = mis_a_jour;
+      return mis_a_jour;
+    },
+
     async desactiver(id) {
       const mis_a_jour = await api.requete(`/api/v1/auth/utilisateurs/${id}/desactiver`, { methode: "POST" });
       const i = this.liste.findIndex((u) => u.id === id);

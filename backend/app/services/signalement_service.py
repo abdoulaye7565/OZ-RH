@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.pdf import DocumentPDF
 from app.models.enums import StatutSignalement, TypeSignalement
 from app.models.signalement import Signalement
+from app.models.site import Site
 from app.models.utilisateur import Utilisateur
 from app.services.notification_service import notifier_nouveau_signalement
 
@@ -35,6 +36,46 @@ TRANSITIONS_AUTORISEES: dict[StatutSignalement, set[StatutSignalement]] = {
 }
 
 _TENTATIVES_REFERENCE = 5
+
+
+def serialiser(db: Session, signalement: Signalement) -> dict:
+    """Sortie API enrichie des noms (auteur, site) résolus côté serveur.
+    `auteur_nom` reste None si le signalement est anonyme — l'anonymat n'est
+    jamais laissé au client (CLAUDE.md §7.3)."""
+    base = {c.name: getattr(signalement, c.name) for c in signalement.__table__.columns}
+    site = db.get(Site, signalement.site_id) if signalement.site_id else None
+    auteur = (
+        db.get(Utilisateur, signalement.auteur_id)
+        if signalement.auteur_id and not signalement.anonyme
+        else None
+    )
+    base["site_nom"] = site.nom if site else None
+    base["auteur_nom"] = f"{auteur.prenom} {auteur.nom}" if auteur else None
+    return base
+
+
+def serialiser_plusieurs(db: Session, signalements: list[Signalement]) -> list[dict]:
+    """Version liste : un seul aller-retour pour les sites et les auteurs
+    (évite le N+1 sur une page pouvant compter 200 lignes)."""
+    site_ids = {s.site_id for s in signalements if s.site_id}
+    auteur_ids = {s.auteur_id for s in signalements if s.auteur_id and not s.anonyme}
+    sites = (
+        {s.id: s for s in db.scalars(select(Site).where(Site.id.in_(site_ids)))} if site_ids else {}
+    )
+    auteurs = (
+        {u.id: u for u in db.scalars(select(Utilisateur).where(Utilisateur.id.in_(auteur_ids)))}
+        if auteur_ids
+        else {}
+    )
+    sorties = []
+    for s in signalements:
+        base = {c.name: getattr(s, c.name) for c in s.__table__.columns}
+        site = sites.get(s.site_id)
+        auteur = auteurs.get(s.auteur_id) if not s.anonyme else None
+        base["site_nom"] = site.nom if site else None
+        base["auteur_nom"] = f"{auteur.prenom} {auteur.nom}" if auteur else None
+        sorties.append(base)
+    return sorties
 
 
 def _generer_reference(db: Session) -> str:

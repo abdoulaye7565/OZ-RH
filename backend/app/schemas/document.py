@@ -21,6 +21,33 @@ class DocumentCreation(BaseModel):
         return v
 
 
+class DocumentModification(BaseModel):
+    """Correction des métadonnées d'un document (revue d'ensemble
+    2026-09-10). Autorisé seulement en brouillon (règle de service) — un
+    document en approbation ou en vigueur ne se corrige que par une nouvelle
+    version. Le fichier et le statut ne se changent pas ici. Partielle."""
+
+    reference: str | None = None
+    intitule: str | None = None
+    niveau: int | None = None
+    confidentialite: ConfidentialiteDocument | None = None
+    date_revue: date | None = None
+
+    @field_validator("niveau")
+    @classmethod
+    def _niveau_1_a_4(cls, v: int | None) -> int | None:
+        if v is not None and not (1 <= v <= 4):
+            raise ValueError("le niveau documentaire doit être compris entre 1 et 4")
+        return v
+
+    @field_validator("reference", "intitule")
+    @classmethod
+    def _non_vide(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("ce champ ne peut pas être vide")
+        return v.strip() if v is not None else None
+
+
 class AccuseLecture(BaseModel):
     utilisateur_id: int
     date: datetime

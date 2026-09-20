@@ -181,3 +181,34 @@ def test_aucune_route_de_suppression_de_risque(client, referent_sheq):
     creation = client.post("/api/v1/risques", headers=_entete(referent_sheq), json=_donnees_risque()).json()
     reponse = client.delete(f"/api/v1/risques/{creation['id']}", headers=_entete(referent_sheq))
     assert reponse.status_code == 405
+
+
+def test_modification_corrige_les_champs_descriptifs_sans_toucher_a_la_cotation(client, referent_sheq):
+    """Revue d'ensemble 2026-09-10 : PATCH /risques/{id} corrige danger /
+    catégorie / unité, mais laisse l'historique des cotations intact."""
+    cree = client.post("/api/v1/risques", headers=_entete(referent_sheq), json=_donnees_risque()).json()
+    cotation_avant = cree["derniere_cotation"]
+
+    reponse = client.patch(
+        f"/api/v1/risques/{cree['id']}",
+        headers=_entete(referent_sheq),
+        json={"danger": "Chute de hauteur (pylône) — libellé corrigé", "unite_travail": "Terrain / pylônes"},
+    )
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["danger"] == "Chute de hauteur (pylône) — libellé corrigé"
+    assert corps["unite_travail"] == "Terrain / pylônes"
+    assert corps["categorie"] == cree["categorie"]  # non fourni => inchangé
+    assert corps["derniere_cotation"]["id"] == cotation_avant["id"]  # cotation intacte
+
+
+def test_modification_danger_vide_refuse(client, referent_sheq):
+    cree = client.post("/api/v1/risques", headers=_entete(referent_sheq), json=_donnees_risque()).json()
+    reponse = client.patch(f"/api/v1/risques/{cree['id']}", headers=_entete(referent_sheq), json={"danger": "   "})
+    assert reponse.status_code == 422
+
+
+def test_modification_risque_refusee_a_un_role_non_habilite(client, referent_sheq, technicien):
+    cree = client.post("/api/v1/risques", headers=_entete(referent_sheq), json=_donnees_risque()).json()
+    reponse = client.patch(f"/api/v1/risques/{cree['id']}", headers=_entete(technicien), json={"danger": "x"})
+    assert reponse.status_code == 403

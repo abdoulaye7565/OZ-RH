@@ -17,6 +17,7 @@ from app.schemas.risque import (
     RevueDueSortie,
     RisqueCreation,
     RisqueDetailSortie,
+    RisqueModification,
     RisqueSortie,
 )
 from app.services.import_risques_service import importer_registre
@@ -25,6 +26,7 @@ from app.services.risque_service import (
     creer_risque,
     dernieres_cotations,
     lister_risques,
+    modifier_risque,
     obtenir_risque,
     reevaluer,
     revues_dues as revues_dues_service,
@@ -103,6 +105,22 @@ def lire(
         **sortie.model_dump(),
         cotations=[CotationSortie.model_validate(c) for c in cotations],
     )
+
+
+@router.patch("/{risque_id}", response_model=RisqueSortie)
+def modifier_route(
+    risque_id: int,
+    payload: RisqueModification,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_RISQUES)),
+) -> RisqueSortie:
+    """Corrige les champs descriptifs d'un risque (danger, catégorie, unité de
+    travail, personnes exposées). La cotation ne se modifie pas ici : voir
+    /reevaluer."""
+    risque = obtenir_risque(db, risque_id)
+    modifier_risque(db, risque, payload, modifie_par_id=utilisateur.id)
+    cotations = cotations_de(db, risque_id)
+    return vers_sortie(risque, cotations[0] if cotations else None)
 
 
 @router.post("/{risque_id}/reevaluer", response_model=CotationSortie, status_code=status.HTTP_201_CREATED)

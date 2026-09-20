@@ -2,6 +2,15 @@
  * Charte visuelle HIRONDELLES SHEQ (navy / or).
  * Référence : CLAUDE.md point 8, affinée avec les maquettes
  * docs/maquettes/Maquettes_SHEQ_*.html (source de vérité visuelle du projet).
+ *
+ * Thèmes additionnels (2026-09-09, retour direct de l'utilisateur — voir
+ * stores/theme.js) : le thème ci-dessous (:root, sans attribut) reste celui
+ * par défaut, seul documenté par CLAUDE.md §8 — les autres, sous
+ * [data-theme="..."] plus bas dans ce fichier, étendent volontairement
+ * au-delà de cette charte unique sur demande explicite. Mêmes variables
+ * partout : un composant qui utilise var(--gold) reçoit l'accent du thème
+ * actif, quelle que soit sa couleur réelle — le nom du token reste stable,
+ * pas sa valeur.
  */
 :root {
   /* Couleurs de marque */
@@ -36,6 +45,93 @@
   --r-lg: 12px;
   --sh: 0 1px 2px rgba(16, 24, 40, 0.05);
   --sh-md: 0 4px 12px -4px rgba(16, 24, 40, 0.1);
+
+  /* Barre latérale (.side, GestionLayout.vue) — un token dédié, PAS var(--navy)
+   * réutilisé tel quel : la barre reste sombre dans tous les thèmes (y compris
+   * les thèmes clairs), donc sa couleur doit être choisie par thème, pas
+   * dérivée mécaniquement d'un navy parfois clair (ex. thème "Bleu"). Jusqu'au
+   * 2026-09-09, `.side` avait sa couleur codée en dur (#12294f) — bug réel
+   * trouvé par l'utilisateur : la barre latérale ne changeait jamais de
+   * thème. Chaque thème définit désormais son propre --side-bg ci-dessous.
+   */
+  --side-bg: #12294f;
+}
+
+/* Sombre : mêmes teintes de marque (navy/or), éclaircies pour rester
+   lisibles sur fond sombre — identité conservée, pas une palette
+   différente comme les deux variantes d'accent ci-dessous. */
+:root[data-theme="sombre"] {
+  --navy: #4a6fa8;
+  --navy2: #6f93c9;
+  --navy-soft: rgba(74, 111, 168, 0.16);
+  --gold: #d1a53d;
+  --gold-soft: rgba(209, 165, 61, 0.16);
+
+  --red: #f4877c;
+  --red-soft: rgba(244, 135, 124, 0.14);
+  --orange: #f0a55f;
+  --orange-soft: rgba(240, 165, 95, 0.14);
+  --green: #4ade91;
+  --green-soft: rgba(74, 222, 145, 0.14);
+  --blue: #6ea3f5;
+  --blue-soft: rgba(110, 163, 245, 0.14);
+
+  --bg: #0b1220;
+  --surface: #121b2d;
+  --surface2: #182337;
+  --ink: #e7ebf3;
+  --ink2: #c1c9d9;
+  --mut: #8894a8;
+  --line: #29354a;
+  --line2: #202b3e;
+
+  --sh: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sh-md: 0 4px 12px -4px rgba(0, 0, 0, 0.45);
+
+  --side-bg: #060d1a;
+}
+
+/* Ardoise : variante claire, accent teal-ardoise — remplacé le 2026-09-09
+   (retour direct : "les thèmes ne sont pas professionnels") : la première
+   version mettait navy (#1f3a52) et accent (#3f6f93) dans la même famille de
+   bleus, trop proches l'un de l'autre pour se distinguer réellement — un
+   vrai défaut, pas seulement un goût contestable : sans contraste de teinte
+   entre couleur principale et accent, aucune palette ne lit comme
+   "professionnelle", elle lit comme fade. Le teal, franchement distinct du
+   bleu-gris du navy tout en restant sobre, corrige ça. */
+:root[data-theme="ardoise"] {
+  --navy: #263544;
+  --navy2: #3c5163;
+  --navy-soft: #eaeef1;
+  --gold: #2f8f88;
+  --gold-soft: #e6f3f1;
+  --side-bg: #1b2732;
+}
+
+/* Émeraude : variante claire, accent vert profond — distinct du vert d'état
+   (conforme) déjà utilisé dans l'application, teinte différente pour éviter
+   toute confusion entre "thème" et "statut". */
+:root[data-theme="emeraude"] {
+  --navy: #164a3d;
+  --navy2: #1f6650;
+  --navy-soft: #e9f5f0;
+  --gold: #b8752e;
+  --gold-soft: #faf0e5;
+  --side-bg: #0c2620;
+}
+
+/* Bleu : variante claire, bleu professionnel plus clair et plus vif que le
+   navy foncé par défaut (2026-09-09, retour direct de l'utilisateur — "la
+   couleur bleu claire professionnelle"). Contrairement à Ardoise/Émeraude,
+   qui ne changent que l'accent, ici c'est la couleur PRINCIPALE elle-même
+   qui s'éclaircit — l'or reste comme accent chaud, pour garder un contraste
+   net avec les statuts (vert/orange/rouge) plutôt que de tout mettre dans
+   la même famille de bleus. */
+:root[data-theme="bleu"] {
+  --navy: #1568c4;
+  --navy2: #2f80e0;
+  --navy-soft: #e8f2fd;
+  --side-bg: #0c3563;
 }
 
 *,
@@ -1016,6 +1112,44 @@ textarea.inp {
   padding: 14px;
 }
 
+/* Fenêtre modale (components/Modal.vue, 2026-09-09) */
+.modal-fond {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  z-index: 100;
+}
+.modal-boite {
+  width: 100%;
+  max-width: 560px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+.modal-boite .ch {
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 1;
+}
+.modal-x {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 4px;
+  border-radius: var(--r);
+  color: var(--mut);
+  cursor: pointer;
+  display: flex;
+}
+.modal-x:hover {
+  background: var(--surface2);
+  color: var(--ink);
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1108,6 +1242,12 @@ td .sub {
 }
 .bcol .bar.gd {
   background: var(--gold);
+}
+.bcol .bar.g {
+  background: var(--green);
+}
+.bcol .bar.o {
+  background: var(--orange);
 }
 .bcol .lbl {
   font-size: 10.5px;
@@ -1293,7 +1433,13 @@ td .sub {
 .star.on svg {
   fill: var(--gold);
 }
-/* Filtres et pagination des tableaux desktop — maquette Desktop .filters/.pagin. */
+/* Filtres et pagination des tableaux desktop — maquette Desktop .filters/.pagin.
+ * Convention présente dans la maquette depuis l'import initial mais jamais
+ * câblée à un écran réel jusqu'au 2026-09-09 (retour direct de l'utilisateur —
+ * "les listes doivent une possibilité de recherche, les listes doivent être
+ * paginées") : voir composables/useRechercheEtPagination.js et
+ * components/BarrePagination.vue.
+ */
 .filters {
   display: flex;
   gap: 7px;
@@ -1318,16 +1464,107 @@ td .sub {
   width: 28px;
   height: 28px;
   border: 1px solid var(--line);
-  background: #fff;
+  /* var(--surface), pas #fff en dur : bouton blanc illisible sur fond sombre
+     (mêmes symptômes que le bug --side-bg du 2026-09-09, corrigé ici en même
+     temps qu'on câble enfin cette pagination). */
+  background: var(--surface);
   border-radius: 6px;
   font: 600 11.5px Inter, sans-serif;
   cursor: pointer;
   color: var(--ink2);
 }
+.pagin .pg button:disabled {
+  cursor: default;
+  color: var(--mut);
+  border-color: transparent;
+  background: transparent;
+}
 .pagin .pg button.on {
   background: var(--navy);
   border-color: var(--navy);
   color: #fff;
+}
+
+/* Recherche de liste — maquette Desktop .srch (recherche globale d'en-tête),
+ * réemployée telle quelle pour la recherche par écran (mêmes proportions,
+ * même icône). */
+.srch {
+  position: relative;
+}
+.srch input {
+  width: 230px;
+  height: 34px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 0 10px 0 32px;
+  font: 400 12.5px Inter, sans-serif;
+  background: var(--surface2);
+  color: var(--ink);
+}
+.srch svg {
+  position: absolute;
+  left: 10px;
+  top: 9px;
+  color: var(--mut);
+}
+
+/* Menu de résultats de la recherche globale d'en-tête (GestionLayout,
+   revue d'ensemble 2026-09-10). */
+.recherche-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  min-width: 320px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--sh-md);
+  z-index: 60;
+  max-height: 60vh;
+  overflow-y: auto;
+  padding: 4px;
+}
+.recherche-vide {
+  margin: 0;
+  padding: 12px;
+  font-size: 12px;
+  color: var(--mut);
+}
+.recherche-item {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  padding: 8px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font: inherit;
+  color: var(--ink);
+}
+.recherche-item:hover {
+  background: var(--surface2);
+}
+.recherche-item-tx {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.recherche-item-tx b {
+  font-size: 12.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recherche-item-tx span {
+  font-size: 11px;
+  color: var(--mut);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* Coffre-fort mobile (maquette v2, #s-vault) */
@@ -1553,7 +1790,7 @@ td .sub {
   background: var(--bg);
 }
 .side {
-  background: #12294f;
+  background: var(--side-bg);
   color: #c6d2e6;
   display: flex;
   flex-direction: column;
@@ -1567,6 +1804,20 @@ td .sub {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 12px;
 }
+/* Jamais stylé jusqu'ici (trouvé en insérant le logo, 2026-09-09) : ce .mk
+   tombait sur aucune règle, affiché sans habillage. Même recette que
+   .hd .mk (dégradé or, coins arrondis), taille adaptée à la barre latérale. */
+.side .top .mk {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: linear-gradient(140deg, #f0c63e, #b8901b);
+  color: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+}
 .side .top b {
   color: #fff;
   font-size: 13.5px;
@@ -1578,11 +1829,29 @@ td .sub {
   color: #8fa3c4;
 }
 .navsec {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
   font-size: 9.5px;
   font-weight: 700;
   color: #7c90b4;
   letter-spacing: 0.7px;
   padding: 10px 8px 5px;
+  border: 0;
+  background: none;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.navsec:hover {
+  color: #a9bcd8;
+}
+.navsec-chev {
+  transition: transform 0.15s ease;
+}
+.navsec-chev.ouverte {
+  transform: rotate(90deg);
 }
 .nv {
   display: flex;
@@ -1641,6 +1910,37 @@ td .sub {
   font-size: 11.5px;
   font-weight: 700;
   flex: 0 0 auto;
+  overflow: hidden;
+  cursor: pointer;
+  border: none;
+  padding: 0;
+}
+.av img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Aperçu de la photo de profil dans ModalPhotoProfil.vue (2026-09-10) — même
+   principe que .av, en plus grand. */
+.photo-apercu {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  background: var(--navy2);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  font-weight: 700;
+  overflow: hidden;
+  flex: 0 0 auto;
+}
+.photo-apercu img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .side .user b {
   color: #fff;
@@ -1650,6 +1950,21 @@ td .sub {
 .side .user span {
   font-size: 10.5px;
   color: #8fa3c4;
+}
+.side .user .deco {
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 6px;
+  border-radius: var(--r);
+  color: #8fa3c4;
+  cursor: pointer;
+  display: flex;
+  flex-shrink: 0;
+}
+.side .user .deco:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
 }
 .gestion-main {
   display: flex;
@@ -1678,4 +1993,45 @@ td .sub {
   flex: 1;
   overflow-y: auto;
   padding: 18px 20px;
+}
+
+/* Impression (2026-09-09, retour direct de l'utilisateur — "tous les
+ * documents renseignés doivent pouvoir être imprimés"). Une page web ne se
+ * "connecte" jamais directement à une imprimante (le navigateur s'en charge,
+ * via la boîte de dialogue d'impression du système — c'est elle qui voit
+ * déjà toutes les imprimantes installées, sans configuration côté
+ * application) : le travail utile ici est de fournir un déclencheur visible
+ * (bouton "Imprimer", window.print()) et une mise en page imprimée propre.
+ * .no-print : utilitaire générique, réutilisable sur n'importe quel élément
+ * de navigation/action qui n'a pas sa place sur une page imprimée.
+ */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .gestion-shell {
+    display: block;
+  }
+  .gestion-main,
+  .gestion-view {
+    overflow: visible !important;
+    height: auto !important;
+    min-height: 0 !important;
+  }
+  .card {
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+  /* Modal éventuellement ouvert (Modal.vue), barre d'onglets et bandeau
+     réseau côté mobile : jamais leur place sur une page imprimée, même sans
+     avoir marqué chaque écran individuellement en .no-print. */
+  .modal-fond,
+  .tabs,
+  .net,
+  .fab {
+    display: none !important;
+  }
+  body {
+    background: #fff !important;
+  }
 }

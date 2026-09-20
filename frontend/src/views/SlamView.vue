@@ -11,9 +11,19 @@
  *   correspondance se fait par la date du jour, pas par une clé étrangère).
  * - Accès au plan de sauvetage ajouté (PlanSauvetage.vue) : absent de la
  *   maquette, mais explicitement demandé par ce prompt.
- * - Hors connexion NON implémenté : le prompt demande de "réutiliser le
- *   mécanisme du lot 1", qui n'existe pas (prompt 1.4 jamais construit).
- *   Même bandeau honnête que sur l'écran Signalement (prompt 1.3).
+ * Mode hors connexion (2026-09-09, voir docs/JOURNAL.md "Points critiques"
+ * point 4) : deux volets, parce que cet écran a un besoin que Signalements
+ * n'a pas — un référentiel à LIRE avant de pouvoir rien saisir.
+ * - Lecture : le référentiel (GET /slam/referentiel) est mis en cache dans
+ *   localStorage dès qu'il charge avec succès ; si le réseau manque au
+ *   chargement, l'écran retombe sur ce cache plutôt que d'afficher une
+ *   erreur bloquante — sauf la toute première fois, jamais mis en cache,
+ *   où rien ne permet de faire autrement (limite réelle, assumée).
+ * - Écriture : la décision GO/NO_GO part en file (stores/horsConnexion.js,
+ *   même mécanisme que Signalements) si le réseau manque à l'envoi — cette
+ *   décision est celle qui autorise ou non l'intervention (CLAUDE.md
+ *   §7.2), elle doit rester utilisable même sans réseau, pas seulement
+ *   silencieusement dégradée.
  */
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
@@ -21,25 +31,53 @@ import Icone from "../components/Icone.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import PlanSauvetage from "../components/PlanSauvetage.vue";
 import api from "../services/api";
+import { useHorsConnexionStore } from "../stores/horsConnexion";
+
+const CLE_CACHE_REFERENTIEL = "sheq_slam_referentiel_cache";
 
 const router = useRouter();
+const horsConnexion = useHorsConnexionStore();
 
 const etapes = ref([]);
 const etapeCourante = ref(0);
 const pointsCoches = ref([]); // tableau de tableaux de booléens
 const decision = ref(null); // null | "GO" | "NO_GO"
+const enAttenteSynchro = ref(false);
 const motifNoGo = ref("");
 const erreur = ref(null);
 const envoiEnCours = ref(false);
 const chargement = ref(true);
 
+function lireCacheReferentiel() {
+  try {
+    const brut = localStorage.getItem(CLE_CACHE_REFERENTIEL);
+    return brut ? JSON.parse(brut) : null;
+  } catch {
+    return null;
+  }
+}
+
+function ecrireCacheReferentiel(valeur) {
+  try {
+    localStorage.setItem(CLE_CACHE_REFERENTIEL, JSON.stringify(valeur));
+  } catch {
+    // Stockage indisponible : le cache ne survit simplement pas, pas bloquant.
+  }
+}
+
 onMounted(async () => {
   try {
     etapes.value = await api.requete("/api/v1/slam/referentiel");
-    pointsCoches.value = etapes.value.map((e) => e.points.map(() => false));
-  } catch {
-    erreur.value = "Impossible de charger le référentiel SLAM";
+    ecrireCacheReferentiel(etapes.value);
+  } catch (e) {
+    const cache = lireCacheReferentiel();
+    if (e instanceof TypeError && cache) {
+      etapes.value = cache;
+    } else {
+      erreur.value = "Impossible de charger le référentiel SLAM";
+    }
   } finally {
+    pointsCoches.value = etapes.value.map((e) => e.points.map(() => false));
     chargement.value = false;
   }
 });
@@ -66,18 +104,25 @@ async function enregistrerDecision(choix) {
   }
   envoiEnCours.value = true;
   erreur.value = null;
+  const champs = {
+    etapes_validees: pointsCoches.value,
+    decision: choix,
+    motif: choix === "NO_GO" ? motifNoGo.value.trim() : null,
+  };
   try {
-    await api.requete("/api/v1/slam", {
-      methode: "POST",
-      corps: {
-        etapes_validees: pointsCoches.value,
-        decision: choix,
-        motif: choix === "NO_GO" ? motifNoGo.value.trim() : null,
-      },
-    });
+    await api.requete("/api/v1/slam", { methode: "POST", corps: champs });
     decision.value = choix;
   } catch (e) {
-    erreur.value = e instanceof api.ErreurApi ? e.message : "Envoi impossible, réessayez";
+    if (e instanceof TypeError) {
+      // Pas de réseau : la décision est actée localement tout de suite (elle
+      // conditionne l'intervention, CLAUDE.md §7.2) et repartira d'elle-même
+      // au retour du réseau (stores/horsConnexion.js) — jamais perdue.
+      await horsConnexion.ajouterEnAttente("slam", champs, []);
+      decision.value = choix;
+      enAttenteSynchro.value = true;
+    } else {
+      erreur.value = e instanceof api.ErreurApi ? e.message : "Envoi impossible, réessayez";
+    }
   } finally {
     envoiEnCours.value = false;
   }
@@ -94,7 +139,7 @@ const messageVerdict = computed(() =>
   <div class="ecran-mobile">
     <BandeauReseau />
 
-    <div v-if="chargement" class="pad">Chargement…</div>
+    <div v-if="chargement" class="pad"><div class="skel" style="height: 140px"></div></div>
 
     <template v-else-if="!decision">
       <div class="slam">
@@ -154,11 +199,11 @@ const messageVerdict = computed(() =>
 
           <PlanSauvetage style="margin-top: 14px" />
 
-          <div class="banner warn" style="margin-top: 12px">
-            <Icone nom="wifioff" taille="sm" style="margin-top: 1px" />
+          <div class="banner info" style="margin-top: 12px">
+            <Icone nom="sync" taille="sm" style="margin-top: 1px" />
             <div>
-              Le mode hors connexion n'est pas encore actif pour le SLAM : une connexion est
-              nécessaire pour enregistrer cette évaluation.
+              En cas de coupure réseau, votre décision GO/NO GO est actée immédiatement et
+              part automatiquement dès le retour de la connexion.
             </div>
           </div>
         </div>
@@ -171,6 +216,10 @@ const messageVerdict = computed(() =>
           <div class="verdict show" :class="decision === 'GO' ? 'g' : 'n'">
             <Icone :nom="decision === 'GO' ? 'check' : 'x'" taille="sm" style="margin-top: 1px" />
             <span>{{ messageVerdict }}</span>
+          </div>
+          <div v-if="enAttenteSynchro" class="banner info" style="margin-top: 10px">
+            <Icone nom="sync" taille="sm" style="margin-top: 1px" />
+            <div>Enregistrée localement, en attente du retour du réseau pour être synchronisée.</div>
           </div>
           <PlanSauvetage style="margin-top: 14px" />
           <button class="btn gh" style="margin-top: 14px" @click="router.push({ name: 'accueil' })">

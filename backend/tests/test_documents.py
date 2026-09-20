@@ -90,3 +90,27 @@ def test_alerte_revue_detecte_une_echeance_proche(client, referent_sheq, respons
     reponse = client.get("/api/v1/documents/alertes-revue", headers=_entete(referent_sheq))
     assert reponse.status_code == 200
     assert len(reponse.json()) == 1
+
+
+def test_modification_metadonnees_brouillon(client, referent_sheq):
+    """Revue d'ensemble 2026-09-10 : PATCH /documents/{id} corrige référence /
+    intitulé d'un brouillon (aucune route ne le permettait)."""
+    doc = _creer(client, referent_sheq).json()
+    reponse = client.patch(
+        f"/api/v1/documents/{doc['id']}",
+        headers=_entete(referent_sheq),
+        json={"intitule": "Maîtrise documentaire (intitulé corrigé)", "niveau": 2},
+    )
+    assert reponse.status_code == 200
+    assert reponse.json()["intitule"] == "Maîtrise documentaire (intitulé corrigé)"
+    assert reponse.json()["niveau"] == 2
+    assert reponse.json()["reference"] == doc["reference"]  # non fourni => inchangé
+
+
+def test_modification_refusee_hors_brouillon(client, referent_sheq):
+    doc = _creer(client, referent_sheq).json()
+    client.post(f"/api/v1/documents/{doc['id']}/soumettre-approbation", headers=_entete(referent_sheq))
+    reponse = client.patch(
+        f"/api/v1/documents/{doc['id']}", headers=_entete(referent_sheq), json={"intitule": "trop tard"}
+    )
+    assert reponse.status_code == 409

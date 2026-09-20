@@ -74,8 +74,12 @@ def test_export_permis(client, technicien, referent_sheq, site):
         json={
             "site_id": site.id, "nature_travaux": "Test export", "support": "pylone",
             "intervenant_ids": [technicien.id], "surveillant_id": referent_sheq.id,
-            "debut_validite": str(datetime.now(timezone.utc).isoformat()),
-            "fin_validite": str((datetime.now(timezone.utc) + timedelta(hours=4)).isoformat()),
+            # Créneau ancré à 08h-12h du jour même : `now() + 4h` seul basculait
+            # au lendemain quand la suite tournait après 20h, ce qui déclenchait
+            # légitimement la règle "un permis ne couvre qu'une seule journée"
+            # (422) — test rendu instable, corrigé le 2026-09-10.
+            "debut_validite": str(datetime.now(timezone.utc).replace(hour=8, minute=0, second=0, microsecond=0).isoformat()),
+            "fin_validite": str(datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0).isoformat()),
         },
     ).json()
     reponse = client.get(f"/api/v1/permis/{permis['id']}/export-pdf", headers=_entete(technicien))

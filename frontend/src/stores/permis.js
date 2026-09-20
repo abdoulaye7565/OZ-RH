@@ -79,5 +79,57 @@ export const usePermisStore = defineStore("permis", {
       this.liste.unshift(permis);
       return permis;
     },
+
+    // Écran de validation (responsable) : on n'a besoin que d'UN permis, mais
+    // aussi des sites et des utilisateurs pour afficher des noms plutôt que
+    // « Site #1 » / « Utilisateur #3 » — décisif ici, c'est l'écran qui
+    // autorise un travail en hauteur (voir docs/JOURNAL.md 2026-09-10).
+    async chargerPourValidation(id) {
+      this.chargement = true;
+      this.erreur = null;
+      try {
+        const [permis, sites, utilisateurs] = await Promise.all([
+          api.requete(`/api/v1/permis/${id}`),
+          this.sites.length ? Promise.resolve(this.sites) : api.requete("/api/v1/sites"),
+          this.utilisateurs.length ? Promise.resolve(this.utilisateurs) : api.requete("/api/v1/auth/utilisateurs"),
+        ]);
+        this.sites = sites;
+        this.utilisateurs = utilisateurs;
+        const i = this.liste.findIndex((p) => p.id === permis.id);
+        if (i !== -1) this.liste[i] = permis;
+        else this.liste.push(permis);
+        return permis;
+      } catch (e) {
+        this.erreur = e instanceof api.ErreurApi ? e.message : "Impossible de charger le permis";
+        throw e;
+      } finally {
+        this.chargement = false;
+      }
+    },
+
+    async valider(id) {
+      const permis = await api.requete(`/api/v1/permis/${id}/valider`, { methode: "POST" });
+      const i = this.liste.findIndex((p) => p.id === id);
+      if (i !== -1) this.liste[i] = permis;
+      return permis;
+    },
+
+    async refuser(id, motif) {
+      const permis = await api.requete(`/api/v1/permis/${id}/refuser`, { methode: "POST", corps: { motif } });
+      const i = this.liste.findIndex((p) => p.id === id);
+      if (i !== -1) this.liste[i] = permis;
+      return permis;
+    },
+
+    // POST .../cloturer existait côté serveur (testé) sans aucune UI
+    // (2026-09-19, "tu corriges tout") : un permis délivré restait
+    // éternellement "en cours", jamais marqué clôturé une fois les travaux
+    // terminés.
+    async cloturer(id) {
+      const permis = await api.requete(`/api/v1/permis/${id}/cloturer`, { methode: "POST" });
+      const i = this.liste.findIndex((p) => p.id === id);
+      if (i !== -1) this.liste[i] = permis;
+      return permis;
+    },
   },
 });

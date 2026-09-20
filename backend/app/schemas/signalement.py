@@ -24,6 +24,12 @@ class SignalementSortie(BaseModel):
     photos: list[str] | None
     anonyme: bool
     auteur_id: int | None
+    # Noms résolus côté serveur (revue d'ensemble 2026-09-10) : les écrans
+    # affichaient « Utilisateur #3 » / « Site #1 ». `auteur_nom` reste None si
+    # le signalement est anonyme — l'anonymat est garanti ici, pas laissé à
+    # l'appréciation du client (règle 3, CLAUDE.md §7.3).
+    auteur_nom: str | None = None
+    site_nom: str | None = None
     date_constat: datetime
     date_saisie: datetime
     causes: str | None

@@ -8,14 +8,41 @@
  * SignalementsView.vue : "mieux vaut les omettre que proposer des boutons
  * qui ne mènent nulle part").
  */
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import ModalPhotoProfil from "../components/ModalPhotoProfil.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
+import { useAvatar } from "../composables/useAvatar";
 import { useAuthStore } from "../stores/auth";
+import { THEMES, useThemeStore } from "../stores/theme";
 
 const router = useRouter();
 const auth = useAuthStore();
+const theme = useThemeStore();
+
+// Déconnexion volontaire (2026-09-10, retour direct de l'utilisateur — "on
+// crée un module pour la déconnexion") : `auth.deconnecter()` existait déjà
+// (utilisé automatiquement à l'expiration de session, main.js) mais n'était
+// câblé à aucun bouton, desktop ou mobile. Pas de confirmation : action non
+// destructrice.
+function deconnecter() {
+  auth.deconnecter();
+  router.push({ name: "connexion" });
+}
+
+// Photo de profil (2026-09-10, retour direct de l'utilisateur — "insérer sa
+// photo") — même modale que côté desktop (GestionLayout.vue).
+const photoOuverte = ref(false);
+const { url: urlPhoto } = useAvatar(
+  computed(() => auth.utilisateur?.id ?? null),
+  computed(() => auth.utilisateur?.photo ?? null)
+);
+const initiales = computed(() => {
+  const u = auth.utilisateur;
+  if (!u) return "";
+  return `${u.prenom?.[0] ?? ""}${u.nom?.[0] ?? ""}`.toUpperCase();
+});
 
 const peutVoirTableauBord = computed(() =>
   ["administrateur", "referent_sheq", "responsable"].includes(auth.utilisateur?.role)
@@ -115,6 +142,21 @@ const peutVoirCoffreFort = computed(() => ["technicien", "responsable", "adminis
             </button>
           </div>
 
+          <div class="sec" style="margin-top: 14px">APPARENCE</div>
+          <div class="card">
+            <div class="cb">
+              <label class="f" for="menu-theme">Thème</label>
+              <select
+                id="menu-theme"
+                class="inp"
+                :value="theme.theme"
+                @change="theme.appliquer($event.target.value)"
+              >
+                <option v-for="t in THEMES" :key="t.valeur" :value="t.valeur">{{ t.libelle }}</option>
+              </select>
+            </div>
+          </div>
+
           <div class="banner info" style="margin-top: 14px">
             <div>
               La satisfaction client et la gestion des utilisateurs se
@@ -123,6 +165,26 @@ const peutVoirCoffreFort = computed(() => ["technicien", "responsable", "adminis
               envoyé par lien direct au client, sans passer par ce menu.
             </div>
           </div>
+
+          <div class="sec" style="margin-top: 14px">COMPTE</div>
+          <div class="card" style="padding: 12px; margin-top: 4px">
+            <div style="display: flex; align-items: center; gap: 10px">
+              <button class="av" type="button" style="width: 44px; height: 44px; font-size: 15px" aria-label="Ma photo de profil" @click="photoOuverte = true">
+                <img v-if="urlPhoto" :src="urlPhoto" alt="" />
+                <template v-else>{{ initiales }}</template>
+              </button>
+              <div style="flex: 1; min-width: 0">
+                <b style="display: block; font-size: 13px">{{ auth.utilisateur ? `${auth.utilisateur.prenom} ${auth.utilisateur.nom}` : "" }}</b>
+                <span style="font-size: 11px; color: var(--mut)">{{ auth.utilisateur?.role?.replace("_", " ") }}</span>
+              </div>
+            </div>
+            <button class="btn gh sm" style="width: 100%; margin-top: 10px" @click="photoOuverte = true">
+              <Icone nom="cam" taille="sm" />Ma photo de profil
+            </button>
+          </div>
+          <button class="btn gh" style="margin-top: 8px" @click="deconnecter">
+            <Icone nom="logout" taille="sm" />Se déconnecter
+          </button>
 
           <div style="height: 20px"></div>
         </div>
@@ -137,5 +199,7 @@ const peutVoirCoffreFort = computed(() => ["technicien", "responsable", "adminis
       <button class="tb" @click="router.push({ name: 'assistant-documentaire' })"><Icone nom="chat" />Assistant</button>
       <button class="tb on"><Icone nom="grid" />Menu</button>
     </nav>
+
+    <ModalPhotoProfil v-if="photoOuverte" @fermer="photoOuverte = false" />
   </div>
 </template>

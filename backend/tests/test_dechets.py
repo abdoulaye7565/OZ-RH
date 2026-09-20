@@ -55,3 +55,47 @@ def test_liste_ouverte_a_tout_utilisateur_authentifie(client, technicien, refere
     reponse = client.get("/api/v1/dechets", headers=_entete(technicien))
     assert reponse.status_code == 200
     assert len(reponse.json()) == 1
+
+
+def test_modification_dechet_corrige_les_champs(client, referent_sheq, site):
+    """Revue d'ensemble 2026-09-10 : le module Déchets n'avait ni édition ni
+    archivage (création + enlèvement seulement)."""
+    cree = client.post(
+        "/api/v1/dechets",
+        headers=_entete(referent_sheq),
+        json={"date": "2026-04-15", "type": "DEE", "description": "Rauteur", "quantite": "2", "site_id": site.id, "filiere": "Repreneur"},
+    ).json()
+
+    reponse = client.patch(
+        f"/api/v1/dechets/{cree['id']}",
+        headers=_entete(referent_sheq),
+        json={"type": "DEEE", "description": "Routeur HS", "quantite": "2 unités"},
+    )
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["type"] == "DEEE"
+    assert corps["description"] == "Routeur HS"
+    assert corps["filiere"] == "Repreneur"  # non fourni => inchangé
+
+
+def test_archivage_dechet_le_retire_de_la_liste(client, referent_sheq, site):
+    cree = client.post(
+        "/api/v1/dechets",
+        headers=_entete(referent_sheq),
+        json={"date": "2026-04-15", "type": "Papier", "description": "Cartons", "quantite": "5 kg", "site_id": site.id, "filiere": "Recyclage"},
+    ).json()
+
+    assert client.post(f"/api/v1/dechets/{cree['id']}/archiver", headers=_entete(referent_sheq)).status_code == 200
+
+    liste = client.get("/api/v1/dechets", headers=_entete(referent_sheq)).json()
+    assert all(d["id"] != cree["id"] for d in liste)
+
+
+def test_modification_dechet_refusee_a_un_technicien(client, technicien, referent_sheq, site):
+    cree = client.post(
+        "/api/v1/dechets",
+        headers=_entete(referent_sheq),
+        json={"date": "2026-04-15", "type": "Papier", "description": "Cartons", "quantite": "5 kg", "site_id": site.id, "filiere": "Recyclage"},
+    ).json()
+    reponse = client.patch(f"/api/v1/dechets/{cree['id']}", headers=_entete(technicien), json={"type": "x"})
+    assert reponse.status_code == 403

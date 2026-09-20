@@ -16,6 +16,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { usePermisStore } from "../stores/permis";
 
@@ -133,12 +134,12 @@ async function soumettre() {
             <b>Aucun permis</b>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true">
             <Icone nom="plus" taille="sm" />Demander un permis
           </button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
+          <Modal v-if="formulaireOuvert" titre="Demander un permis" @fermer="formulaireOuvert = false">
             <label class="f">Site</label>
             <select v-model="nouveau.site_id" class="inp">
               <option value="" disabled>Sélectionner…</option>
@@ -181,7 +182,7 @@ async function soumettre() {
               <button class="btn pri sm" style="width: auto" @click="soumettre">Envoyer la demande</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div class="banner info" style="margin-top: 11px">
             <Icone nom="lock" taille="sm" style="margin-top: 1px" />

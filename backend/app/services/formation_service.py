@@ -17,6 +17,7 @@ from app.schemas.formation import (
     CompetenceCreation,
     EmargementEntree,
     HabilitationCreation,
+    LigneMatriceCompetence,
     SeanceCreation,
     TentativeQuizEntree,
 )
@@ -86,8 +87,32 @@ def matrice_competences(db: Session, utilisateur_id: int | None = None) -> list[
     (utilisateur, compétence) où une habilitation existe au moins une fois —
     pas une case vide pour chaque combinaison théorique (contrairement à la
     matrice de criticité des risques, dont les 25 cases ont un sens même
-    vides : ici une case vide ne signifierait qu'une absence de données)."""
+    vides : ici une case vide ne signifierait qu'une absence de données).
+    Réutilisée telle quelle par /mes-habilitations (HabilitationSortie,
+    avec id) : voir matrice_avec_libelles ci-dessous pour la version enrichie
+    utilisée par /matrice."""
     return _dernieres_habilitations(db, utilisateur_id)
+
+
+def matrice_avec_libelles(db: Session) -> list[LigneMatriceCompetence]:
+    """Résout `libelle_competence` côté serveur (2026-09-19, revue de
+    compatibilité front/back) : le schéma `LigneMatriceCompetence` existait
+    déjà pour ça, mais la route /matrice renvoyait encore des `Habilitation`
+    brutes (via `HabilitationSortie`, sans libellé) — la colonne
+    « Compétence » du tableau desktop s'affichait donc vide."""
+    habilitations = _dernieres_habilitations(db)
+    competences = {c.id: c for c in db.scalars(select(Competence))}
+    return [
+        LigneMatriceCompetence(
+            utilisateur_id=h.utilisateur_id,
+            competence_id=h.competence_id,
+            libelle_competence=competences[h.competence_id].libelle if h.competence_id in competences else "?",
+            date_obtention=h.date_obtention,
+            date_expiration=h.date_expiration,
+            expiree=h.expiree,
+        )
+        for h in habilitations
+    ]
 
 
 def alertes_recyclage(db: Session, horizon_jours: int = HORIZON_ALERTE_JOURS) -> list[Habilitation]:
@@ -108,6 +133,22 @@ def creer_seance(db: Session, donnees: SeanceCreation, cree_par_id: int) -> Sean
         cree_par_id=cree_par_id,
     )
     db.add(seance)
+    db.commit()
+    db.refresh(seance)
+    return seance
+
+
+def modifier_seance(db: Session, seance: Seance, donnees, modifie_par_id: int) -> Seance:
+    """Corrige une séance encore planifiée (revue d'ensemble 2026-09-10).
+    Refusé une fois réalisée : émargements et quiz sont déjà rattachés."""
+    if seance.statut != StatutSeance.PLANIFIEE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Seule une séance encore planifiée peut être corrigée",
+        )
+    for champ, valeur in donnees.model_dump(exclude_unset=True).items():
+        setattr(seance, champ, valeur)
+    seance.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(seance)
     return seance
@@ -154,6 +195,14 @@ def emarger(db: Session, seance: Seance, donnees: EmargementEntree, cree_par_id:
     db.commit()
     db.refresh(emargement)
     return emargement
+
+
+def lister_emargements(db: Session, seance_id: int) -> list[Emargement]:
+    """Ajouté le 2026-09-19 (revue de compatibilité front/back, "tu corriges
+    tout") : sans cette lecture, un écran d'émargement rouvert perdrait toute
+    trace des présences déjà enregistrées — seule la route d'écriture
+    existait jusqu'ici."""
+    return list(db.scalars(select(Emargement).where(Emargement.seance_id == seance_id)))
 
 
 def cloturer_seance(db: Session, seance: Seance, modifie_par_id: int) -> Seance:

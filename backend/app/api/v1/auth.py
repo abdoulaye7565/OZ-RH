@@ -1,13 +1,17 @@
 """Routes d'authentification (prompt 0.3)."""
 import logging
 from datetime import datetime, timezone
+from pathlib import Path
 
 import jwt
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi.responses import FileResponse
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.core.config import settings
 from app.core.deps import get_current_user, require_role
+from app.core.fichiers import enregistrer_photos
 from app.core.permissions import Permissions
 from app.core.security import creer_access_token, creer_refresh_token, decoder_jeton
 from app.db.session import get_db
@@ -18,9 +22,18 @@ from app.schemas.auth import (
     JetonSortie,
     RafraichissementEntree,
     UtilisateurCreation,
+    UtilisateurModification,
     UtilisateurSortie,
 )
-from app.services.auth_service import activer_utilisateur, authentifier, creer_utilisateur, desactiver_utilisateur
+from app.services.auth_service import (
+    activer_utilisateur,
+    authentifier,
+    changer_photo,
+    creer_utilisateur,
+    desactiver_utilisateur,
+    modifier_utilisateur,
+    retirer_photo,
+)
 
 logger = logging.getLogger("app.securite")
 
@@ -99,6 +112,48 @@ def moi(utilisateur: Utilisateur = Depends(get_current_user)) -> Utilisateur:
     return utilisateur
 
 
+@router.post("/moi/photo", response_model=UtilisateurSortie)
+async def deposer_ma_photo_route(
+    photo: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Utilisateur:
+    """Dépose (ou remplace) la photo de profil de l'utilisateur connecté —
+    2026-09-10, retour direct de l'utilisateur ("insérer sa photo").
+    Toujours en libre-service sur son propre compte, aucun rôle particulier
+    requis : ce n'est ni une donnée sensible (comme le coffre-fort) ni une
+    action réservée (comme la gestion des comptes)."""
+    chemins = await enregistrer_photos([photo], sous_dossier="avatars", nombre_max=1)
+    return changer_photo(db, utilisateur, chemins[0])
+
+
+@router.post("/moi/photo/retirer", response_model=UtilisateurSortie)
+def retirer_ma_photo_route(
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> Utilisateur:
+    """Revient aux initiales par défaut (aucune photo)."""
+    return retirer_photo(db, utilisateur)
+
+
+@router.get("/utilisateurs/{utilisateur_id}/photo")
+def obtenir_photo_route(
+    utilisateur_id: int,
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(get_current_user),
+) -> FileResponse:
+    """Sert la photo de profil d'un utilisateur — même visibilité que
+    `GET /utilisateurs` (ouvert à tout utilisateur authentifié, ces
+    informations étant déjà visibles de tous dans l'organisation papier)."""
+    cible = db.get(Utilisateur, utilisateur_id)
+    if cible is None or cible.archive or not cible.photo:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Aucune photo de profil")
+    chemin = Path(settings.storage_dir) / cible.photo
+    if not chemin.is_file():
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Photo introuvable")
+    return FileResponse(chemin)
+
+
 @router.get("/utilisateurs", response_model=list[UtilisateurSortie])
 def lister_utilisateurs_route(
     db: Session = Depends(get_db),
@@ -117,6 +172,23 @@ def _recuperer_utilisateur(db: Session, utilisateur_id: int) -> Utilisateur:
     if cible is None or cible.archive:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Utilisateur introuvable")
     return cible
+
+
+@router.patch("/utilisateurs/{utilisateur_id}", response_model=UtilisateurSortie)
+def modifier_utilisateur_route(
+    utilisateur_id: int,
+    payload: UtilisateurModification,
+    db: Session = Depends(get_db),
+    admin: Utilisateur = Depends(require_role(*Permissions.GERER_UTILISATEURS)),
+) -> Utilisateur:
+    """Modifie nom/prénom/rôle/site/courriel d'un compte existant. Réservé aux
+    administrateurs — ni l'identifiant ni le mot de passe ne se changent par
+    cette route (voir UtilisateurModification)."""
+    cible = _recuperer_utilisateur(db, utilisateur_id)
+    try:
+        return modifier_utilisateur(db, cible, payload, admin)
+    except ValueError as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
 
 
 @router.post("/utilisateurs/{utilisateur_id}/desactiver", response_model=UtilisateurSortie)

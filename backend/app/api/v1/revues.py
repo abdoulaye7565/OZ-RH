@@ -22,6 +22,7 @@ from app.services.revue_service import (
     decisions_de,
     generer_commentaire,
     generer_pdf,
+    lister_revues,
     modifier_commentaire,
     obtenir_decision,
     obtenir_revue,
@@ -46,6 +47,17 @@ def creer_revue_route(
     """Crée une revue de direction. Module réservé à la direction, sans route de
     consultation ouverte à tout le personnel."""
     return creer_revue(db, payload, redacteur_id=utilisateur.id)
+
+
+@router.get("", response_model=list[RevueSortie])
+def lister_revues_route(
+    db: Session = Depends(get_db),
+    utilisateur: Utilisateur = Depends(require_role(*Permissions.GERER_REVUES)),
+) -> list[RevueDirection]:
+    """Liste les revues de direction déjà créées (2026-09-19) — sans cette
+    route, aucun moyen de retrouver une revue une fois l'écran de création
+    quitté."""
+    return lister_revues(db)
 
 
 @router.get("/{revue_id}", response_model=RevueDetailSortie)

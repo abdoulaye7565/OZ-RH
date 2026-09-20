@@ -13,6 +13,7 @@
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { DELAI_MASQUAGE_MS, ROLES_SECRET, TYPES_ACCES, useSecretsStore } from "../stores/secrets";
@@ -131,11 +132,11 @@ async function soumettre() {
           </div>
 
           <template v-if="peutGerer">
-            <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+            <button class="btn pri" @click="formulaireOuvert = true">
               <Icone nom="plus" taille="sm" />Ajouter un secret
             </button>
 
-            <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px; margin-bottom: 10px">
+            <Modal v-if="formulaireOuvert" titre="Ajouter un secret" @fermer="formulaireOuvert = false">
               <label class="f">Libellé</label>
               <input v-model="nouveau.libelle" class="inp" placeholder="Ex. Admin RouterOS" />
               <label class="f">Équipement (facultatif)</label>
@@ -163,7 +164,7 @@ async function soumettre() {
                 <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
                 <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
               </div>
-            </div>
+            </Modal>
           </template>
 
           <div style="height: 56px"></div>

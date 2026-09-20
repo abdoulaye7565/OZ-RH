@@ -36,5 +36,12 @@ export const useVisiteursStore = defineStore("visiteurs", {
       await api.requete(`/api/v1/visiteurs/${id}/depart`, { methode: "POST" });
       await this.charger();
     },
+
+    // Réservé à un visiteur déjà parti (le serveur le revérifie de toute
+    // façon, point 9 CLAUDE.md) — voir docs/JOURNAL.md, 2026-09-09.
+    async archiver(id) {
+      await api.requete(`/api/v1/visiteurs/${id}/archiver`, { methode: "POST" });
+      await this.charger();
+    },
   },
 });

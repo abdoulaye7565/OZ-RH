@@ -40,6 +40,26 @@ class RisqueCreation(BaseModel):
     cotation: CotationEntree
 
 
+class RisqueModification(BaseModel):
+    """Correction des champs descriptifs d'un risque (faute de frappe,
+    reformulation) — revue d'ensemble 2026-09-10. La cotation ne se modifie
+    PAS ici : elle passe par /reevaluer, qui empile une nouvelle cotation sans
+    toucher aux précédentes (historique, section 5.2.5). Modification partielle
+    (`exclude_unset`)."""
+
+    danger: str | None = None
+    categorie: CategorieRisque | None = None
+    unite_travail: str | None = None
+    personnes_exposees: str | None = None
+
+    @field_validator("danger", "unite_travail")
+    @classmethod
+    def _non_vide(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("ce champ ne peut pas être vide")
+        return v.strip() if v is not None else None
+
+
 class CotationSortie(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

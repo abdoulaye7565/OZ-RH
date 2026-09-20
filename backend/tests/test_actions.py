@@ -284,3 +284,42 @@ def test_toute_personne_authentifiee_peut_consulter_la_liste(client, technicien,
 def test_aucune_route_de_suppression(client):
     reponse = client.delete("/api/v1/actions/1")
     assert reponse.status_code == 405
+
+
+def test_modification_action_corrige_libelle_et_echeance(client, referent_sheq, risque):
+    """Revue d'ensemble 2026-09-10 : PATCH /actions/{id} corrige les champs de
+    suivi (aucune route ne le permettait, seul avancement/statut)."""
+    cree = client.post("/api/v1/actions", headers=_entete(referent_sheq), json=_donnees_action(risque)).json()
+    nouvelle_echeance = str(date.today() + timedelta(days=60))
+
+    reponse = client.patch(
+        f"/api/v1/actions/{cree['id']}",
+        headers=_entete(referent_sheq),
+        json={"libelle": "Installer une ligne de vie — priorité revue", "echeance": nouvelle_echeance},
+    )
+    assert reponse.status_code == 200
+    corps = reponse.json()
+    assert corps["libelle"] == "Installer une ligne de vie — priorité revue"
+    assert corps["echeance"] == nouvelle_echeance
+    assert corps["type_mesure"] == cree["type_mesure"]  # non fourni => inchangé
+
+
+def test_modification_refusee_sur_action_cloturee(client, referent_sheq, risque):
+    cree = client.post("/api/v1/actions", headers=_entete(referent_sheq), json=_donnees_action(risque)).json()
+    client.patch(
+        f"/api/v1/actions/{cree['id']}/avancement",
+        headers=_entete(referent_sheq),
+        json={"avancement": 100, "indicateur": "Ligne de vie posée et contrôlée"},
+    )
+    client.patch(f"/api/v1/actions/{cree['id']}/statut", headers=_entete(referent_sheq), json={"statut": "cloturee"})
+
+    reponse = client.patch(
+        f"/api/v1/actions/{cree['id']}", headers=_entete(referent_sheq), json={"libelle": "trop tard"}
+    )
+    assert reponse.status_code == 409
+
+
+def test_modification_libelle_vide_refuse(client, referent_sheq, risque):
+    cree = client.post("/api/v1/actions", headers=_entete(referent_sheq), json=_donnees_action(risque)).json()
+    reponse = client.patch(f"/api/v1/actions/{cree['id']}", headers=_entete(referent_sheq), json={"libelle": "  "})
+    assert reponse.status_code == 422

@@ -10,6 +10,7 @@
 import { computed, onMounted, ref } from "vue";
 import { useRouter } from "vue-router";
 import Icone from "../components/Icone.vue";
+import Modal from "../components/Modal.vue";
 import BandeauReseau from "../components/BandeauReseau.vue";
 import { useAuthStore } from "../stores/auth";
 import { useActionsStore } from "../stores/actions";
@@ -137,13 +138,12 @@ async function soumettre() {
             <b>Aucune action</b>
           </div>
 
-          <div v-if="!formulaireOuvert" style="height: 12px"></div>
-          <button v-if="!formulaireOuvert" class="btn pri" @click="formulaireOuvert = true">
+          <div style="height: 12px"></div>
+          <button class="btn pri" @click="formulaireOuvert = true">
             <Icone nom="plus" taille="sm" />Nouvelle action
           </button>
 
-          <div v-if="formulaireOuvert" class="card" style="padding: 13px; margin-top: 4px">
-            <div class="sec" style="margin-bottom: 8px">NOUVELLE ACTION (À PARTIR D'UN RISQUE)</div>
+          <Modal v-if="formulaireOuvert" titre="Nouvelle action (à partir d'un risque)" @fermer="formulaireOuvert = false">
             <label class="f">Libellé</label>
             <input v-model="nouvelle.libelle" class="inp" placeholder="Ex. Vérification des installations électriques" />
             <label class="f">Risque d'origine</label>
@@ -169,7 +169,7 @@ async function soumettre() {
               <button class="btn pri sm" style="width: auto" @click="soumettre">Enregistrer</button>
               <button class="btn gh sm" style="width: auto" @click="formulaireOuvert = false">Annuler</button>
             </div>
-          </div>
+          </Modal>
 
           <div style="height: 56px"></div>
         </div>

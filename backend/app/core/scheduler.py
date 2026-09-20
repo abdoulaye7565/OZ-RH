@@ -15,6 +15,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from app.core.config import settings
 from app.db.session import SessionLocal
 from app.services.notification_service import executer_taches_planifiees
+from app.services.sauvegarde_service import sauvegarder
 
 logger = logging.getLogger("app.notifications")
 
@@ -35,6 +36,17 @@ def _executer_taches_planifiees_job() -> None:
         db.close()
 
 
+def _sauvegarde_job() -> None:
+    """Sauvegarde quotidienne de la base + pièces jointes (revue d'ensemble
+    2026-09-10). Une erreur ici est journalisée mais ne doit pas faire tomber
+    le planificateur — la prochaine occurrence réessaiera."""
+    try:
+        chemin = sauvegarder()
+        logger.info("Sauvegarde quotidienne créée : %s", chemin)
+    except Exception:  # noqa: BLE001 — on veut vraiment tout attraper ici
+        logger.exception("Échec de la sauvegarde quotidienne")
+
+
 def demarrer_planificateur() -> None:
     global _planificateur
     if not settings.scheduler_actif or _planificateur is not None:
@@ -47,8 +59,20 @@ def demarrer_planificateur() -> None:
         minute=0,
         id="rappels_echeance_quotidiens",
     )
+    if settings.sauvegarde_active:
+        _planificateur.add_job(
+            _sauvegarde_job,
+            trigger="cron",
+            hour=settings.sauvegarde_heure,
+            minute=0,
+            id="sauvegarde_quotidienne",
+        )
     _planificateur.start()
-    logger.info("Planificateur démarré (exécution quotidienne à %dh00)", HEURE_EXECUTION_QUOTIDIENNE)
+    logger.info(
+        "Planificateur démarré (rappels à %dh00%s)",
+        HEURE_EXECUTION_QUOTIDIENNE,
+        f", sauvegarde à {settings.sauvegarde_heure}h00" if settings.sauvegarde_active else "",
+    )
 
 
 def arreter_planificateur() -> None:

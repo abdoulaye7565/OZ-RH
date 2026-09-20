@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.models.action import Action
 from app.models.enums import StatutAction
 from app.models.signalement import Signalement
-from app.schemas.action import ActionCreation, SyntheseActions
+from app.schemas.action import ActionCreation, ActionModification, SyntheseActions
 
 # OUVERTE -> CLOTUREE directement est autorisé (une action rapide n'a pas besoin
 # de transiter par EN_COURS) ; aucun retour en arrière possible.
@@ -48,6 +48,24 @@ def mettre_a_jour_avancement(
     action.avancement = avancement
     if indicateur is not None:
         action.indicateur = indicateur
+    action.modifie_par_id = modifie_par_id
+    db.commit()
+    db.refresh(action)
+    return action
+
+
+def modifier_action(db: Session, action: Action, donnees: ActionModification, modifie_par_id: int) -> Action:
+    """Corrige libellé / type de mesure / responsable / échéance. Refusé sur une
+    action clôturée (aucun retour en arrière — même esprit que changer_statut).
+    Revue d'ensemble 2026-09-10."""
+    if action.statut == StatutAction.CLOTUREE:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Une action clôturée ne peut plus être modifiée",
+        )
+    valeurs = donnees.model_dump(exclude_unset=True)
+    for champ, valeur in valeurs.items():
+        setattr(action, champ, valeur)
     action.modifie_par_id = modifie_par_id
     db.commit()
     db.refresh(action)
